@@ -36,6 +36,7 @@ dependencies {
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+    implementation 'io.github.java-diff-utils:java-diff-utils:4.12'
 }
 
 tasks.named('test') {
