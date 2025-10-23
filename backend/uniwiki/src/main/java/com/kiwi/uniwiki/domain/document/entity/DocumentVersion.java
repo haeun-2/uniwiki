@@ -28,6 +28,10 @@ public class DocumentVersion {
     @JoinColumn(name = "editor_id", nullable = false)
     private User editor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     @Column(name = "version_number", nullable = false)
     private Integer versionNumber;
 

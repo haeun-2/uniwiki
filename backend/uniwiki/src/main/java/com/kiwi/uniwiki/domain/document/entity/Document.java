@@ -27,6 +27,10 @@ public class Document {
     @JoinColumn(name = "university_id")
     private University university;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     @Column(name = "title", nullable = false, unique = true)
     private String title;
 
