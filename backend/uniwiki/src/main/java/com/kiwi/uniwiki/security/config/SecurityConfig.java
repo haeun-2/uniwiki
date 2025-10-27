@@ -43,7 +43,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
 
                         // 나머지는 인증 필요
-                        // .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
                 .headers(headers -> headers
                         .frameOptions(frameOptions -> frameOptions.disable())
