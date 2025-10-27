@@ -4,11 +4,11 @@ import { Search, UserRound } from "lucide-react";
 
 export default function Header() {
   return (
-    <header className="top-0 z-30 w-full border-b border-gray-200 bg-white/80 backdrop-blur">
+    <header className="top-0 z-30 w-full border-b border-gray-200 bg-uniwikicolor backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="유니위키" className="h-6 w-auto" onError={(e)=>{(e.target as HTMLImageElement).style.display='none'}}/>
-          <span className="text-lg font-bold">유니위키</span>
+          {/* <span className="text-lg font-bold">유니위키</span> */}
         </div>
         <div className="mx-3 flex-1">
           <label className="relative block">
