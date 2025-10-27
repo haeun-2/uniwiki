@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @Table(name = "discussion_reports")
+@EntityListeners(AuditingEntityListener.class)
 @IdClass(DiscussionReport.DiscussionReportId.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DiscussionReport {
