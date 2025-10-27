@@ -4,6 +4,9 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.Components;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,6 +15,18 @@ public class SwaggerConfig {
 
     @Bean
     public OpenAPI openAPI() {
+
+        // JWT 인증 스키마 정의
+        SecurityScheme securityScheme = new SecurityScheme()
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("bearer")
+                .bearerFormat("JWT")
+                .name("Authorization")
+                .description("JWT 토큰을 입력하세요. (Bearer 생략)"); // 사용자가 Bearer 직접 안붙여도 되게 안내
+
+        // 해당 스키마를 전체 API 전역에 적용
+        SecurityRequirement securityRequirement = new SecurityRequirement().addList("JWT");
+
         return new OpenAPI()
                 .info(new Info()
                         .title("API 문서")
@@ -22,6 +37,8 @@ public class SwaggerConfig {
                                 .email("developer@example.com"))
                         .license(new License()
                                 .name("Apache 2.0")
-                                .url("http://www.apache.org/licenses/LICENSE-2.0.html")));
+                                .url("http://www.apache.org/licenses/LICENSE-2.0.html")))
+                .addSecurityItem(securityRequirement)
+                .components(new Components().addSecuritySchemes("JWT", securityScheme));
     }
 }
