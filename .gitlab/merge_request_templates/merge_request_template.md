@@ -1,5 +1,5 @@
 ### 관련 Jira 이슈
-closes S13P11D105-
+closes S13P31D104-
 
 ---
 
