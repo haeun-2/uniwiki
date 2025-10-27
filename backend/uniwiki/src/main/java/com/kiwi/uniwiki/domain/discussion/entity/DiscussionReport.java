@@ -1,6 +1,6 @@
 package com.kiwi.uniwiki.domain.discussion.entity;
 
-import com.kiwi.uniwiki.domain.common.entity.Code;
+import com.kiwi.uniwiki.domain.code.entity.Code;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
