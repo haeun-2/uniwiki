@@ -9,7 +9,7 @@ import RootLayout from './layout/RootLayout'
 import MainPage from './pages/MainPage'
 import UnivLayout from './layout/UnivLayout'
 import UnivMainPage from './pages/UnivMainPage'
-import DocumentViewPage from './pages/DocumentviewPage' 
+import DocumentViewPage from './pages/DocumentViewPage' 
 
 const router = createBrowserRouter([
   {
