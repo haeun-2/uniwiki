@@ -4,20 +4,20 @@ import com.kiwi.uniwiki.domain.code.entity.Code;
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+@Builder
 @Getter
 @Entity
 @Table(name = "discussions")
 @EntityListeners(AuditingEntityListener.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class Discussion {
 
     @Id
@@ -52,10 +52,12 @@ public class Discussion {
     private LocalDateTime deletedAt;
 
     @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted;
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     @Column(name = "latest_content_number", nullable = false)
-    private Integer latestContentNumber;
+    @Builder.Default
+    private Integer latestContentNumber = 1;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "code_id", nullable = false)

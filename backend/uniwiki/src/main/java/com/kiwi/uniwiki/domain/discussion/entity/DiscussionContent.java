@@ -3,19 +3,19 @@ package com.kiwi.uniwiki.domain.discussion.entity;
 import com.kiwi.uniwiki.domain.code.entity.Code;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+@Builder
 @Getter
 @Entity
 @Table(name = "discussion_contents")
 @EntityListeners(AuditingEntityListener.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class DiscussionContent {
 
     @Id
