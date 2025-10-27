@@ -4,6 +4,9 @@ import com.github.difflib.DiffUtils;
 import com.github.difflib.patch.AbstractDelta;
 import com.github.difflib.patch.DeltaType;
 import com.github.difflib.patch.Patch;
+import com.kiwi.uniwiki.security.dto.CustomUserDetails;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -124,4 +127,12 @@ public class TestController {
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<String> getCurrentUser(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        return ResponseEntity.ok(userDetails.getUsername());
+    }
+
 }
