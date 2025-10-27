@@ -1,4 +1,4 @@
-package com.kiwi.uniwiki.domain.common.entity;
+package com.kiwi.uniwiki.domain.code.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
