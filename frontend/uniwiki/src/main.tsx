@@ -6,6 +6,8 @@ import RootLayout from './layout/RootLayout'
 import UniWikiMainPage from './pages/UniWikiMainPage'
 import LoginPage from './pages/LoginPage'   
 import SignupPage from './pages/SignupPage'
+import SignupCompletePage from './pages/SignupCompletePage'  
+import ProfilePage from './pages/ProfilePage'
 
 const router = createBrowserRouter([
   {
@@ -15,6 +17,8 @@ const router = createBrowserRouter([
       { index: true, element: <UniWikiMainPage /> },
       { path: 'login', element: <LoginPage /> },   
       { path: 'signup', element: <SignupPage />},
+      { path: 'signup/complete', element: <SignupCompletePage /> },
+      { path: 'profile', element: <ProfilePage /> },
     ],
   },
 ])
