@@ -66,7 +66,7 @@ export default function LoginPage() {
               </Link>
               <button
                 type="submit"
-                className="rounded-lg bg-[#0b6fff] px-4 py-2.5 font-medium text-white hover:bg-[#0a5ce6]"
+                className="rounded-lg bg-[#5b7c99] px-4 py-2.5 font-medium text-white hover:bg-[#4a6578]"
               >
                 로그인
               </button>
