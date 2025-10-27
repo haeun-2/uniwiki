@@ -19,7 +19,7 @@ services:
 
   frontend:
     build:
-      context: ./fronten/uniwiki
+      context: ./frontend/uniwiki
       dockerfile: Dockerfile
     container_name: frontend
     ports:
