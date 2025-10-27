@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/regions")
@@ -18,9 +20,9 @@ public class RegionController {
 
     @GetMapping
     @Operation(summary = "지역 전체 목록 조회", description = "지역 전체 목록을 조회합니다.")
-    public ResponseEntity<RegionResponseDTO> getAllRegions() {
+    public ResponseEntity<List<RegionResponseDTO>> getAllRegions() {
 
-        RegionResponseDTO response = regionService.getAllRegions();
-        return ResponseEntity.ok(response);
+        List<RegionResponseDTO> responses = regionService.getAllRegions();
+        return ResponseEntity.ok(responses);
     }
 }

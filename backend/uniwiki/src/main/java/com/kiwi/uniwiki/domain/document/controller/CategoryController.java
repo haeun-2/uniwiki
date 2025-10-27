@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/categories")
@@ -18,9 +20,9 @@ public class CategoryController {
 
     @GetMapping
     @Operation(summary = "카테고리 전체 목록 조회", description = "카테고리 전체 목록을 조회합니다.")
-    public ResponseEntity<CategoryResponseDTO> getAllCategories() {
+    public ResponseEntity<List<CategoryResponseDTO>> getAllCategories() {
 
-        CategoryResponseDTO response = categoryService.getAllCategories();
-        return ResponseEntity.ok(response);
+        List<CategoryResponseDTO> responses = categoryService.getAllCategories();
+        return ResponseEntity.ok(responses);
     }
 }

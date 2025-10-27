@@ -3,6 +3,7 @@ package com.kiwi.uniwiki.domain.university.service;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.domain.university.dto.response.RegionResponseDTO;
+import com.kiwi.uniwiki.domain.university.dto.response.UniversityResponseDTO;
 import com.kiwi.uniwiki.domain.university.entity.Region;
 import com.kiwi.uniwiki.domain.university.repository.RegionRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,15 +25,11 @@ public class RegionService {
     /**
      * 지역 목록 전체 조회
      */
-    public RegionResponseDTO getAllRegions() {
+    public List<RegionResponseDTO> getAllRegions() {
 
-        List<RegionResponseDTO.RegionDTO> regionList = regionRepository.findAll().stream()
-                .map(RegionResponseDTO.RegionDTO::from)
+        return regionRepository.findAll().stream()
+                .map(RegionResponseDTO::from)
                 .toList();
-
-        return RegionResponseDTO.builder()
-                .regions(regionList)
-                .build();
     }
 
     /**
