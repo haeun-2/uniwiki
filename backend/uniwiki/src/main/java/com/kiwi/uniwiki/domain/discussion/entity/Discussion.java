@@ -1,6 +1,7 @@
 package com.kiwi.uniwiki.domain.discussion.entity;
 
 import com.kiwi.uniwiki.domain.common.entity.Code;
+import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import jakarta.persistence.*;
@@ -26,8 +27,8 @@ public class Discussion {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "document_version_id", nullable = false)
-    private DocumentVersion documentVersion;
+    @JoinColumn(name = "document_id", nullable = false)
+    private Document document;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_id", nullable = false)
