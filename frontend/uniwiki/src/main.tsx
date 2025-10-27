@@ -7,7 +7,7 @@ import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import RootLayout from './layout/RootLayout'
 import UniWikiMainPage from './pages/UniWikiMainPage'
-import DocumentViewPage from './pages/DocumentViewPage' 
+
 
 const router = createBrowserRouter([
   {
