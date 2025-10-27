@@ -2,15 +2,14 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_COMPOSE_FILE = 'docker-compose.prod.yml'
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml'
     }
     
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    credentialsId: 'gitlab-token',
-                    url: 'https://gitlab.com/your-username/your-repo.git'
+                echo '✅ 코드 체크아웃 완료'
+                sh 'pwd && ls -la'
             }
         }
         
@@ -18,6 +17,7 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        echo "🛑 기존 컨테이너 중지 중..."
                         docker compose -f ${DOCKER_COMPOSE_FILE} down || true
                     '''
                 }
@@ -28,6 +28,7 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        echo "🔨 Docker 이미지 빌드 중..."
                         docker compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
                     '''
                 }
@@ -38,7 +39,19 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        echo "🚀 컨테이너 배포 중..."
                         docker compose -f ${DOCKER_COMPOSE_FILE} up -d
+                    '''
+                }
+            }
+        }
+        
+        stage('Verify') {
+            steps {
+                script {
+                    sh '''
+                        echo "✅ 배포 확인 중..."
+                        docker ps
                     '''
                 }
             }
@@ -48,6 +61,7 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        echo "🧹 사용하지 않는 이미지 정리 중..."
                         docker image prune -f
                     '''
                 }
@@ -57,10 +71,14 @@ pipeline {
     
     post {
         success {
-            echo '배포 성공! 🎉'
+            echo '✅ 배포 성공! 🎉'
         }
         failure {
-            echo '배포 실패 😢'
+            echo '❌ 배포 실패 😢'
+            sh 'docker ps -a'
+        }
+        always {
+            echo '📋 빌드 완료'
         }
     }
 }
