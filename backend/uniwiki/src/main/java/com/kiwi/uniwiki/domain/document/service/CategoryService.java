@@ -18,15 +18,11 @@ public class CategoryService {
     /**
      * 카테고리 전체 목록 조회
      */
-    public CategoryResponseDTO getAllCategories() {
+    public List<CategoryResponseDTO> getAllCategories() {
 
-        List<CategoryResponseDTO.CategoryDTO> categoryList = categoryRepository.findAll().stream()
-                .map(CategoryResponseDTO.CategoryDTO::from)
+        return categoryRepository.findAll().stream()
+                .map(CategoryResponseDTO::from)
                 .toList();
-
-        return CategoryResponseDTO.builder()
-                .categories(categoryList)
-                .build();
     }
 
     /**
