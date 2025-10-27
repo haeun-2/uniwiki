@@ -8,63 +8,58 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                git branch: 'develop',
+                    credentialsId: 'gitlab-token1',
+                    url: 'https://lab.ssafy.com/s13-final/S13P31D104.git'
+                    
                 echo '✅ 코드 체크아웃 완료'
                 sh 'pwd && ls -la'
             }
         }
         
+        stage('Prepare') {
+            steps {
+                sh '''
+                    echo "📋 환경 확인"
+                    docker --version
+                    docker-compose --version || echo "docker-compose not found"
+                '''
+            }
+        }
+        
         stage('Stop Old Containers') {
             steps {
-                script {
-                    sh '''
-                        echo "🛑 기존 컨테이너 중지 중..."
-                        docker compose -f ${DOCKER_COMPOSE_FILE} down || true
-                    '''
-                }
+                sh '''
+                    echo "🛑 기존 컨테이너 중지"
+                    docker-compose -f ${DOCKER_COMPOSE_FILE} down || true
+                '''
             }
         }
         
         stage('Build Images') {
             steps {
-                script {
-                    sh '''
-                        echo "🔨 Docker 이미지 빌드 중..."
-                        docker compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
-                    '''
-                }
+                sh '''
+                    echo "🔨 이미지 빌드"
+                    docker-compose -f ${DOCKER_COMPOSE_FILE} build --no-cache
+                '''
             }
         }
         
         stage('Deploy') {
             steps {
-                script {
-                    sh '''
-                        echo "🚀 컨테이너 배포 중..."
-                        docker compose -f ${DOCKER_COMPOSE_FILE} up -d
-                    '''
-                }
+                sh '''
+                    echo "🚀 서비스 배포"
+                    docker-compose -f ${DOCKER_COMPOSE_FILE} up -d
+                '''
             }
         }
         
         stage('Verify') {
             steps {
-                script {
-                    sh '''
-                        echo "✅ 배포 확인 중..."
-                        docker ps
-                    '''
-                }
-            }
-        }
-        
-        stage('Clean Up') {
-            steps {
-                script {
-                    sh '''
-                        echo "🧹 사용하지 않는 이미지 정리 중..."
-                        docker image prune -f
-                    '''
-                }
+                sh '''
+                    echo "✅ 배포 확인"
+                    docker ps
+                '''
             }
         }
     }
@@ -74,11 +69,8 @@ pipeline {
             echo '✅ 배포 성공! 🎉'
         }
         failure {
-            echo '❌ 배포 실패 😢'
-            sh 'docker ps -a'
-        }
-        always {
-            echo '📋 빌드 완료'
+            echo '❌ 배포 실패'
+            sh 'docker ps -a || true'
         }
     }
 }
