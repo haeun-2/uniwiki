@@ -66,8 +66,16 @@ public enum ErrorCode {
     /**
      * 404 NOT_FOUND - 지역 없음
      */
-    REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_404_01", "요청한 지역을 찾을 수 없습니다.");
+    REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_404_01", "요청한 지역을 찾을 수 없습니다."),
 
+    // ======================================
+    // UNIVERSITY (대학)
+    // ======================================
+
+    /**
+     * 404 NOT_FOUND - 대학 없음
+     */
+    UNIVERSITY_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_01", "요청한 대학을 찾을 수 없습니다.");
 
 
     private final HttpStatus status;

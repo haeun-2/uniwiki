@@ -3,6 +3,7 @@ package com.kiwi.uniwiki.security.service;
 
 
 import com.kiwi.uniwiki.domain.university.entity.University;
+import com.kiwi.uniwiki.domain.university.service.UniversityService;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import com.kiwi.uniwiki.domain.user.repository.UserRepository;
 import com.kiwi.uniwiki.security.dto.request.AuthRequestDTO;
