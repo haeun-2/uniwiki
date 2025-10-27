@@ -75,7 +75,16 @@ public enum ErrorCode {
     /**
      * 404 NOT_FOUND - 대학 없음
      */
-    UNIVERSITY_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_01", "요청한 대학을 찾을 수 없습니다.");
+    UNIVERSITY_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_01", "요청한 대학을 찾을 수 없습니다."),
+
+    // ======================================
+    // DOCUMENT (문서)
+    // ======================================
+
+    /**
+     * 404 NOT_FOUND - 문서 없음
+     */
+    DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다.");
 
 
     private final HttpStatus status;
