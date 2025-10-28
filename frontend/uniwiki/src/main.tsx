@@ -9,7 +9,8 @@ import RootLayout from './layout/RootLayout'
 import MainPage from './pages/MainPage'
 import UnivLayout from './layout/UnivLayout'
 import UnivMainPage from './pages/UnivMainPage'
-import DocumentViewPage from './pages/DocumentViewPage' 
+import DocumentViewPage from './pages/DocumentViewPage'
+import DiscussionListPage from './pages/DiscussionListPage'   // ✅ 추가
 
 const router = createBrowserRouter([
   {
@@ -17,17 +18,18 @@ const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <MainPage /> },
-      { path: '/docs/:documentTitle', element: <DocumentViewPage /> },  // 문서 조회 라우트 추가
+      { path: '/docs/:documentTitle', element: <DocumentViewPage /> },                 // 문서 조회
+      { path: '/docs/:documentTitle/discussions', element: <DiscussionListPage /> },   // ✅ 문서 토론 목록/작성
     ],
   },
   {
-    path: "/univ/:univName",
+    path: '/univ/:univName',
     element: <UnivLayout />,
     children: [
       { index: true, element: <UnivMainPage /> },
-    ]
-  }
-]);
+    ],
+  },
+])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
