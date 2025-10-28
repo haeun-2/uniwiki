@@ -25,16 +25,16 @@ public class UserService {
     private final UniversityRepository universityRepository;
     private final UniversityBookmarkRepository universityBookmarkRepository;
 
-    public UserResponseDTO.UserInfo getUserInfo(Integer userId){
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_FOUND_FOUND));;
+    public UserResponseDTO.UserInfo getUserInfo(User user){
+//        User user = userRepository.findById(userId)
+//                .orElseThrow(() -> new CustomException(ErrorCode.USER_FOUND_FOUND));
       return UserResponseDTO.UserInfo.builder().
                 email(user.getEmail()).
                 nickname(user.getNickname())
                 .role(user.getRole()).build();
     }
 
-    public void createFavoriteDocument(Integer userId, Short universityId){
+    public void createFavoriteUniversity(Integer userId, Short universityId){
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_FOUND_FOUND));
         University university = universityRepository.findById(universityId)
@@ -50,7 +50,7 @@ public class UserService {
 
     }
 
-    public void deleteFavoriteDocument(Integer userId, Short universityId){
+    public void deleteFavoriteUniversity(Integer userId, Short universityId){
 
         UniversityBookmark.UniversityBookmarkId id =
                 new UniversityBookmark.UniversityBookmarkId(userId, universityId);
@@ -65,7 +65,7 @@ public class UserService {
         List<UniversityBookmark>  usersByBookMark = universityBookmarkRepository.findByUserId(userId);
         return usersByBookMark.stream()
                 .map(bookmark -> UserResponseDTO.FavoriteUniversityList.builder()
-                        .universityId(bookmark.getUniversityId().intValue())  // Short -> Integer 변환
+                        .universityId(bookmark.getUniversityId())
                         .logoUrl(bookmark.getUniversity().getLogoUrl())
                         .universityName(bookmark.getUniversity().getName())
                         .build())

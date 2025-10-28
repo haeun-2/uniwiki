@@ -25,29 +25,29 @@ public class UserController {
     @GetMapping("/me")
     @Operation(summary = "유저 정보 조회" , description = "유저 정보를 조회합니다.")
     public ResponseEntity<UserResponseDTO.UserInfo> getUserInfo(@AuthenticationPrincipal CustomUserDetails user){
-        UserResponseDTO.UserInfo response = userService.getUserInfo(user.getUser().getId());
+        UserResponseDTO.UserInfo response = userService.getUserInfo(user.getUser());
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/me/favorites/universities/{university_id}")
+    @PostMapping("/me/favorites/universities/{universityId}")
     @Operation(summary = "대학 즐겨 찾기 추가" , description = "관심 있는 대학을 즐겨찾기에 추가합니다.")
     public ResponseEntity<Void> addBookmark(
           @AuthenticationPrincipal CustomUserDetails user,
-            @PathVariable("university_id") Short universityId) {
+            @PathVariable("universityId") Short universityId) {
 
-         userService.createFavoriteDocument(user.getUser().getId(), universityId);
+         userService.createFavoriteUniversity(user.getUser().getId(), universityId);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .build();
     }
 
-    @DeleteMapping("/me/favorites/universities/{university_id}")
+    @DeleteMapping("/me/favorites/universities/{universityId}")
     @Operation(summary = "대학 즐겨 찾기 삭제" , description = "즐겨 찾기 한 목록중에 삭제 합니다.")
     public ResponseEntity<Void> deleteBookMark(
             @AuthenticationPrincipal CustomUserDetails user,
-            @PathVariable("university_id") Short universityId) {
+            @PathVariable("universityId") Short universityId) {
 
-        userService.deleteFavoriteDocument(user.getUser().getId(), universityId);
+        userService.deleteFavoriteUniversity(user.getUser().getId(), universityId);
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)
                 .build();

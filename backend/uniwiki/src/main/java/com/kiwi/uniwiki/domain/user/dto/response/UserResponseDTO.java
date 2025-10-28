@@ -17,7 +17,7 @@ public class UserResponseDTO {
     @Getter
     @Builder
     public static class FavoriteUniversityList{
-        private Integer universityId;
+        private Short universityId;
         private String logoUrl;
         private String universityName;
     }
