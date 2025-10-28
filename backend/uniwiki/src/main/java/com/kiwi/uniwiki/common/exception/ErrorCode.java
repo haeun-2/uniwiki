@@ -78,6 +78,16 @@ public enum ErrorCode {
     UNIVERSITY_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_01", "요청한 대학을 찾을 수 없습니다."),
 
     // ======================================
+    // CATEGORY (카테고리)
+    // ======================================
+
+    /**
+     * 404 NOT_FOUND - 카테고리 없음
+     */
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "CATEGORY_404_01", "요청한 카테고리를 찾을 수 없습니다."),
+
+
+    // ======================================
     // DOCUMENT (문서)
     // ======================================
 
@@ -85,6 +95,12 @@ public enum ErrorCode {
      * 404 NOT_FOUND - 문서 없음
      */
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다."),
+    DOCUMENT_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_02", "요청한 버전의 문서를 찾을 수 없습니다."),
+
+    /**
+     * 409 CONFLICT - 중복 리소스
+     */
+    DUPLICATE_DOCUMENT(HttpStatus.CONFLICT, "DOCUMENT_409_01", "이미 존재하는 문서입니다."),
 
 
     /**
