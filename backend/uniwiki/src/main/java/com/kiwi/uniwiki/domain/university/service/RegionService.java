@@ -3,12 +3,10 @@ package com.kiwi.uniwiki.domain.university.service;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.domain.university.dto.response.RegionResponseDTO;
-import com.kiwi.uniwiki.domain.university.dto.response.UniversityResponseDTO;
 import com.kiwi.uniwiki.domain.university.entity.Region;
 import com.kiwi.uniwiki.domain.university.repository.RegionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +33,7 @@ public class RegionService {
     /**
      * 특정 지역 조회
      */
-    public Region getRegionById(Integer id) {
+    public Region getRegionById(Short id) {
 
         return regionRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.REGION_NOT_FOUND));

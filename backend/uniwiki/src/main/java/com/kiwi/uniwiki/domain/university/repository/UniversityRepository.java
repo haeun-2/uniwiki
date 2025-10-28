@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UniversityRepository extends JpaRepository<University, Integer> {
+public interface UniversityRepository extends JpaRepository<University, Short> {
 
     /**
      * 도메인으로 대학 찾기
@@ -23,5 +23,5 @@ public interface UniversityRepository extends JpaRepository<University, Integer>
     /**
      * 특정 지역 대학 목록 조회
      */
-    List<University> findAllByRegionId(Integer regionId);
+    List<University> findAllByRegionId(Short regionId);
 }

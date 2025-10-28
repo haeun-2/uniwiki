@@ -7,7 +7,7 @@ import lombok.Getter;
 public class DocumentUpdateRequestDTO {
 
     @NotNull(message = "카테고리 선택은 필수입니다.")
-    private Integer categoryId;
+    private Short categoryId;
 
     private String documentContent;
 

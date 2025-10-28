@@ -14,7 +14,7 @@ public class CodeGroup {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "code_group_id")
-    private Integer id;
+    private Short id;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;

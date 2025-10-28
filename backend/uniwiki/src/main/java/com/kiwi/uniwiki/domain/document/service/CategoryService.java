@@ -21,7 +21,7 @@ public class CategoryService {
     /**
      * 특정 카테고리 조회
      */
-    public Category getCategoryById(Integer categoryId) {
+    public Category getCategoryById(Short categoryId) {
 
         return categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CATEGORY_NOT_FOUND));
