@@ -12,7 +12,7 @@ public class DocumentCreateRequestDTO {
     private Short universityId;
 
     @NotNull(message = "카테고리 선택은 필수입니다.")
-    private Integer categoryId;
+    private Short categoryId;
 
     @NotBlank(message = "문서 제목 입력은 필수입니다.")
     @Size(min = 1, max = 255, message = "문서 제목 최대 길이는 255자 입니다.")
