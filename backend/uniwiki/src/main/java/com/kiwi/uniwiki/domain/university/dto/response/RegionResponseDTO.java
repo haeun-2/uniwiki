@@ -10,7 +10,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public class RegionResponseDTO {
 
-    private Integer regionId;
+    private Short regionId;
     private String regionName;
 
     public static RegionResponseDTO from(Region region) {

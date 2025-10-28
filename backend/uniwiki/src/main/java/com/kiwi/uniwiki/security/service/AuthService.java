@@ -2,6 +2,8 @@ package com.kiwi.uniwiki.security.service;
 
 
 
+import com.kiwi.uniwiki.common.exception.CustomException;
+import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.domain.university.entity.University;
 import com.kiwi.uniwiki.domain.university.service.UniversityService;
 import com.kiwi.uniwiki.domain.user.entity.User;
@@ -29,10 +31,14 @@ public class AuthService {
      * 회원가입
      */
     @Transactional
-    public String signup(AuthRequestDTO.SignupRequest request) {
-        // 중복 사용자 확인
+    public void signup(AuthRequestDTO.SignupRequest request) {
+        // 중복 이메일 검사
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("이미 존재하는 사용자명입니다.");
+            throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+        //중복 닉네임 검사
+        if(userRepository.existsByNickname(request.getNickname())){
+            throw new CustomException(ErrorCode.NICKNAME_ALREADY_EXISTS);
         }
 
         // 비밀번호 SHA-256 암호화
@@ -52,10 +58,7 @@ public class AuthService {
                 .build();
 
 
-
         userRepository.save(user);
-
-        return "회원가입이 완료되었습니다.";
     }
 
     /**
@@ -65,11 +68,11 @@ public class AuthService {
     public AuthResponseDTO.LoginResponse login(AuthRequestDTO.LoginRequest request) {
         // 사용자 조회
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
         // 비밀번호 확인
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+            new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         // JWT 토큰 생성
@@ -81,5 +84,23 @@ public class AuthService {
                 .nickName(user.getNickname())
                 .role(user.getRole())
                 .build();
+    }
+
+    /**
+     * 이메일 중복 검사
+     */
+    public AuthResponseDTO.DuplicateCheck checkEmailDuplicate(String email){
+       boolean available = userRepository.existsByEmail(email);
+
+        return AuthResponseDTO.DuplicateCheck.builder()
+                .available(!available).build();
+
+    }
+
+    //닉네임 중복 검사
+    public AuthResponseDTO.DuplicateCheck checkNicknameDuplicate(String nickname){
+        boolean available = userRepository.existsByNickname(nickname);
+        return AuthResponseDTO.DuplicateCheck.builder()
+                .available(!available).build();
     }
 }

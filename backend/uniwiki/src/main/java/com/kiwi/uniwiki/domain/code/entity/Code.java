@@ -14,7 +14,7 @@ public class Code {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "code_id")
-    private Integer id;
+    private Short id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "code_group_id", nullable = false)
