@@ -57,7 +57,34 @@ public enum ErrorCode {
     /**
      * 403 FORBIDDEN - 접근 권한 없음
      */
-    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_403_01", "접근 권한이 없습니다.");
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_403_01", "접근 권한이 없습니다."),
+
+    // ======================================
+    // REGION (지역)
+    // ======================================
+
+    /**
+     * 404 NOT_FOUND - 지역 없음
+     */
+    REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "REGION_404_01", "요청한 지역을 찾을 수 없습니다."),
+
+    // ======================================
+    // UNIVERSITY (대학)
+    // ======================================
+
+    /**
+     * 404 NOT_FOUND - 대학 없음
+     */
+    UNIVERSITY_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_01", "요청한 대학을 찾을 수 없습니다."),
+
+    // ======================================
+    // DOCUMENT (문서)
+    // ======================================
+
+    /**
+     * 404 NOT_FOUND - 문서 없음
+     */
+    DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다.");
 
 
     private final HttpStatus status;

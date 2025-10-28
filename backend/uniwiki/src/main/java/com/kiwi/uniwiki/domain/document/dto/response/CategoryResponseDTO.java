@@ -12,20 +12,13 @@ import java.util.List;
 @AllArgsConstructor
 public class CategoryResponseDTO {
 
-    private List<CategoryDTO> categories;
+    private Integer categoryId;
+    private String categoryName;
 
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    public static class CategoryDTO {
-        private Integer categoryId;
-        private String categoryName;
-
-        public static CategoryDTO from(Category category) {
-            return CategoryDTO.builder()
-                    .categoryId(category.getId())
-                    .categoryName(category.getName())
-                    .build();
-        }
+    public static CategoryResponseDTO from(Category category) {
+        return CategoryResponseDTO.builder()
+                .categoryId(category.getId())
+                .categoryName(category.getName())
+                .build();
     }
 }
