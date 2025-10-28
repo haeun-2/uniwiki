@@ -1,23 +1,46 @@
+
 // src/main.tsx
 import '@uiw/react-md-editor/markdown-editor.css'
 import '@uiw/react-markdown-preview/markdown.css'
+
 import './index.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+
 import RootLayout from './layout/RootLayout'
+
 import MainPage from './pages/MainPage'
 import UnivLayout from './layout/UnivLayout'
 import UnivMainPage from './pages/UnivMainPage'
+
+
+import LoginPage from './pages/LoginPage'   
+import SignupPage from './pages/SignupPage'
+import SignupCompletePage from './pages/SignupCompletePage'  
+import ProfilePage from './pages/ProfilePage'
 import DocumentViewPage from './pages/DocumentViewPage' 
+
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <RootLayout />,
     children: [
+
       { index: true, element: <MainPage /> },
-      { path: '/docs/:documentTitle', element: <DocumentViewPage /> },  // 문서 조회 라우트 추가
+
+      
+
+      { path: 'login', element: <LoginPage /> },   
+      { path: 'signup', element: <SignupPage />},
+      { path: 'signup/complete', element: <SignupCompletePage /> },
+      { path: 'profile', element: <ProfilePage /> },
+
+      // ⬇️ 문서 조회 라우트 추가
+      { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
+
+
     ],
   },
   {
