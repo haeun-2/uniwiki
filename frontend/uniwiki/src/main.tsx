@@ -14,12 +14,12 @@ import MainPage from './pages/MainPage'
 import UnivLayout from './layout/UnivLayout'
 import UnivMainPage from './pages/UnivMainPage'
 
-
 import LoginPage from './pages/LoginPage'   
 import SignupPage from './pages/SignupPage'
 import SignupCompletePage from './pages/SignupCompletePage'  
 import ProfilePage from './pages/ProfilePage'
 import DocumentViewPage from './pages/DocumentViewPage' 
+import DiscussionListPage from './pages/DiscussionListPage'
 
 
 const router = createBrowserRouter([
@@ -29,9 +29,6 @@ const router = createBrowserRouter([
     children: [
 
       { index: true, element: <MainPage /> },
-
-      
-
       { path: 'login', element: <LoginPage /> },   
       { path: 'signup', element: <SignupPage />},
       { path: 'signup/complete', element: <SignupCompletePage /> },
@@ -39,18 +36,17 @@ const router = createBrowserRouter([
 
       // ⬇️ 문서 조회 라우트 추가
       { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
-
-
+      { path: '/docs/:documentTitle/discussions', element: <DiscussionListPage /> }
     ],
   },
   {
-    path: "/univ/:univName",
+    path: '/univ/:univName',
     element: <UnivLayout />,
     children: [
       { index: true, element: <UnivMainPage /> },
-    ]
-  }
-]);
+    ],
+  },
+])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
