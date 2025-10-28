@@ -1,5 +1,3 @@
-
-// src/main.tsx
 import '@uiw/react-md-editor/markdown-editor.css'
 import '@uiw/react-markdown-preview/markdown.css'
 
@@ -19,8 +17,13 @@ import SignupPage from './pages/SignupPage'
 import SignupCompletePage from './pages/SignupCompletePage'  
 import ProfilePage from './pages/ProfilePage'
 import DocumentViewPage from './pages/DocumentViewPage' 
-import DiscussionListPage from './pages/DiscussionListPage'
 
+import AdminLoginPage from './pages/admin/AdminLoginPage'
+import AdminUserReportPage from './pages/admin/AdminUserReportPage'
+import AdminDiscussionReportPage from './pages/admin/AdminDiscussionReportPage'
+import AdminLayout from './layout/AdminLayout'
+
+import DiscussionListPage from './pages/DiscussionListPage'
 
 const router = createBrowserRouter([
   {
@@ -44,9 +47,18 @@ const router = createBrowserRouter([
     element: <UnivLayout />,
     children: [
       { index: true, element: <UnivMainPage /> },
-    ],
+    ]
   },
-])
+    {
+    path: "/admin",
+    element: <AdminLayout />,
+    children: [
+      { path: 'login', element: <AdminLoginPage /> },
+      { path: 'user_report', element: <AdminUserReportPage />},
+      { path: 'discussion_report', element: <AdminDiscussionReportPage />},
+    ]
+  }
+]);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
