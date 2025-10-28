@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/users")
@@ -30,10 +32,10 @@ public class UserController {
     @PostMapping("/me/favorites/universities/{university_id}")
     @Operation(summary = "대학 즐겨 찾기 추가" , description = "관심 있는 대학을 즐겨찾기에 추가합니다.")
     public ResponseEntity<Void> addBookmark(
-            @AuthenticationPrincipal Integer userId,
+          @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable("university_id") Short universityId) {
 
-         userService.createFavoriteDocument(userId, universityId);
+         userService.createFavoriteDocument(user.getUser().getId(), universityId);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .build();
@@ -42,13 +44,23 @@ public class UserController {
     @DeleteMapping("/me/favorites/universities/{university_id}")
     @Operation(summary = "대학 즐겨 찾기 삭제" , description = "즐겨 찾기 한 목록중에 삭제 합니다.")
     public ResponseEntity<Void> deleteBookMark(
-            @AuthenticationPrincipal Integer userId,
+            @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable("university_id") Short universityId) {
 
-        userService.deleteFavoriteDocument(userId, universityId);
+        userService.deleteFavoriteDocument(user.getUser().getId(), universityId);
         return ResponseEntity
-                .status(HttpStatus.CREATED)
+                .status(HttpStatus.NO_CONTENT)
                 .build();
+    }
+
+    @GetMapping("/me/favorites/universities")
+    @Operation(summary = "대학 즐겨 목록 조회" , description = "사용자가 등록한 대학 즐겨찾기의 목록을 조회합니다.")
+    public ResponseEntity<List<UserResponseDTO.FavoriteUniversityList>> getUserFavoriteUniversitiesList(
+            @AuthenticationPrincipal CustomUserDetails user
+          ) {
+
+        List<UserResponseDTO.FavoriteUniversityList> response = userService.getFavoriteUniversityList(user.getUser().getId());
+        return ResponseEntity.ok(response);
     }
 }
 

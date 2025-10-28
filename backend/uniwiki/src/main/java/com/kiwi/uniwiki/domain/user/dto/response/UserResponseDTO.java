@@ -14,4 +14,12 @@ public class UserResponseDTO {
         private User.Role role;
     }
 
+    @Getter
+    @Builder
+    public static class FavoriteUniversityList{
+        private Integer universityId;
+        private String logoUrl;
+        private String universityName;
+    }
+
 }

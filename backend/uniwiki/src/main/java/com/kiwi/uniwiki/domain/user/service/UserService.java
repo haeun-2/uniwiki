@@ -13,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -57,5 +60,17 @@ public class UserService {
 
         universityBookmarkRepository.delete(university);
     }
+
+    public List<UserResponseDTO.FavoriteUniversityList> getFavoriteUniversityList(Integer userId){
+        List<UniversityBookmark>  usersByBookMark = universityBookmarkRepository.findByUserId(userId);
+        return usersByBookMark.stream()
+                .map(bookmark -> UserResponseDTO.FavoriteUniversityList.builder()
+                        .universityId(bookmark.getUniversityId().intValue())  // Short -> Integer 변환
+                        .logoUrl(bookmark.getUniversity().getLogoUrl())
+                        .universityName(bookmark.getUniversity().getName())
+                        .build())
+                .collect(Collectors.toList());
+
+        }
 
 }
