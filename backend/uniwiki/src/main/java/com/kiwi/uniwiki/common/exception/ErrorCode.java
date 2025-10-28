@@ -86,8 +86,13 @@ public enum ErrorCode {
     /**
      * 404 NOT_FOUND - 문서 없음
      */
-    DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다.");
+    DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다."),
 
+
+    /**
+     * 403 FORBIDDEN - 토론 권한 없음
+     */
+    DISCUSSION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DISCUSSION_403_01", "소속 대학생만 토론에 참여할 수 있습니다.");
 
     private final HttpStatus status;
     private final String code;
