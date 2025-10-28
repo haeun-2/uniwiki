@@ -23,4 +23,14 @@ public class DiscussionResponseDTO {
         }
     }
 
+    @Getter
+    @AllArgsConstructor
+    public static class CreateResponse {
+        private Integer discussionId;
+
+        public static CreateResponse from(Discussion discussion) {
+            return new CreateResponse(discussion.getId());
+        }
+
+    }
 }

@@ -62,4 +62,12 @@ public class Discussion {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "code_id", nullable = false)
     private Code code;
+
+    public void updateStatus(Code code) {
+        this.code = code;
+    }
+
+    public int renewContentNumber() {
+        return ++this.latestContentNumber;
+    }
 }
