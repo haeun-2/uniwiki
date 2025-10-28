@@ -54,9 +54,18 @@ public class UniversityService {
     }
 
     /**
+     * 특정 대학 조회
+     */
+    public University findById(Short universityId) {
+
+        return universityRepository.findById(universityId)
+                .orElseThrow(() -> new CustomException(ErrorCode.UNIVERSITY_NOT_FOUND));
+    }
+
+    /**
      * 대학 상세 정보 조회
      */
-    public UniversityDetailResponseDTO getUniversityDetail(Integer universityId) {
+    public UniversityDetailResponseDTO getUniversityDetail(Short universityId) {
 
         University university = universityRepository.findById(universityId)
                 .orElseThrow(() -> new CustomException(ErrorCode.UNIVERSITY_NOT_FOUND));
@@ -77,7 +86,7 @@ public class UniversityService {
     /**
      * 특정 지역 대학 목록 조회
      */
-    public List<UniversityResponseDTO> getUniversitiesByRegionId(Integer regionId) {
+    public List<UniversityResponseDTO> getUniversitiesByRegionId(Short regionId) {
 
         return universityRepository.findAllByRegionId(regionId).stream()
                 .map(UniversityResponseDTO::from)
