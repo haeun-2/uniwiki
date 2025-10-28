@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface CodeRepository extends JpaRepository<Code, Integer> {
+public interface CodeRepository extends JpaRepository<Code, Short> {
 
     @Query("SELECT c FROM Code c JOIN FETCH c.codeGroup")
     List<Code> findAllWithCodeGroup();
