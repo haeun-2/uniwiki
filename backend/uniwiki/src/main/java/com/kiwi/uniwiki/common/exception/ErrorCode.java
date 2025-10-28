@@ -53,7 +53,9 @@ public enum ErrorCode {
      * 401 UNAUTHORIZED - 인증 실패
      */
     UNAUTHORIZED_ACCESS(HttpStatus.UNAUTHORIZED, "AUTH_401_01", "인증이 필요합니다."),
-
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_4011", "아이디 또는 비밀번호가 일치하지 않습니다."),
+    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_4091", "이미 존재하는 이메일입니다."),
+    NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_4092", "이미 존재하는 닉네임입니다."),
     /**
      * 403 FORBIDDEN - 접근 권한 없음
      */

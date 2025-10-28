@@ -10,13 +10,22 @@ public class AuthResponseDTO {
 
     @Getter
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class LoginResponse{
         private String accessToken;
         private Integer userId;
         private String nickName;
         private User.Role role;
     }
+
+
+    @Getter
+    @Builder
+    public static class DuplicateCheck{
+
+        private boolean available;
+    }
+
+
+
 
 }
