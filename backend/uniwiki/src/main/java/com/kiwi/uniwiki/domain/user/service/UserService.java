@@ -34,9 +34,8 @@ public class UserService {
                 .role(user.getRole()).build();
     }
 
-    public void createFavoriteUniversity(Integer userId, Short universityId){
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_FOUND_FOUND));
+    public void createFavoriteUniversity(User user, Short universityId){
+
         University university = universityRepository.findById(universityId)
                 .orElseThrow(() -> new CustomException(ErrorCode.UNIVERSITY_NOT_FOUND));
 
@@ -61,8 +60,8 @@ public class UserService {
         universityBookmarkRepository.delete(university);
     }
 
-    public List<UserResponseDTO.FavoriteUniversityList> getFavoriteUniversityList(Integer userId){
-        List<UniversityBookmark>  usersByBookMark = universityBookmarkRepository.findByUserId(userId);
+    public List<UserResponseDTO.FavoriteUniversityList> getFavoriteUniversityList(User user){
+        List<UniversityBookmark>  usersByBookMark = universityBookmarkRepository.findByUserId(user.getId());
         return usersByBookMark.stream()
                 .map(bookmark -> UserResponseDTO.FavoriteUniversityList.builder()
                         .universityId(bookmark.getUniversityId())

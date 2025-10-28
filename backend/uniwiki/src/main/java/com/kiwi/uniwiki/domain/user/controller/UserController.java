@@ -35,7 +35,7 @@ public class UserController {
           @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable("universityId") Short universityId) {
 
-         userService.createFavoriteUniversity(user.getUser().getId(), universityId);
+         userService.createFavoriteUniversity(user.getUser(), universityId);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .build();
@@ -59,7 +59,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user
           ) {
 
-        List<UserResponseDTO.FavoriteUniversityList> response = userService.getFavoriteUniversityList(user.getUser().getId());
+        List<UserResponseDTO.FavoriteUniversityList> response = userService.getFavoriteUniversityList(user.getUser());
         return ResponseEntity.ok(response);
     }
 }
