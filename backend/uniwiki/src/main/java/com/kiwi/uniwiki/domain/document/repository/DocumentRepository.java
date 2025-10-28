@@ -11,4 +11,6 @@ public interface DocumentRepository extends JpaRepository<Document, Integer> {
      * 제목으로 문서 조회
      */
     Optional<Document> findByTitle(String title);
+
+    boolean existsByTitle(String title);
 }
