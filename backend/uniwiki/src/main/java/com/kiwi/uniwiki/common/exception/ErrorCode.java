@@ -24,7 +24,7 @@ public enum ErrorCode {
      * 404 NOT_FOUND - 공통 리소스 없음
      */
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_404_01", "요청한 리소스를 찾을 수 없습니다."),
-
+    USER_FOUND_FOUND(HttpStatus.NOT_FOUND, "COMMON_404_1", "해당 회원을 찾을 수 없습니다."),
     /**
      * 409 CONFLICT - 중복 리소스
      */
@@ -78,7 +78,7 @@ public enum ErrorCode {
      * 404 NOT_FOUND - 대학 없음
      */
     UNIVERSITY_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_01", "요청한 대학을 찾을 수 없습니다."),
-
+    UNIVERSITY_FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_02", "요청한 대학의 즐겨찾기 목록을 찾을 수 없습니다."),
     // ======================================
     // CATEGORY (카테고리)
     // ======================================
