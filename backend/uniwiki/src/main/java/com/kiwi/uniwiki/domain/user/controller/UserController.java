@@ -1,0 +1,54 @@
+package com.kiwi.uniwiki.domain.user.controller;
+
+import com.kiwi.uniwiki.domain.university.entity.UniversityBookmark;
+import com.kiwi.uniwiki.domain.user.dto.response.UserResponseDTO;
+import com.kiwi.uniwiki.domain.user.service.UserService;
+import com.kiwi.uniwiki.security.dto.CustomUserDetails;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/users")
+@Tag(name = "UserController", description = "유저 관련 기능을 제공합니다.")
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping("/me")
+    @Operation(summary = "유저 정보 조회" , description = "유저 정보를 조회합니다.")
+    public ResponseEntity<UserResponseDTO.UserInfo> getUserInfo(@AuthenticationPrincipal CustomUserDetails user){
+        UserResponseDTO.UserInfo response = userService.getUserInfo(user.getUser().getId());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/me/favorites/universities/{university_id}")
+    @Operation(summary = "대학 즐겨 찾기 추가" , description = "관심 있는 대학을 즐겨찾기에 추가합니다.")
+    public ResponseEntity<Void> addBookmark(
+            @AuthenticationPrincipal Integer userId,
+            @PathVariable("university_id") Short universityId) {
+
+         userService.createFavoriteDocument(userId, universityId);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .build();
+    }
+
+    @DeleteMapping("/me/favorites/universities/{university_id}")
+    @Operation(summary = "대학 즐겨 찾기 삭제" , description = "즐겨 찾기 한 목록중에 삭제 합니다.")
+    public ResponseEntity<Void> deleteBookMark(
+            @AuthenticationPrincipal Integer userId,
+            @PathVariable("university_id") Short universityId) {
+
+        userService.deleteFavoriteDocument(userId, universityId);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .build();
+    }
+}
+
