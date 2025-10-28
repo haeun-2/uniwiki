@@ -1,8 +1,11 @@
 package com.kiwi.uniwiki.domain.discussion.controller;
 
 import com.kiwi.uniwiki.common.page.PageResponse;
+import com.kiwi.uniwiki.domain.discussion.dto.request.DiscussionContentRequestDTO;
 import com.kiwi.uniwiki.domain.discussion.dto.request.DiscussionRequestDTO;
+import com.kiwi.uniwiki.domain.discussion.dto.response.DiscussionContentResponseDTO;
 import com.kiwi.uniwiki.domain.discussion.dto.response.DiscussionResponseDTO;
+import com.kiwi.uniwiki.domain.discussion.service.DiscussionContentService;
 import com.kiwi.uniwiki.domain.discussion.service.DiscussionService;
 import com.kiwi.uniwiki.security.dto.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,15 +24,16 @@ import java.util.List;
 public class DiscussionController {
 
     private final DiscussionService discussionService;
+    private final DiscussionContentService discussionContentService;
 
     @PostMapping
     @Operation(summary = "토론 생성", description = "특정 문서에 대한 토론을 생성합니다.")
-    public ResponseEntity<Integer> createDiscussion (
+    public ResponseEntity<DiscussionResponseDTO.CreateResponse> createDiscussion (
             @RequestBody DiscussionRequestDTO.CreateRequest request,
-            @AuthenticationPrincipal CustomUserDetails customUserDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        Integer discussionId = discussionService.createDiscussion(request, customUserDetails.getUser());
-        return ResponseEntity.ok(discussionId);
+        DiscussionResponseDTO.CreateResponse response = discussionService.createDiscussion(request, userDetails.getUser());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
@@ -49,6 +53,38 @@ public class DiscussionController {
             @RequestParam("university") Integer universityId
     ) {
         List<DiscussionResponseDTO.SimpleResponse> response = discussionService.getRecentDiscussionsByUniversity(universityId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{discussionId}/close")
+    @Operation(summary = "토론 종료", description = "토론을 종료합니다. 토론 생성자만 종료할 수 있습니다.")
+    public ResponseEntity<DiscussionContentResponseDTO.Content> closeDiscussion(
+            @PathVariable Integer discussionId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        DiscussionContentResponseDTO.Content response = discussionContentService.closeDiscussion(discussionId, userDetails.getUser());
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{discussionId}/pause")
+    @Operation(summary = "토론 중지", description = "토론을 중지합니다. 토론 생성자만 중지할 수 있습니다.")
+    public ResponseEntity<DiscussionContentResponseDTO.Content> pauseDiscussion(
+            @PathVariable Integer discussionId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        DiscussionContentResponseDTO.Content response = discussionContentService.pauseDiscussion(discussionId, userDetails.getUser());
+        return ResponseEntity.ok(response);
+    }
+
+
+    @PostMapping("/{discussionId}/contents")
+    @Operation(summary = "토론 의견 작성", description = "토론에 의견을 작성합니다.")
+    public ResponseEntity<DiscussionContentResponseDTO.Content> createDiscussionContent(
+            @RequestBody DiscussionContentRequestDTO.CreateContentRequest request,
+            @PathVariable Integer discussionId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        DiscussionContentResponseDTO.Content response = discussionContentService.createDiscussionContent(request, discussionId, userDetails.getUser());
         return ResponseEntity.ok(response);
     }
 

@@ -33,7 +33,7 @@ public class DiscussionService {
     private final CodeService codeService;
 
     @Transactional
-    public Integer createDiscussion(DiscussionRequestDTO.CreateRequest request, User user) {
+    public DiscussionResponseDTO.CreateResponse createDiscussion(DiscussionRequestDTO.CreateRequest request, User user) {
         Document document = documentRepository.findById(request.getDocumentId()).orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
         
         // 유저가 토론 참여 권한을 가졌는지 확인
@@ -59,8 +59,8 @@ public class DiscussionService {
                 .build();
 
         discussionContentRepository.save(discussionContent);
-        
-        return savedDiscussion.getId();
+
+        return DiscussionResponseDTO.CreateResponse.from(savedDiscussion);
     }
 
     public PageResponse<DiscussionResponseDTO.SimpleResponse> getOpenDiscussionsByDocument(Integer documentId, Integer page, Integer size) {
@@ -79,7 +79,7 @@ public class DiscussionService {
     }
 
     private void validatePermission(User user, Document document) {
-        if (!user.getUniversity().getId().equals(document.getUniversity().getId())) {
+        if (!user.getIsUniversityVerified() || !user.getUniversity().getId().equals(document.getUniversity().getId())) {
             throw new CustomException(ErrorCode.DISCUSSION_ACCESS_DENIED);
         }
     }
