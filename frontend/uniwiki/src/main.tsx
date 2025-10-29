@@ -25,6 +25,7 @@ import ProfilePage from './pages/ProfilePage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminUserReportPage from './pages/admin/AdminUserReportPage'
 import AdminDiscussionReportPage from './pages/admin/AdminDiscussionReportPage'
+import AdminDocumentPage from './pages/admin/AdminDocumentPage'
 
 // 문서, 토론
 import DocumentViewPage from './pages/DocumentViewPage' 
@@ -70,8 +71,9 @@ const router = createBrowserRouter([
     children: [
       // 관리자
       { path: 'login', element: <AdminLoginPage /> },
-      { path: 'user_report', element: <AdminUserReportPage />},
-      { path: 'discussion_report', element: <AdminDiscussionReportPage />},
+      { path: 'user_report', element: <AdminUserReportPage /> },
+      { path: 'discussion_report', element: <AdminDiscussionReportPage /> },
+      { path: 'document', element: <AdminDocumentPage /> }
     ]
   }
 ]);

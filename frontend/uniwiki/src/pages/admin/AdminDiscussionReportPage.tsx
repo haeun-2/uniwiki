@@ -87,13 +87,13 @@ function DiscussionProcessModal({
         </div>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border rounded-xl">취소</button>
+          <button onClick={onClose} className="px-4 py-2 border rounded-xl hover:bg-gray-50">취소</button>
           <button
             onClick={() => {
               onConfirm(days, reason);
               onClose();
             }}
-            className="px-4 py-2 rounded-xl bg-uniwikicolor text-white"
+            className="px-4 py-2 rounded-xl bg-uniwikicolor text-white hover:bg-uniwikicolor_hover"
           >
             확인
           </button>
@@ -147,8 +147,7 @@ function DiscussionProcessCheckModal({
         </div>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border rounded-xl">취소</button>
-          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-uniwikicolor text-white">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-uniwikicolor text-white hover:bg-uniwikicolor_hover">
             확인
           </button>
         </div>
@@ -244,11 +243,10 @@ export default function AdminDiscussionReportPage() {
           <table className="min-w-[960px] w-full text-left border-collapse">
             <thead className="bg-gray-50 text-gray-700 font-medium">
               <tr className="border-b">
-                <th className="py-2 w-24"></th>
-                <th className="py-2 w-20">처리 여부</th>
-                <th className="py-2 w-24">신고자</th>
-                <th className="py-2 w-[260px]">대상</th>
+                <th className="py-2 w-24 text-center">처리 여부</th>
                 <th className="py-2 w-40">일시</th>
+                <th className="py-2 w-32">신고자</th>
+                <th className="py-2 w-80">대상</th>
                 <th className="py-2">내용</th>
               </tr>
             </thead>
@@ -256,37 +254,23 @@ export default function AdminDiscussionReportPage() {
               {pageSlice.map((r) => (
                 <tr
                   key={r.id}
-                  className={`border-b ${r.processed ? "text-gray-400" : "text-gray-800"}`}
+                  onClick={() => (r.processed ? openCheck(r) : openProcess(r))}
+                  className={`border-b hover:bg-gray-50 transition-colors cursor-pointer ${
+                    r.processed ? "text-gray-400" : "text-gray-800"
+                  }`}
                 >
+                  <td className="py-3 text-center">{r.processed ? "Y" : "N"}</td>
+                  <td className="py-3">{r.createdAt}</td>
                   <td className="py-3">
-                    {r.processed ? (
-                      <button
-                        onClick={() => openCheck(r)}
-                        className="text-gray-500 hover:underline"
-                      >
-                        확인
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => openProcess(r)}
-                        className="text-[#2C80A0] hover:underline"
-                      >
-                        처리하기
-                      </button>
-                    )}
-                  </td>
-                  <td className="py-3">{r.processed ? "Y" : "N"}</td>
-                  <td className="py-3">
-                    <Link to="#" className="hover:underline">
+                    <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
                       {r.reporter}
                     </Link>
                   </td>
                   <td className="py-3">
-                    <Link to="#" className="hover:underline">
+                    <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
                       {r.targetTitle}
                     </Link>
                   </td>
-                  <td className="py-3">{r.createdAt}</td>
                   <td className="py-3">{r.content}</td>
                 </tr>
               ))}
@@ -298,7 +282,7 @@ export default function AdminDiscussionReportPage() {
         <div className="mt-5 flex items-center gap-1 text-xs">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="px-2 py-1 rounded border hover:bg-gray-50"
+            className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
           >
             &lt; 이전
           </button>
@@ -307,7 +291,9 @@ export default function AdminDiscussionReportPage() {
             <button
               key={n}
               onClick={() => setPage(n)}
-              className={`px-2 py-1 rounded border hover:bg-gray-50 ${n === page ? "bg-gray-100 font-semibold" : ""}`}
+              className={`px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer ${
+                n === page ? "bg-gray-100 font-semibold" : ""
+              }`}
             >
               {n}
             </button>
@@ -315,7 +301,7 @@ export default function AdminDiscussionReportPage() {
 
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="px-2 py-1 rounded border hover:bg-gray-50"
+            className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
           >
             다음 &gt;
           </button>
