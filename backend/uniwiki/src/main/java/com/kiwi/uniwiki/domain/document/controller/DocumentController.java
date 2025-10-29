@@ -33,7 +33,7 @@ public class DocumentController {
     @GetMapping("/{documentTitle}")
     @Operation(summary = "특정 문서 조회", description = "제목으로 특정 문서를 조회합니다.")
     public ResponseEntity<DocumentDetailResponseDTO> getDocumentByTitle(
-            @RequestParam String documentTitle
+            @PathVariable String documentTitle
     ) {
         DocumentDetailResponseDTO response = documentService.getDocumentByTitle(documentTitle);
         return ResponseEntity.ok(response);
@@ -42,7 +42,7 @@ public class DocumentController {
     @PostMapping("/{documentId}")
     @Operation(summary = "특정 문서 수정 (새 버전 생성)", description = "특정 문서의 새 버전을 생성하여 수정합니다.")
     public ResponseEntity<String> updateDocument(
-            @RequestParam Integer documentId,
+            @PathVariable Integer documentId,
             @RequestBody DocumentUpdateRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
