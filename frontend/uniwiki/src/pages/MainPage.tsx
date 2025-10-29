@@ -1,16 +1,17 @@
 import React from "react";
+import { Link } from "react-router-dom"
 
 // 더미 데이터
 const popularSchools = [
-  { name: "서울대학교", city: "서울특별시" },
-  { name: "연세대학교", city: "서울특별시" },
-  { name: "고려대학교", city: "서울특별시" },
-  { name: "경북대학교", city: "대구광역시" },
-  { name: "부산대학교", city: "부산광역시" },
-  { name: "한양대학교", city: "서울특별시" },
+  { name: "서울대학교", city: "서울특별시", slug: "snu" },
+  { name: "연세대학교", city: "서울특별시", slug: "yonsei" },
+  { name: "고려대학교", city: "서울특별시", slug: "ku" },
+  { name: "경북대학교", city: "대구광역시", slug: "knu" },
+  { name: "부산대학교", city: "부산광역시", slug: "pnu" },
+  { name: "한양대학교", city: "서울특별시", slug: "hyu" },
 ];
 
-export default function UniWikiMainPage() {
+export default function MainPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-8">
       {/* 인기 많은 학교 */}
@@ -18,8 +19,9 @@ export default function UniWikiMainPage() {
         <h2 className="mb-6 text-xl font-semibold">인기 많은 학교</h2>
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-6">
           {popularSchools.map((s, idx) => (
-            <button
+            <Link
               key={idx}
+              to={`/univ/${s.slug}`}
               className="group rounded-2xl border border-gray-200 bg-white p-4 text-center shadow-sm transition hover:shadow"
             >
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm">
@@ -27,7 +29,7 @@ export default function UniWikiMainPage() {
               </div>
               <div className="mb-1 text-[11px] text-gray-500">{s.city}</div>
               <div className="text-sm font-medium text-gray-900 group-hover:underline">{s.name}</div>
-            </button>
+            </Link>
           ))}
         </div>
       </section>

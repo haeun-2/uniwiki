@@ -1,0 +1,36 @@
+package com.kiwi.uniwiki.domain.discussion.repository;
+
+import com.kiwi.uniwiki.domain.code.entity.Code;
+import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+
+public interface DiscussionRepository extends JpaRepository<Discussion, Integer> {
+
+    Page<Discussion> findAllByDocumentIdAndCode(Integer documentId, Code code, Pageable pageable);
+
+    @Query("""
+        SELECT d
+        FROM Discussion d
+        WHERE d.document.university.id = :universityId
+        ORDER BY d.updatedAt DESC
+        """)
+    Page<Discussion> findAllByUniversityId(@Param("universityId") Integer universityId, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Discussion> findAndLockById(@Param("id") Integer id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = "document")
+    Optional<Discussion> findWithDocumentAndLockById(@Param("id") Integer id);
+
+
+}

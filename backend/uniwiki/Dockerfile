@@ -21,8 +21,8 @@ FROM openjdk:17-slim
 
 WORKDIR /app
 
-# 빌드된 JAR 파일 복사
-COPY --from=builder /app/build/libs/*.jar app.jar
+# plain.jar를 제외한 실행 가능한 jar만 복사
+COPY --from=builder /app/build/libs/*-SNAPSHOT.jar app.jar
 
 # 포트 노출
 EXPOSE 8080

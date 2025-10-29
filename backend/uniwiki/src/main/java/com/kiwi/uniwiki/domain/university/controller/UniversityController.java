@@ -24,7 +24,7 @@ public class UniversityController {
 
     @GetMapping
     @Operation(summary = "전체/지역별 대학 목록 조회", description = "전체/지역별 대학 목록을 조회합니다.")
-    public ResponseEntity<List<UniversityResponseDTO>> getUniversities(@RequestParam(name = "region", required = false) Integer regionId) {
+    public ResponseEntity<List<UniversityResponseDTO>> getUniversities(@RequestParam(name = "region", required = false) Short regionId) {
         List<UniversityResponseDTO> responses;
         if (regionId != null) {
             responses = universityService.getUniversitiesByRegionId(regionId);
@@ -36,7 +36,7 @@ public class UniversityController {
 
     @GetMapping("/{universityId}")
     @Operation(summary = "특정 대학 상세정보 조회", description = "특정 대학의 상세정보를 조회합니다.")
-    public ResponseEntity<UniversityDetailResponseDTO> getUniversityDetail(@RequestParam Integer universityId) {
+    public ResponseEntity<UniversityDetailResponseDTO> getUniversityDetail(@RequestParam Short universityId) {
 
         UniversityDetailResponseDTO response = universityService.getUniversityDetail(universityId);
         return ResponseEntity.ok(response);
