@@ -390,7 +390,7 @@ export default function DiscussionDetailPage() {
                 onChange={(e) => setReportReason(e.target.value)}
                 onBlur={() => setTouched(true)}
                 onKeyDown={(e) => { if (e.key === "Enter") submitReport(); }}
-                placeholder="재가 나한테 욕함;;;"
+                placeholder=""
                 className={`w-full border rounded-lg px-3 py-2 text-sm ${
                   hasReportError ? "border-red-500" : ""
                 }`}
