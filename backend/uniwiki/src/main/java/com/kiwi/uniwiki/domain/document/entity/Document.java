@@ -56,6 +56,10 @@ public class Document {
     @Column(name = "delete_reason")
     private String deleteReason;
 
+    @Version
+    @Column(name = "version")
+    private Integer version;
+
     public void updateLatestVersionInfo(Category category, Integer latestVersionNumber, LocalDateTime updatedAt) {
         this.category = category;
         this.latestVersionNumber = latestVersionNumber;

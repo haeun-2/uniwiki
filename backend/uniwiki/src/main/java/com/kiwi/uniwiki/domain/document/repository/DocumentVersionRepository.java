@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface DocumentVersionRepository extends JpaRepository<DocumentVersion, Integer> {
 
     Optional<DocumentVersion> findByDocumentIdAndVersionNumber(Integer documentId, Integer versionNumber);
+
+    Integer countByDocumentId(Integer documentId);
 }

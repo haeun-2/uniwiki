@@ -14,7 +14,10 @@ public class DocumentDetailResponseDTO {
 
     private Short universityId;
     private String universityName;
+    private Short categoryId;
+    private String categoryName;
     private Integer documentId;
+    private Integer latestVersionNumber;
     private String documentTitle;
     private String documentContent;
     private LocalDateTime updatedAt;
@@ -23,7 +26,10 @@ public class DocumentDetailResponseDTO {
         return DocumentDetailResponseDTO.builder()
                 .universityId(document.getUniversity().getId())
                 .universityName(document.getUniversity().getName())
+                .categoryId(document.getCategory().getId())
+                .categoryName(document.getCategory().getName())
                 .documentId(document.getId())
+                .latestVersionNumber(document.getLatestVersionNumber())
                 .documentTitle(document.getTitle())
                 .documentContent(documentContent)
                 .updatedAt(document.getUpdatedAt())

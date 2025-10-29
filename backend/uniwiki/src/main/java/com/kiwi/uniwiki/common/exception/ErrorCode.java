@@ -103,6 +103,8 @@ public enum ErrorCode {
      * 409 CONFLICT - 중복 리소스
      */
     DUPLICATE_DOCUMENT(HttpStatus.CONFLICT, "DOCUMENT_409_01", "이미 존재하는 문서입니다."),
+    DOCUMENT_CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "DOCUMENT_409_02", "현재 문서 버전이 최신 버전이 아닙니다. 최신 버전에서 다시 시도하세요."),
+
 
     // ======================================
     // DISCUSSION (토론)
