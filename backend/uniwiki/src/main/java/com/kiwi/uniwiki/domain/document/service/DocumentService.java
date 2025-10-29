@@ -2,10 +2,12 @@ package com.kiwi.uniwiki.domain.document.service;
 
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
+import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.document.dto.DiffDTO;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentCreateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentUpdateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.response.DocumentDetailResponseDTO;
+import com.kiwi.uniwiki.domain.document.dto.response.DocumentResponseDTO;
 import com.kiwi.uniwiki.domain.document.entity.Category;
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
@@ -16,9 +18,14 @@ import com.kiwi.uniwiki.domain.user.entity.User;
 import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -113,12 +120,34 @@ public class DocumentService {
     }
 
 
+    /**
+     * 대학 최근 수정 문서 조회
+     */
+    public List<DocumentResponseDTO> getRecentByUniversity(Short universityId) {
+
+        PageResponse<DocumentResponseDTO> pageResponse = getAllByUniversity(universityId, 0, 10);
+
+        // PageResponse에서 content만 반환
+        return pageResponse.getContent();
+    }
+
+    /**
+     * 대학별 문서 조회
+     */
+    public PageResponse<DocumentResponseDTO> getAllByUniversity(Short universityId, Integer page, Integer size) {
+        Page<Document> documents = documentRepository.findAllByUniversityId(
+                universityId,
+                PageRequest.of(page, size, Sort.by(Sort.Order.desc("updatedAt")))
+        );
+
+        return PageResponse.from(documents, DocumentResponseDTO::from);
+    }
 
     /**
      * 새 버전 생성 및 문서 업데이트 메서드
      */
     public void createNewVersionAndUpdateDocument(Document document, User editor, Category category,
-                                                   String oldContent, String newContent, String editMemo) {
+                                                  String oldContent, String newContent, String editMemo) {
 
         // 버전 비교
         DiffDTO.DiffInfoDTO diffs = documentDiffUtil.getDiffs(oldContent, newContent);
