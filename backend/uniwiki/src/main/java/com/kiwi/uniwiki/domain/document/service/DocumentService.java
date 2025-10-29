@@ -1,7 +1,5 @@
 package com.kiwi.uniwiki.domain.document.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.domain.document.dto.DiffDTO;
@@ -15,12 +13,12 @@ import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
 import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
 import com.kiwi.uniwiki.domain.document.util.DocumentDiffUtil;
 import com.kiwi.uniwiki.domain.user.entity.User;
+import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -91,6 +89,12 @@ public class DocumentService {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
 
+        // 클라이언트가 본 버전과 현재 버전 비교 (동시 수정 감지)
+        if (!document.getLatestVersionNumber().equals(request.getBaseVersionNumber())) {
+            log.debug("document {}: 동시 수정 발생", document.getId());
+            throw new CustomException(ErrorCode.DOCUMENT_CONCURRENT_MODIFICATION);
+        }
+
         Category category = categoryService.getCategoryById(request.getCategoryId());
 
         DocumentVersion oldVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
@@ -113,9 +117,13 @@ public class DocumentService {
                 .build()
         );
 
-        // 문서 업데이트
-        document.updateLatestVersionInfo(category, newVersion.getVersionNumber(), newVersion.getCreatedAt());
-        documentRepository.save(document);
+        // 문서 업데이트 (낙관적 락)
+        try {
+            document.updateLatestVersionInfo(category, newVersion.getVersionNumber(), newVersion.getCreatedAt());
+            documentRepository.save(document);
+        } catch (OptimisticLockException | ObjectOptimisticLockingFailureException e) {
+            throw new CustomException(ErrorCode.DOCUMENT_CONCURRENT_MODIFICATION);
+        }
 
         return document.getTitle();
     }

@@ -34,3 +34,7 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
+
+logging:
+  level:
+    com.kiwi.uniwiki: debug
