@@ -100,18 +100,38 @@ public class DocumentService {
         DocumentVersion oldVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
+        createNewVersionAndUpdateDocument(
+                document,
+                user,
+                category,
+                oldVersion.getContent(),
+                request.getDocumentContent(),
+                request.getEditMemo()
+        );
+
+        return document.getTitle();
+    }
+
+
+
+    /**
+     * 새 버전 생성 및 문서 업데이트 메서드
+     */
+    public void createNewVersionAndUpdateDocument(Document document, User editor, Category category,
+                                                   String oldContent, String newContent, String editMemo) {
+
         // 버전 비교
-        DiffDTO.DiffInfoDTO diffs = documentDiffUtil.getDiffs(oldVersion.getContent(), request.getDocumentContent());
+        DiffDTO.DiffInfoDTO diffs = documentDiffUtil.getDiffs(oldContent, newContent);
 
         // 새 버전 저장
         DocumentVersion newVersion = documentVersionRepository.save(DocumentVersion.builder()
                 .document(document)
-                .editor(user)
+                .editor(editor)
                 .category(category)
                 .versionNumber(document.getLatestVersionNumber() + 1)
-                .content(request.getDocumentContent())
+                .content(newContent)
                 .contentDiff(diffs.getDiffs())
-                .editMemo(request.getEditMemo())
+                .editMemo(editMemo)
                 .plusCount(diffs.getPlusCount())
                 .minusCount(diffs.getMinusCount())
                 .build()
@@ -124,7 +144,5 @@ public class DocumentService {
         } catch (OptimisticLockException | ObjectOptimisticLockingFailureException e) {
             throw new CustomException(ErrorCode.DOCUMENT_CONCURRENT_MODIFICATION);
         }
-
-        return document.getTitle();
     }
 }
