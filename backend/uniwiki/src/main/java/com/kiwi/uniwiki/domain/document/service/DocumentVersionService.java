@@ -27,7 +27,8 @@ public class DocumentVersionService {
 
     private final DocumentRepository documentRepository;
     private final DocumentVersionRepository documentVersionRepository;
-    private final DocumentService documentService;
+
+    private final DocumentVersionUpdateService documentVersionUpdateService;
 
     /**
      * 문서 전체 버전 목록 조회
@@ -81,7 +82,7 @@ public class DocumentVersionService {
         DocumentVersion currentVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
-        documentService.createNewVersionAndUpdateDocument(
+        documentVersionUpdateService.createNewVersionAndUpdateDocument(
                 document,
                 user,
                 targetVersion.getCategory(),
