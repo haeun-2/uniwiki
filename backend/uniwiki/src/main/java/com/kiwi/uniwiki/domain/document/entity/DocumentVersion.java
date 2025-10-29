@@ -50,9 +50,11 @@ public class DocumentVersion {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Builder.Default
     @Column(name = "plus_count")
-    private Integer plusCount;
+    private Integer plusCount = 0;
 
+    @Builder.Default
     @Column(name = "minus_count")
-    private Integer minusCount;
+    private Integer minusCount = 0;
 }
