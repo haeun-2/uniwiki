@@ -8,6 +8,7 @@ export default {
     extend: {
       colors: {
         uniwikicolor: "#2c80a0",
+        uniwikicolor_hover: "#256b86",
       },
     },
   },

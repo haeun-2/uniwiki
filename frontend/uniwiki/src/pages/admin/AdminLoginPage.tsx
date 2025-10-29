@@ -26,7 +26,7 @@ export default function AdminLoginPage() {
 
         <button
           type="submit"
-          className="w-full bg-[#2C80A0] text-white py-2 rounded-md hover:bg-[#256b86] transition"
+          className="w-full bg-uniwikicolor text-white py-2 rounded-md hover:bg-uniwikicolor_hover transition"
         >
           로그인
         </button>
