@@ -111,6 +111,12 @@ public enum ErrorCode {
     // ======================================
 
     /**
+     * 400 BAD_REQUEST
+     */
+    DISCUSSION_NOT_OPEN(HttpStatus.BAD_REQUEST, "DISCUSSION_400_01", "종료 혹은 중지된 토론입니다."),
+
+
+    /**
      * 403 FORBIDDEN - 토론 권한 없음
      */
     DISCUSSION_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DISCUSSION_403_01", "소속 대학생만 토론에 참여할 수 있습니다."),

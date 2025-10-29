@@ -88,4 +88,13 @@ public class DiscussionController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{discussionId}")
+    @Operation(summary = "토론 상세 조회", description = "토론 상세 조회합니다.")
+    public ResponseEntity<?> getDiscussion(
+            @PathVariable Integer discussionId
+    ) {
+        DiscussionResponseDTO.DetailResponse response = discussionService.getDiscussionDetail(discussionId);
+        return ResponseEntity.ok(response);
+    }
+
 }
