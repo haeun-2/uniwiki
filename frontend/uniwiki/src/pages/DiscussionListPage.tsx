@@ -112,12 +112,12 @@ export default function DiscussionListPage() {
                 <ol className="list-decimal pl-6 space-y-2">
                   {list.map((d) => (
                     <li key={d.id} className="py-1 text-[20px] leading-snug">
-                      <a
-                        href={`#/discussion/${d.id}`}
+                      <Link
+                        to={`/docs/${docTitleParam}/discussions/${d.id}`}
                         className="font-semibold text-[#2C80A0] hover:underline"
                       >
                         {d.title}
-                      </a>
+                      </Link>
                     </li>
                   ))}
                 </ol>

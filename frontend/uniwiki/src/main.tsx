@@ -29,15 +29,14 @@ import AdminDiscussionReportPage from './pages/admin/AdminDiscussionReportPage'
 // 문서, 토론
 import DocumentViewPage from './pages/DocumentViewPage' 
 import DiscussionListPage from './pages/DiscussionListPage'
+import DiscussionDetailPage from './pages/DiscussionDetailPage' // ✅ 추가
 
 const router = createBrowserRouter([
-  
   // 메인 페이지
   {
     path: '/',
     element: <RootLayout />,
     children: [
-
       // 메인 페이지
       { index: true, element: <MainPage /> },
 
@@ -49,8 +48,8 @@ const router = createBrowserRouter([
 
       // 문서, 토론
       { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
-      { path: '/docs/:documentTitle/discussions', element: <DiscussionListPage /> }
-
+      { path: '/docs/:documentTitle/discussions', element: <DiscussionListPage /> },
+      { path: '/docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> }, // ✅ 추가
     ],
   },
 
@@ -59,10 +58,8 @@ const router = createBrowserRouter([
     path: '/univ/:univName',
     element: <UnivLayout />,
     children: [
-
       // 대학교 메인 페이지
       { index: true, element: <UnivMainPage /> },
-
     ]
   },
 
@@ -71,12 +68,10 @@ const router = createBrowserRouter([
     path: "/admin",
     element: <AdminLayout />,
     children: [
-
       // 관리자
       { path: 'login', element: <AdminLoginPage /> },
       { path: 'user_report', element: <AdminUserReportPage />},
       { path: 'discussion_report', element: <AdminDiscussionReportPage />},
-
     ]
   }
 ]);
