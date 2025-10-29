@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -37,8 +39,13 @@ public class DiscussionContentService {
     public DiscussionContentResponseDTO.Content createDiscussionContent(DiscussionContentRequestDTO.CreateContentRequest request, Integer discussionId, User user) {
         Discussion discussion = discussionRepository.findWithDocumentAndLockById(discussionId).orElseThrow(() -> new CustomException(ErrorCode.DISCUSSION_NOT_FOUND));
 
+        // open 토론인지 확인
+        if (!discussion.isOpen()) {
+            throw new CustomException(ErrorCode.DISCUSSION_NOT_OPEN);
+        }
+
         // 토론 문서의 대학생인지 확인
-        if (!user.getIsUniversityVerified() || !user.getUniversity().getId().equals(discussion.getDocument().getUniversity().getId())) {
+        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), discussion.getDocument().getUniversity().getId())) {
             throw new CustomException(ErrorCode.DISCUSSION_ACCESS_DENIED);
         }
 
@@ -52,9 +59,10 @@ public class DiscussionContentService {
         Discussion discussion = discussionRepository.findAndLockById(discussionId).orElseThrow(() -> new CustomException(ErrorCode.DISCUSSION_NOT_FOUND));
 
         // 토론 생성자인지 확인
-        if (!discussion.getCreator().getId().equals(user.getId())) {
+        if (!discussion.isCreatedBy(user)) {
             throw new CustomException(ErrorCode.DISCUSSION_STATUS_ACCESS_DENIED);
         }
+
         // 토론 상태 변경
         discussion.updateStatus(codeService.get("DISCUSSION_STATUS", status));
 

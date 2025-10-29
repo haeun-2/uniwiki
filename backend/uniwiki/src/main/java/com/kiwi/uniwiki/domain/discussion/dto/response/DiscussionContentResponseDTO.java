@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class DiscussionContentResponseDTO {
 
@@ -17,6 +18,7 @@ public class DiscussionContentResponseDTO {
          private Integer writerId;
          private String writerNickname;
          private String discussionContent;
+         private Boolean isCreator;
          private LocalDateTime createdAt;
 
         public static Content from(DiscussionContent discussionContent) {
@@ -27,8 +29,13 @@ public class DiscussionContentResponseDTO {
                     .writerId(discussionContent.getCreator().getId())
                     .writerNickname(discussionContent.getCreator().getNickname())
                     .discussionContent(discussionContent.getContent())
+                    .isCreator(discussionContent.isCreatedByDiscussionCreator())
                     .createdAt(discussionContent.getCreatedAt())
                     .build();
+        }
+
+        public static List<Content> from(List<DiscussionContent> discussionContents) {
+            return discussionContents.stream().map(Content::from).toList();
         }
     }
 
