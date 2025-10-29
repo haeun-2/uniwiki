@@ -11,6 +11,7 @@ import RootLayout from './layout/RootLayout'
 import UnivLayout from './layout/UnivLayout'
 import AdminLayout from './layout/AdminLayout'
 import UserLayout from './layout/UserLayout'
+import CategoryLayout from './layout/CategoryLayout'
 
 // 메인 페이지, 대학교 메인 페이지
 import MainPage from './pages/MainPage'
@@ -36,6 +37,9 @@ import DiscussionDetailPage from './pages/DiscussionDetailPage' // ✅ 추가
 //즐겨찾기
 import FavoritePage from './pages/FavoritePage'
 
+// 카테고리
+import CategoryPage from './pages/CategoryPage'
+
 const router = createBrowserRouter([
   // 메인 페이지
   {
@@ -57,6 +61,7 @@ const router = createBrowserRouter([
  
       { path: '/docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> }, // ✅ 추가
 
+      
     ],
   },
 
@@ -70,6 +75,15 @@ const router = createBrowserRouter([
     ]
   },
 
+ // 카테고리 페이지  
+  {
+    path: '/category/:categoryName',
+    element: <CategoryLayout />,
+    children: [
+      { index: true, element: <CategoryPage /> },
+    ]
+  },
+  
 // 즐겨찾기 페이지
   {
     path: '/user',

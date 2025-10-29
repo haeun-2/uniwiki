@@ -1,5 +1,3 @@
-"use client"
-
 // src/pages/FavoritePage.tsx
 
 import { useState } from "react"
@@ -59,9 +57,9 @@ export default function FavoritePage() {
 
   return (
     <div>
-      <h1 className="mb-12 text-3xl font-semibold text-gray-900">즐겨찾기</h1>
+      <h1 className="mb-8 text-3xl font-semibold text-gray-900">즐겨찾기</h1>
 
-      <div className="mb-6 grid grid-cols-12 gap-6 border-b-2 border-gray-400 pb-4">
+      <div className="mb-3 grid grid-cols-12 gap-6 border-b-2 border-gray-400 pb-3">
         <div className="col-span-3 text-base font-medium text-gray-900">문서명</div>
         <div className="col-span-3 text-base font-medium text-gray-900">학교명</div>
         <div className="col-span-4 text-base font-medium text-gray-900">문서 수정 시각</div>
@@ -70,7 +68,7 @@ export default function FavoritePage() {
 
       <div className="space-y-0">
         {favorites.map((favorite) => (
-          <div key={favorite.id} className="grid grid-cols-12 gap-6 border-b border-gray-200 py-6">
+          <div key={favorite.id} className="grid grid-cols-12 gap-6 border-b border-gray-200 py-4">
             <div className="col-span-3">
               <button className="text-left text-sm text-yellow-600 hover:underline">{favorite.documentName}</button>
             </div>
