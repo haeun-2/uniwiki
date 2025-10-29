@@ -50,7 +50,7 @@ public class DocumentDiffUtil {
         return DiffInfoDTO.builder()
                 .diffs(diffJson)
                 .plusCount((int) plusCount)
-                .minusCount((int) minusCount)
+                .minusCount((int) -minusCount)
                 .build();
     }
 

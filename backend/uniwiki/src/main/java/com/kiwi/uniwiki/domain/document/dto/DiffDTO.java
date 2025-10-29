@@ -1,5 +1,6 @@
 package com.kiwi.uniwiki.domain.document.dto;
 
+import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,9 +15,17 @@ public class DiffDTO {
     @AllArgsConstructor
     public static class DiffInfoDTO {
 
-        public int plusCount;
-        public int minusCount;
+        public Integer plusCount;
+        public Integer minusCount;
         public String diffs;
+
+        public static DiffInfoDTO from(DocumentVersion documentVersion) {
+            return DiffInfoDTO.builder()
+                    .plusCount(documentVersion.getPlusCount())
+                    .minusCount(documentVersion.getMinusCount())
+                    .diffs(documentVersion.getContentDiff())
+                    .build();
+        }
     }
 
     /**
@@ -27,7 +36,7 @@ public class DiffDTO {
     @AllArgsConstructor
     public static class DiffLineDTO {
 
-        public int lineNumber;
+        public Integer lineNumber;
         public String content;
         public String type; // INSERT, DELETE, CHANGE_OLD, CHANGE_NEW
     }
