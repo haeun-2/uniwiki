@@ -88,7 +88,7 @@ export default function DiscussionDetailPage() {
   };
   const onCloseDiscussion = () => setStatus("closed");
 
-  // ===== 날짜 포맷터 (KST, 24시간제) =====
+  // 날짜 포맷터 (KST, 24시간제)
   const fmtKST = useMemo(
     () =>
       new Intl.DateTimeFormat("ko-KR", {
@@ -103,7 +103,6 @@ export default function DiscussionDetailPage() {
       }),
     []
   );
-  // =====================================
 
   // 스크롤 버튼들
   const panelRef = useRef<HTMLDivElement>(null);
@@ -129,7 +128,52 @@ export default function DiscussionDetailPage() {
   const scrollPageTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const scrollPanelTop = () => panelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 
-  // 상태 네모(비클릭) — 지정 색상
+  // ===================== 신고 모달 상태/핸들러 =====================
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<TalkMessage | null>(null);
+  const [reportReason, setReportReason] = useState("");
+  const [touched, setTouched] = useState(false);
+  const reportInputRef = useRef<HTMLInputElement>(null);
+
+  const openReportFor = (msg: TalkMessage) => {
+    if (msg.author === currentUser) return; // 내가 쓴 글이면 무시
+    setReportTarget(msg);
+    setReportReason("");
+    setTouched(false);
+    setReportOpen(true);
+  };
+
+  useEffect(() => {
+    if (!reportOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setReportOpen(false); };
+    window.addEventListener("keydown", onKey);
+    setTimeout(() => reportInputRef.current?.focus(), 0);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [reportOpen]);
+
+  const submitReport = async () => {
+    setTouched(true);
+    if (!reportTarget || reportReason.trim() === "") return;
+
+    // TODO: 실제 API 연동
+    // await fetch(`/api/discussions/${data.id}/reports`, {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   credentials: "include",
+    //   body: JSON.stringify({ messageId: reportTarget.id, reason: reportReason.trim() }),
+    // });
+
+    console.log("REPORT", {
+      discussionId: data.id,
+      messageId: reportTarget.id,
+      reason: reportReason.trim(),
+    });
+    setReportOpen(false);
+  };
+  const hasReportError = touched && reportReason.trim() === "";
+  // ===============================================================
+
+  // 상태 네모(비클릭)
   const StatusRect = (
     <span
       className="inline-flex h-10 w-[clamp(92px,12vw,116px)] items-center justify-center rounded-xl border text-[18px] leading-tight"
@@ -157,7 +201,7 @@ export default function DiscussionDetailPage() {
                 {data.title}
               </h1>
 
-              {/* 열림 & 오너 → '종료하기'(생성과 동일 네모) / 그 외 → 상태 네모 */}
+              {/* 열림 & 오너 → '종료하기' / 그 외 → 상태 네모 */}
               {status === "open" && isOpener ? (
                 <button
                   onClick={onCloseDiscussion}
@@ -209,9 +253,21 @@ export default function DiscussionDetailPage() {
               >
                 <ul className="space-y-3">
                   {messages.map((m) => {
+                    const isMine = m.author === currentUser;
                     const isOpenerMsg = m.author === opener;
                     return (
-                      <li key={m.id} className="rounded-lg border">
+                      <li
+                        key={m.id}
+                        className="rounded-lg border"
+                        onClick={() => !isMine && openReportFor(m)}
+                        role={isMine ? undefined : "button"}
+                        tabIndex={isMine ? -1 : 0}
+                        onKeyDown={(e) => {
+                          if (!isMine && (e.key === "Enter" || e.key === " ")) openReportFor(m);
+                        }}
+                        title={isMine ? undefined : "클릭하여 신고하기"}
+                        style={{ cursor: isMine ? "default" : "pointer" }}
+                      >
                         <div
                           className={
                             "flex items-center justify-between rounded-t-lg px-3 py-2 text-sm " +
@@ -236,7 +292,7 @@ export default function DiscussionDetailPage() {
                 </ul>
               </div>
 
-              {/* 패널 우하단 상단이동 버튼(문서와 동일 스타일) */}
+              {/* 패널 우하단 상단이동 버튼 */}
               {showTopPanel && (
                 <button
                   onClick={scrollPanelTop}
@@ -289,7 +345,7 @@ export default function DiscussionDetailPage() {
         </aside>
       </div>
 
-      {/* 페이지 우하단 '상단으로' (문서 화면과 동일) */}
+      {/* 페이지 우하단 '상단으로' */}
       {showTopPage && (
         <button
           onClick={scrollPageTop}
@@ -300,6 +356,68 @@ export default function DiscussionDetailPage() {
           <ChevronUp className="h-5 w-5" strokeWidth={3} />
         </button>
       )}
+
+      {/* ================== 토론 신고 모달 ================== */}
+      {reportOpen && (
+        <div
+          onClick={() => setReportOpen(false)}
+          className="fixed inset-0 flex items-center justify-center bg-black/30 z-[1000]"
+          aria-hidden
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="report-title"
+            className="bg-white rounded-2xl p-8 w-[420px]"
+          >
+            <div className="flex justify-between items-start mb-6">
+              <h2 id="report-title" className="text-xl font-semibold">토론 내용 신고하기</h2>
+              <button
+                onClick={() => setReportOpen(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl"
+                aria-label="닫기"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm mb-1">신고 사유</label>
+              <input
+                ref={reportInputRef}
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                onBlur={() => setTouched(true)}
+                onKeyDown={(e) => { if (e.key === "Enter") submitReport(); }}
+                placeholder="재가 나한테 욕함;;;"
+                className={`w-full border rounded-lg px-3 py-2 text-sm ${
+                  hasReportError ? "border-red-500" : ""
+                }`}
+              />
+              {hasReportError && (
+                <p className="mt-2 text-[12px] text-red-500">신고 사유를 입력해주세요.</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setReportOpen(false)}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={submitReport}
+                className="px-4 py-2 rounded-lg bg-[#e25b5b] text-white hover:opacity-90"
+              >
+                신고
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* =================================================== */}
     </div>
   );
 }
