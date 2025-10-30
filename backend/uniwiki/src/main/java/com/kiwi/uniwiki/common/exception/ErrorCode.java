@@ -53,9 +53,8 @@ public enum ErrorCode {
      * 401 UNAUTHORIZED - 인증 실패
      */
     UNAUTHORIZED_ACCESS(HttpStatus.UNAUTHORIZED, "AUTH_401_01", "인증이 필요합니다."),
-    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_4011", "아이디 또는 비밀번호가 일치하지 않습니다."),
-    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_4091", "이미 존재하는 이메일입니다."),
-    NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_4092", "이미 존재하는 닉네임입니다."),
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_401_02", "아이디 또는 비밀번호가 일치하지 않습니다."),
+
     /**
      * 403 FORBIDDEN - 접근 권한 없음
      */
@@ -98,14 +97,16 @@ public enum ErrorCode {
      */
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다."),
     DOCUMENT_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_02", "요청한 버전의 문서를 찾을 수 없습니다."),
-
+    DOCUMENT_FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_03", "요청한 문서의 즐겨찾기 목록을 찾을 수 없습니다."),
     /**
      * 409 CONFLICT - 중복 리소스
      */
     DUPLICATE_DOCUMENT(HttpStatus.CONFLICT, "DOCUMENT_409_01", "이미 존재하는 문서입니다."),
     DOCUMENT_CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "DOCUMENT_409_02", "현재 문서 버전이 최신 버전이 아닙니다. 최신 버전에서 다시 시도하세요."),
-
-
+    BOOKMARK_DOCUMENT_ALREADY_EXISTS(HttpStatus.CONFLICT, "BOOKMARK_409_03", "이미 즐겨찾기한 문서입니다."),
+    BOOKMARK_UNIVERSITY_ALREADY_EXISTS(HttpStatus.CONFLICT, "BOOKMARK_409_04", "이미 즐겨찾기한 대학입니다."),
+    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_409_05", "이미 존재하는 이메일입니다."),
+    NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_409_06", "이미 존재하는 닉네임입니다."),
     // ======================================
     // DISCUSSION (토론)
     // ======================================
