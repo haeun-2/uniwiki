@@ -62,5 +62,40 @@ public class UserController {
         List<UserResponseDTO.FavoriteUniversityList> response = userService.getFavoriteUniversityList(user.getUser());
         return ResponseEntity.ok(response);
     }
+
+
+    @PostMapping("/me/favorites/documents/{documentId}")
+    @Operation(summary = "문서 즐겨 찾기 추가" , description = "관심 있는 문서 즐겨찾기에 추가합니다.")
+    public ResponseEntity<Void> addDocumentBookmark(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable("documentId") Integer documentId) {
+
+        userService.createFavoriteDocument(user.getUser(), documentId);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .build();
+    }
+
+    @DeleteMapping("/me/favorites/documents/{documentId}")
+    @Operation(summary = "문서 즐겨 찾기 삭제" , description = "즐겨 찾기 한 목록중에 삭제 합니다.")
+    public ResponseEntity<Void> deleteDocumentBookMark(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable("documentId") Integer documentId) {
+
+        userService.deleteFavoriteDocument(user.getUser().getId(), documentId);
+        return ResponseEntity
+                .status(HttpStatus.NO_CONTENT)
+                .build();
+    }
+
+    @GetMapping("/me/favorites/documents")
+    @Operation(summary = "문서 즐겨 찾기 목록 조회" , description = "사용자가 등록한 문서 즐겨찾기의 목록을 조회합니다.")
+    public ResponseEntity<List<UserResponseDTO.FavoriteDocumentList>> getDocumentBookMarkList(
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+
+        List<UserResponseDTO.FavoriteDocumentList> response = userService.getFavoriteDocumentList(user.getUser());
+        return ResponseEntity.ok(response);
+    }
 }
 

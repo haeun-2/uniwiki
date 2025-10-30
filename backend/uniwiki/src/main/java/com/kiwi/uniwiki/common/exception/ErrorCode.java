@@ -98,14 +98,14 @@ public enum ErrorCode {
      */
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다."),
     DOCUMENT_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_02", "요청한 버전의 문서를 찾을 수 없습니다."),
-
+    DOCUMENT_FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_02", "요청한 문서의 즐겨찾기 목록을 찾을 수 없습니다."),
     /**
      * 409 CONFLICT - 중복 리소스
      */
     DUPLICATE_DOCUMENT(HttpStatus.CONFLICT, "DOCUMENT_409_01", "이미 존재하는 문서입니다."),
     DOCUMENT_CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "DOCUMENT_409_02", "현재 문서 버전이 최신 버전이 아닙니다. 최신 버전에서 다시 시도하세요."),
-
-
+    BOOKMARK_DOCUMENT_ALREADY_EXISTS(HttpStatus.CONFLICT, "BOOKMARK_4091", "이미 즐겨찾기한 문서입니다."),
+    BOOKMARK_UNIVERSITY_ALREADY_EXISTS(HttpStatus.CONFLICT, "BOOKMARK_4091", "이미 즐겨찾기한 대학입니다."),
     // ======================================
     // DISCUSSION (토론)
     // ======================================

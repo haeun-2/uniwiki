@@ -10,4 +10,6 @@ import java.util.List;
 public interface UniversityBookmarkRepository extends JpaRepository<UniversityBookmark, UniversityBookmark.UniversityBookmarkId> {
 
     List<UniversityBookmark> findByUserId(Integer userId);
+
+    boolean existsByUserIdAndUniversityId(Integer userId, Short universityId);
 }

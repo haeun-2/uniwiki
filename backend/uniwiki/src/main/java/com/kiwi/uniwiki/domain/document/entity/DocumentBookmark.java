@@ -3,10 +3,7 @@ package com.kiwi.uniwiki.domain.document.entity;
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -19,6 +16,8 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 @IdClass(DocumentBookmark.DocumentBookmarkId.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+@AllArgsConstructor
 public class DocumentBookmark {
 
     @Id
@@ -44,6 +43,7 @@ public class DocumentBookmark {
     @Getter
     @EqualsAndHashCode
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
+    @AllArgsConstructor
     public static class DocumentBookmarkId implements Serializable {
         private Integer userId;
         private Integer documentId;
