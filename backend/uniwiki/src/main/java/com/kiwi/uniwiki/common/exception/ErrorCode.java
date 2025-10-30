@@ -98,7 +98,7 @@ public enum ErrorCode {
      */
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다."),
     DOCUMENT_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_02", "요청한 버전의 문서를 찾을 수 없습니다."),
-    DOCUMENT_FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_02", "요청한 문서의 즐겨찾기 목록을 찾을 수 없습니다."),
+    DOCUMENT_FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_02", "요청한 문서의 즐겨찾기 목록을 찾을 수 없습니다."),
     /**
      * 409 CONFLICT - 중복 리소스
      */

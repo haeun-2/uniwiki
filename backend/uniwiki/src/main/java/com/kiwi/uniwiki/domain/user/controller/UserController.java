@@ -1,6 +1,8 @@
 package com.kiwi.uniwiki.domain.user.controller;
 
+import com.kiwi.uniwiki.domain.document.service.DocumentBookmarkService;
 import com.kiwi.uniwiki.domain.university.entity.UniversityBookmark;
+import com.kiwi.uniwiki.domain.university.service.UniversityBookmarkService;
 import com.kiwi.uniwiki.domain.user.dto.response.UserResponseDTO;
 import com.kiwi.uniwiki.domain.user.service.UserService;
 import com.kiwi.uniwiki.security.dto.CustomUserDetails;
@@ -21,6 +23,8 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final UniversityBookmarkService universityBookmarkService;
+    private final DocumentBookmarkService documentBookmarkService;
 
     @GetMapping("/me")
     @Operation(summary = "유저 정보 조회" , description = "유저 정보를 조회합니다.")
@@ -35,7 +39,7 @@ public class UserController {
           @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable("universityId") Short universityId) {
 
-         userService.createFavoriteUniversity(user.getUser(), universityId);
+        universityBookmarkService.createFavoriteUniversity(user.getUser(), universityId);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .build();
@@ -47,7 +51,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable("universityId") Short universityId) {
 
-        userService.deleteFavoriteUniversity(user.getUser().getId(), universityId);
+        universityBookmarkService.deleteFavoriteUniversity(user.getUser().getId(), universityId);
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)
                 .build();
@@ -59,7 +63,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user
           ) {
 
-        List<UserResponseDTO.FavoriteUniversityList> response = userService.getFavoriteUniversityList(user.getUser());
+        List<UserResponseDTO.FavoriteUniversityList> response = universityBookmarkService.getFavoriteUniversityList(user.getUser());
         return ResponseEntity.ok(response);
     }
 
@@ -70,7 +74,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable("documentId") Integer documentId) {
 
-        userService.createFavoriteDocument(user.getUser(), documentId);
+        documentBookmarkService.createFavoriteDocument(user.getUser(), documentId);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .build();
@@ -82,7 +86,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable("documentId") Integer documentId) {
 
-        userService.deleteFavoriteDocument(user.getUser().getId(), documentId);
+        documentBookmarkService.deleteFavoriteDocument(user.getUser().getId(), documentId);
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)
                 .build();
@@ -94,7 +98,7 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails user
     ) {
 
-        List<UserResponseDTO.FavoriteDocumentList> response = userService.getFavoriteDocumentList(user.getUser());
+        List<UserResponseDTO.FavoriteDocumentList> response = documentBookmarkService.getFavoriteDocumentList(user.getUser());
         return ResponseEntity.ok(response);
     }
 }
