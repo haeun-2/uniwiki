@@ -34,8 +34,10 @@ import DocumentViewPage from './pages/DocumentViewPage'
 import DiscussionListPage from './pages/DiscussionListPage'
 import DiscussionDetailPage from './pages/DiscussionDetailPage' // ✅ 추가
 
-//즐겨찾기
+//즐겨찾기, 참여 토론
 import FavoritePage from './pages/FavoritePage'
+import DiscussionHistoryPage from './pages/DiscussionHistoryPage'
+
 
 // 카테고리
 import CategoryPage from './pages/CategoryPage'
@@ -84,13 +86,13 @@ const router = createBrowserRouter([
     ]
   },
   
-// 즐겨찾기 페이지
+// 사용자 페이지(즐겨찾기, 참여토론)
   {
     path: '/user',
     element: <UserLayout />,
     children: [
       { path: 'favorite', element: <FavoritePage /> },
-      // 나중에 기여 문서, 참여 토론 페이지도 여기 추가
+      { path: 'discussions', element: <DiscussionHistoryPage /> },
     ]
   },
 
