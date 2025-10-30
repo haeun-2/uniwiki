@@ -45,4 +45,9 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Integer>
         ORDER BY dc.contentNumber ASC
     """)
     Optional<Discussion> findWithContentsById(@Param("id") Integer id);
+
+    @Query("SELECT d FROM Discussion d " +
+            "JOIN FETCH d.document doc " +
+            "WHERE d.id = :discussionId")
+    Optional<Discussion> findByIdWithDocument(@Param("discussionId") Integer discussionId);
 }

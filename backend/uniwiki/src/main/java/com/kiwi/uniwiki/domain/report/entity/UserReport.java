@@ -1,8 +1,10 @@
-package com.kiwi.uniwiki.domain.user.entity;
+package com.kiwi.uniwiki.domain.report.entity;
 
 import com.kiwi.uniwiki.domain.code.entity.Code;
+import com.kiwi.uniwiki.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -50,4 +52,12 @@ public class UserReport {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "code_id", nullable = false)
     private Code code;
+
+    @Builder
+    public UserReport(User reporter, User reportedUser, String reason, Code code) {
+        this.reporter = reporter;
+        this.reportedUser = reportedUser;
+        this.reason = reason;
+        this.code = code;
+    }
 }

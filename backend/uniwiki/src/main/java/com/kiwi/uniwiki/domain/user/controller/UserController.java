@@ -1,5 +1,7 @@
 package com.kiwi.uniwiki.domain.user.controller;
 
+import com.kiwi.uniwiki.domain.activity.dto.response.UserActivityResponseDTO;
+import com.kiwi.uniwiki.domain.activity.service.UserActivityService;
 import com.kiwi.uniwiki.domain.document.service.DocumentBookmarkService;
 import com.kiwi.uniwiki.domain.university.entity.UniversityBookmark;
 import com.kiwi.uniwiki.domain.university.service.UniversityBookmarkService;
@@ -25,6 +27,7 @@ public class UserController {
     private final UserService userService;
     private final UniversityBookmarkService universityBookmarkService;
     private final DocumentBookmarkService documentBookmarkService;
+    private final UserActivityService userActivityService;
 
     @GetMapping("/me")
     @Operation(summary = "유저 정보 조회" , description = "유저 정보를 조회합니다.")
@@ -99,6 +102,26 @@ public class UserController {
     ) {
 
         List<UserResponseDTO.FavoriteDocumentList> response = documentBookmarkService.getFavoriteDocumentList(user.getUser());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me/documents")
+    @Operation(summary = "내가 기여한 문서" , description = "내가 기여한 문서 (작성했거나, 수정한) 문서를 조회합니다.")
+    public ResponseEntity<List<UserActivityResponseDTO.UserDocumentActivityResponse>> getUserByDocuments(
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+
+        List<UserActivityResponseDTO.UserDocumentActivityResponse> response = userActivityService.getUserDocumentActivities(user.getUser().getId());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me/discussions")
+    @Operation(summary = "내가 기여한 토론" , description = "내가 기여한  토론 (생성, 댓글) 문서를 조회합니다.")
+    public ResponseEntity<List<UserActivityResponseDTO.UserDiscussionActivityResponse>> getUserByDiscussion(
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+
+        List<UserActivityResponseDTO.UserDiscussionActivityResponse> response = userActivityService.getUserDiscussionActivities(user.getUser().getId());
         return ResponseEntity.ok(response);
     }
 }
