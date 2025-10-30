@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +36,7 @@ public class DiscussionService {
     @Transactional
     public DiscussionResponseDTO.CreateResponse createDiscussion(DiscussionRequestDTO.CreateRequest request, User user) {
         Document document = documentRepository.findById(request.getDocumentId()).orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
-        
+
         // 유저가 토론 참여 권한을 가졌는지 확인
         validatePermission(user, document);
 
@@ -78,8 +79,13 @@ public class DiscussionService {
         return DiscussionResponseDTO.SimpleResponse.from(discussions);
     }
 
+    public DiscussionResponseDTO.DetailResponse getDiscussionDetail(Integer discussionId) {
+        Discussion discussion = discussionRepository.findWithContentsById(discussionId).orElseThrow(() -> new CustomException(ErrorCode.DISCUSSION_NOT_FOUND));
+        return DiscussionResponseDTO.DetailResponse.from(discussion);
+    }
+
     private void validatePermission(User user, Document document) {
-        if (!user.getIsUniversityVerified() || !user.getUniversity().getId().equals(document.getUniversity().getId())) {
+        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), document.getUniversity().getId())) {
             throw new CustomException(ErrorCode.DISCUSSION_ACCESS_DENIED);
         }
     }

@@ -2,8 +2,11 @@ package com.kiwi.uniwiki.domain.discussion.dto.response;
 
 import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class DiscussionResponseDTO {
@@ -32,5 +35,36 @@ public class DiscussionResponseDTO {
             return new CreateResponse(discussion.getId());
         }
 
+    }
+
+    @Getter
+    @AllArgsConstructor
+    @Builder
+    public static class DetailResponse {
+        private Integer discussionId;
+        private String documentTitle;
+        private String discussionTitle;
+        private String discussionStatus;
+        private Integer creatorId;
+        private String creatorNickname;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+
+        private List<DiscussionContentResponseDTO.Content> discussionContents;
+
+        public static DetailResponse from(Discussion discussion) {
+            return DetailResponse.builder()
+                    .discussionId(discussion.getId())
+                    .documentTitle(discussion.getDocument().getTitle())
+                    .discussionTitle(discussion.getTitle())
+                    .discussionStatus(discussion.getCode().getName())
+                    .creatorId(discussion.getCreator().getId())
+                    .creatorNickname(discussion.getCreator().getNickname())
+                    .createdAt(discussion.getCreatedAt())
+                    .updatedAt(discussion.getUpdatedAt())
+                    .discussionContents(DiscussionContentResponseDTO.Content.from(discussion.getDiscussionContents()))
+                    .build();
+
+        }
     }
 }

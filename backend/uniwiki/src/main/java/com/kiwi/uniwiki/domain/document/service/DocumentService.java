@@ -1,22 +1,23 @@
 package com.kiwi.uniwiki.domain.document.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
-import com.kiwi.uniwiki.domain.document.dto.DiffDTO;
+import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentCreateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentUpdateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.response.DocumentDetailResponseDTO;
+import com.kiwi.uniwiki.domain.document.dto.response.DocumentResponseDTO;
 import com.kiwi.uniwiki.domain.document.entity.Category;
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
 import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
 import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
-import com.kiwi.uniwiki.domain.document.util.DocumentDiffUtil;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +33,7 @@ public class DocumentService {
     private final DocumentVersionRepository documentVersionRepository;
 
     private final CategoryService categoryService;
-    private final DocumentDiffUtil documentDiffUtil;
+    private final DocumentVersionUpdateService documentVersionUpdateService;
 
     /**
      * 새 문서 생성
@@ -91,32 +92,50 @@ public class DocumentService {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
 
+        // 클라이언트가 본 버전과 현재 버전 비교 (동시 수정 감지)
+        if (!document.getLatestVersionNumber().equals(request.getBaseVersionNumber())) {
+            log.debug("document {}: 동시 수정 발생", document.getId());
+            throw new CustomException(ErrorCode.DOCUMENT_CONCURRENT_MODIFICATION);
+        }
+
         Category category = categoryService.getCategoryById(request.getCategoryId());
 
         DocumentVersion oldVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
-        // 버전 비교
-        DiffDTO.DiffInfoDTO diffs = documentDiffUtil.getDiffs(oldVersion.getContent(), request.getDocumentContent());
-
-        // 새 버전 저장
-        DocumentVersion newVersion = documentVersionRepository.save(DocumentVersion.builder()
-                .document(document)
-                .editor(user)
-                .category(category)
-                .versionNumber(document.getLatestVersionNumber() + 1)
-                .content(request.getDocumentContent())
-                .contentDiff(diffs.getDiffs())
-                .editMemo(request.getEditMemo())
-                .plusCount(diffs.getPlusCount())
-                .minusCount(diffs.getMinusCount())
-                .build()
+        documentVersionUpdateService.createNewVersionAndUpdateDocument(
+                document,
+                user,
+                category,
+                oldVersion.getContent(),
+                request.getDocumentContent(),
+                request.getEditMemo()
         );
 
-        // 문서 업데이트
-        document.updateLatestVersionInfo(category, newVersion.getVersionNumber(), newVersion.getCreatedAt());
-        documentRepository.save(document);
-
         return document.getTitle();
+    }
+
+
+    /**
+     * 대학 최근 수정 문서 조회
+     */
+    public List<DocumentResponseDTO> getRecentByUniversity(Short universityId) {
+
+        PageResponse<DocumentResponseDTO> pageResponse = getAllByUniversity(universityId, 0, 10);
+
+        // PageResponse에서 content만 반환
+        return pageResponse.getContent();
+    }
+
+    /**
+     * 대학별 문서 조회
+     */
+    public PageResponse<DocumentResponseDTO> getAllByUniversity(Short universityId, Integer page, Integer size) {
+        Page<Document> documents = documentRepository.findAllByUniversityId(
+                universityId,
+                PageRequest.of(page, size, Sort.by(Sort.Order.desc("updatedAt")))
+        );
+
+        return PageResponse.from(documents, DocumentResponseDTO::from);
     }
 }

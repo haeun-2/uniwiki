@@ -8,6 +8,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Builder
 @Getter
@@ -44,4 +45,9 @@ public class DiscussionContent {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "code_id", nullable = false)
     private Code code;
+
+    public boolean isCreatedByDiscussionCreator() {
+        return Objects.equals(discussion.getCreator().getId(), creator.getId());
+    }
+
 }

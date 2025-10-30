@@ -10,14 +10,15 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
-@Builder
 @Getter
 @Entity
 @Table(name = "discussions")
 @EntityListeners(AuditingEntityListener.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
 public class Discussion {
 
     @Id
@@ -52,16 +53,25 @@ public class Discussion {
     private LocalDateTime deletedAt;
 
     @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
     private Boolean isDeleted = false;
 
     @Column(name = "latest_content_number", nullable = false)
-    @Builder.Default
     private Integer latestContentNumber = 1;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "code_id", nullable = false)
     private Code code;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "discussion")
+    private List<DiscussionContent> discussionContents = new ArrayList<>();
+
+    @Builder
+    public Discussion(Document document, User creator, String title, Code code) {
+        this.document = document;
+        this.creator = creator;
+        this.title = title;
+        this.code = code;
+    }
 
     public void updateStatus(Code code) {
         this.code = code;
@@ -69,5 +79,13 @@ public class Discussion {
 
     public int renewContentNumber() {
         return ++this.latestContentNumber;
+    }
+
+    public boolean isOpen() {
+        return this.code.getName().equals("OPEN");
+    }
+
+    public boolean isCreatedBy(User user) {
+        return Objects.equals(this.creator.getId(), user.getId());
     }
 }

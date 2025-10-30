@@ -26,11 +26,23 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Integer>
     Page<Discussion> findAllByUniversityId(@Param("universityId") Integer universityId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Discussion> findAndLockById(@Param("id") Integer id);
+    Optional<Discussion> findAndLockById(Integer id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = "document")
-    Optional<Discussion> findWithDocumentAndLockById(@Param("id") Integer id);
+    @EntityGraph(attributePaths = {"document", "code"})
+    Optional<Discussion> findWithDocumentAndLockById(Integer id);
 
 
+    @Query("""
+        SELECT DISTINCT d
+        FROM Discussion d
+        LEFT JOIN FETCH d.document
+        LEFT JOIN FETCH d.creator
+        LEFT JOIN FETCH d.code
+        LEFT JOIN FETCH d.discussionContents dc
+        LEFT JOIN FETCH dc.code
+        WHERE d.id = :id
+        ORDER BY dc.contentNumber ASC
+    """)
+    Optional<Discussion> findWithContentsById(@Param("id") Integer id);
 }

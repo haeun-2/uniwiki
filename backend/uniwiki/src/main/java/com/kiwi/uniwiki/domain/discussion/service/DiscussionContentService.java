@@ -4,7 +4,6 @@ import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.domain.code.service.CodeService;
 import com.kiwi.uniwiki.domain.discussion.dto.request.DiscussionContentRequestDTO;
-import com.kiwi.uniwiki.domain.discussion.dto.response.DiscussionContentResponseDTO;
 import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
 import com.kiwi.uniwiki.domain.discussion.repository.DiscussionContentRepository;
@@ -14,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -21,47 +22,57 @@ public class DiscussionContentService {
 
     private final DiscussionRepository discussionRepository;
     private final DiscussionContentRepository discussionContentRepository;
+    private final DiscussionSseService discussionSseService;
     private final CodeService codeService;
 
     @Transactional
-    public DiscussionContentResponseDTO.Content closeDiscussion(Integer discussionId, User user) {
-        return updateDiscussionStatus(discussionId, user, "CLOSED");
+    public void closeDiscussion(Integer discussionId, User user) {
+        updateDiscussionStatus(discussionId, user, "CLOSED");
     }
 
     @Transactional
-    public DiscussionContentResponseDTO.Content pauseDiscussion(Integer discussionId, User user) {
-        return updateDiscussionStatus(discussionId, user, "PAUSE");
+    public void pauseDiscussion(Integer discussionId, User user) {
+        updateDiscussionStatus(discussionId, user, "PAUSE");
     }
 
     @Transactional
-    public DiscussionContentResponseDTO.Content createDiscussionContent(DiscussionContentRequestDTO.CreateContentRequest request, Integer discussionId, User user) {
+    public void createDiscussionContent(DiscussionContentRequestDTO.CreateContentRequest request, Integer discussionId, User user) {
         Discussion discussion = discussionRepository.findWithDocumentAndLockById(discussionId).orElseThrow(() -> new CustomException(ErrorCode.DISCUSSION_NOT_FOUND));
 
+        // open 토론인지 확인
+        if (!discussion.isOpen()) {
+            throw new CustomException(ErrorCode.DISCUSSION_NOT_OPEN);
+        }
+
         // 토론 문서의 대학생인지 확인
-        if (!user.getIsUniversityVerified() || !user.getUniversity().getId().equals(discussion.getDocument().getUniversity().getId())) {
+        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), discussion.getDocument().getUniversity().getId())) {
             throw new CustomException(ErrorCode.DISCUSSION_ACCESS_DENIED);
         }
 
         // 토론 메시지 생성
         DiscussionContent discussionContent = createDiscussionContent(discussion, user, request.getDiscussionContent(), "USER");
 
-        return DiscussionContentResponseDTO.Content.from(discussionContent);
+        // 새 토론 내용 이벤트 전송
+        discussionSseService.sendDiscussionContent(discussionId, discussionContent);
     }
 
-    private DiscussionContentResponseDTO.Content updateDiscussionStatus(Integer discussionId, User user, String status) {
+    private void updateDiscussionStatus(Integer discussionId, User user, String status) {
         Discussion discussion = discussionRepository.findAndLockById(discussionId).orElseThrow(() -> new CustomException(ErrorCode.DISCUSSION_NOT_FOUND));
 
         // 토론 생성자인지 확인
-        if (!discussion.getCreator().getId().equals(user.getId())) {
+        if (!discussion.isCreatedBy(user)) {
             throw new CustomException(ErrorCode.DISCUSSION_STATUS_ACCESS_DENIED);
         }
+
         // 토론 상태 변경
         discussion.updateStatus(codeService.get("DISCUSSION_STATUS", status));
 
         // 토론 상태 변경 메시지 생성
         DiscussionContent discussionContent = createDiscussionContent(discussion, user, "토론 상태를 " + status + "로 변경함", "SYSTEM");
 
-        return DiscussionContentResponseDTO.Content.from(discussionContent);
+        // 상태 변경 이벤트 전송
+        discussionSseService.sendDiscussionContent(discussionId, discussionContent);
+        discussionSseService.sendDiscussionStatus(discussionId, status);
     }
 
     private DiscussionContent createDiscussionContent(Discussion discussion, User user, String content, String type) {
