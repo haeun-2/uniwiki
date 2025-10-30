@@ -1,6 +1,7 @@
 package com.kiwi.uniwiki.domain.discussion.dto.response;
 
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -37,6 +38,12 @@ public class DiscussionContentResponseDTO {
         public static List<Content> from(List<DiscussionContent> discussionContents) {
             return discussionContents.stream().map(Content::from).toList();
         }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class StatusChange {
+        private String status;
     }
 
 }
