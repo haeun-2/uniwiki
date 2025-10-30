@@ -171,106 +171,49 @@ export default function AdminUserReportPage() {
   }, [page, totalPages]);
 
   return (
-    <div className="flex text-sm text-gray-800">
-      {/* 좌측 메뉴 */}
-      <aside className="w-56 bg-gray-50 min-h-[calc(100vh-64px)]">
-        <div className="pt-4">
-          <nav className="flex flex-col">
-            <NavLink
-              to="/admin/user_report"
-              className={({ isActive }) =>
-                `px-5 py-3 ${
-                  isActive
-                    ? "bg-uniwikicolor text-white font-semibold"
-                    : "text-gray-700 hover:bg-white"
-                }`
-              }
-            >
-              유저 신고 내역
-            </NavLink>
-            <NavLink
-              to="/admin/discussion_report"
-              className={({ isActive }) =>
-                `px-5 py-3 ${
-                  isActive
-                    ? "bg-uniwikicolor text-white font-semibold"
-                    : "text-gray-700 hover:bg-white"
-                }`
-              }
-            >
-              토론 신고 내역
-            </NavLink>
-            <NavLink
-              to="/admin/document"
-              className={({ isActive }) =>
-                `px-5 py-3 ${
-                  isActive
-                    ? "bg-uniwikicolor text-white font-semibold"
-                    : "text-gray-700 hover:bg-white"
-                }`
-              }
-            >
-              문서 관리
-            </NavLink>
-            <NavLink
-              to="/admin/discussion"
-              className={({ isActive }) =>
-                `px-5 py-3 ${
-                  isActive
-                    ? "bg-uniwikicolor text-white font-semibold"
-                    : "text-gray-700 hover:bg-white"
-                }`
-              }
-            >
-              토론 관리
-            </NavLink>
-          </nav>
-        </div>
-      </aside>
-
+    <>
       {/* 메인 영역 */}
-      <section className="flex-1 px-6 py-8">
-        <h1 className="text-xl font-semibold mb-6">유저 신고 내역</h1>
+      <h1 className="text-xl font-semibold mb-6">유저 신고 내역</h1>
 
-        <div className="overflow-x-auto border-t border-gray-200">
-          <table className="min-w-[960px] w-full text-left border-collapse">
-            <thead className="bg-gray-50 text-gray-700 font-medium">
-              <tr className="border-b">
-                {/* <th className="py-2 w-24"></th> */}
-                <th className="py-2 w-24 text-center">처리 여부</th>
-                <th className="py-2 w-40">일시</th>
-                <th className="py-2 w-32">신고자</th>
-                <th className="py-2 w-32">대상</th>
-                <th className="py-2">내용</th>
+      <div className="overflow-x-auto border-t border-gray-200">
+        <table className="min-w-[960px] w-full text-left border-collapse">
+          <thead className="bg-gray-50 text-gray-700 font-medium">
+            <tr className="border-b">
+              {/* <th className="py-2 w-24"></th> */}
+              <th className="py-2 w-24 text-center">처리 여부</th>
+              <th className="py-2 w-40">일시</th>
+              <th className="py-2 w-32">신고자</th>
+              <th className="py-2 w-32">대상</th>
+              <th className="py-2">내용</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageSlice.map((r) => (
+              <tr
+                key={r.id}
+                onClick={() => (r.processed ? handleCheck(r.id) : handleProcess(r.id))}
+                className={`border-b hover:bg-gray-50 transition-colors cursor-pointer ${
+                  r.processed ? "text-gray-400" : "text-gray-800"
+                }`}
+              >
+                <td className="py-3 text-center">{r.processed ? "Y" : "N"}</td>
+                <td className="py-3">{r.createdAt}</td>
+                <td className="py-3">
+                  <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                    {r.reporter}
+                  </Link>
+                </td>
+                <td className="py-3">
+                  <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                    {r.target}
+                  </Link>
+                </td>
+                <td className="py-3">{r.content}</td>
               </tr>
-            </thead>
-            <tbody>
-              {pageSlice.map((r) => (
-                <tr
-                  key={r.id}
-                  onClick={() => (r.processed ? handleCheck(r.id) : handleProcess(r.id))}
-                  className={`border-b hover:bg-gray-50 transition-colors cursor-pointer ${
-                    r.processed ? "text-gray-400" : "text-gray-800"
-                  }`}
-                >
-                  <td className="py-3 text-center">{r.processed ? "Y" : "N"}</td>
-                  <td className="py-3">{r.createdAt}</td>
-                  <td className="py-3">
-                    <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                      {r.reporter}
-                    </Link>
-                  </td>
-                  <td className="py-3">
-                    <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                      {r.target}
-                    </Link>
-                  </td>
-                  <td className="py-3">{r.content}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
         {/* 페이지네이션 */}
         <div className="mt-5 flex items-center gap-1 text-xs">
@@ -300,7 +243,6 @@ export default function AdminUserReportPage() {
             다음 &gt;
           </button>
         </div>
-      </section>
 
       {/* ✅ 모달 렌더링 */}
       {showBlockModal && (
@@ -321,6 +263,6 @@ export default function AdminUserReportPage() {
           }}
         />
       )}
-    </div>
+    </>
   );
 }
