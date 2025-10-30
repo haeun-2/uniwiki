@@ -43,146 +43,88 @@ export default function AdminDocumentPage() {
   }, [page, totalPages]);
 
   return (
-    <div className="flex text-sm text-gray-800">
-      {/* 좌측 사이드 메뉴 */}
-      <aside className="w-56 bg-gray-50 min-h-[calc(100vh-64px)]">
-        <div className="pt-4">
-          <nav className="flex flex-col">
-            <NavLink
-              to="/admin/user_report"
-              className={({ isActive }) =>
-                `px-5 py-3 ${
-                  isActive
-                    ? "bg-uniwikicolor text-white font-semibold"
-                    : "text-gray-700 hover:bg-white"
-                }`
-              }
-            >
-              유저 신고 내역
-            </NavLink>
-            <NavLink
-              to="/admin/discussion_report"
-              className={({ isActive }) =>
-                `px-5 py-3 ${
-                  isActive
-                    ? "bg-uniwikicolor text-white font-semibold"
-                    : "text-gray-700 hover:bg-white"
-                }`
-              }
-            >
-              토론 신고 내역
-            </NavLink>
-            <NavLink
-              to="/admin/document"
-              className={({ isActive }) =>
-                `px-5 py-3 ${
-                  isActive
-                    ? "bg-uniwikicolor text-white font-semibold"
-                    : "text-gray-700 hover:bg-white"
-                }`
-              }
-            >
-              문서 관리
-            </NavLink>
-            <NavLink
-              to="/admin/discussion"
-              className={({ isActive }) =>
-                `px-5 py-3 ${
-                  isActive
-                    ? "bg-uniwikicolor text-white font-semibold"
-                    : "text-gray-700 hover:bg-white"
-                }`
-              }
-            >
-              토론 관리
-            </NavLink>
-          </nav>
-        </div>
-      </aside>
-
+    <>
       {/* 우측 콘텐츠 */}
-      <section className="flex-1 px-6 py-8">
-        <h1 className="text-xl font-semibold mb-6">문서 관리</h1>
+      <h1 className="text-xl font-semibold mb-6">문서 관리</h1>
 
-        <div className="overflow-x-auto border-t border-gray-200">
-          <table className="min-w-[960px] w-full text-left border-collapse">
-            <thead className="bg-gray-50 text-gray-700 font-medium">
-              <tr className="border-b">
-                <th className="py-2 w-24"></th>
-                <th className="py-2 w-40">일시</th>
-                <th className="py-2 w-32">작성자</th>
-                <th className="py-2 w-24">변경</th>
-                <th className="py-2 w-40">카테고리</th>
-                <th className="py-2">문서 제목</th>
+      <div className="overflow-x-auto border-t border-gray-200">
+        <table className="min-w-[960px] w-full text-left border-collapse">
+          <thead className="bg-gray-50 text-gray-700 font-medium">
+            <tr className="border-b">
+              <th className="py-2 w-24"></th>
+              <th className="py-2 w-40">일시</th>
+              <th className="py-2 w-32">작성자</th>
+              <th className="py-2 w-24">변경</th>
+              <th className="py-2 w-40">카테고리</th>
+              <th className="py-2">문서 제목</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageSlice.map((d) => (
+              <tr key={d.id} className="border-b hover:bg-gray-50">
+                <td className="py-3 text-uniwikicolor text-center">
+                  <button className="hover:underline cursor-pointer">비교</button>
+                  <span className="mx-1 text-gray-400">|</span>
+                  <button className="hover:underline cursor-pointer">역사</button>
+                </td>
+                <td className="py-3">{d.createdAt}</td>
+                <td className="py-3">
+                  <Link to="#" className="hover:underline">
+                    {d.author}
+                  </Link>
+
+                </td>
+                <td
+                  className={`py-3 font-medium ${
+                    d.change > 0 ? "text-blue-600" : "text-red-500"
+                  }`}
+                >
+                  {d.change > 0 ? `+${d.change}` : d.change}
+                </td>
+                <td className="py-3">
+                  <button className="hover:underline cursor-pointer">{d.category_univ}</button>
+                  <span className="mx-1 text-gray-400">&gt;</span>
+                  <button className="hover:underline cursor-pointer">{d.category_type}</button>
+                </td>
+                <td className="py-3">
+                  <Link to="#" className="hover:underline">
+                    {d.title}
+                  </Link>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {pageSlice.map((d) => (
-                <tr key={d.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 text-uniwikicolor text-center">
-                    <button className="hover:underline cursor-pointer">비교</button>
-                    <span className="mx-1 text-gray-400">|</span>
-                    <button className="hover:underline cursor-pointer">역사</button>
-                  </td>
-                  <td className="py-3">{d.createdAt}</td>
-                  <td className="py-3">
-                    <Link to="#" className="hover:underline">
-                      {d.author}
-                    </Link>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-                  </td>
-                  <td
-                    className={`py-3 font-medium ${
-                      d.change > 0 ? "text-blue-600" : "text-red-500"
-                    }`}
-                  >
-                    {d.change > 0 ? `+${d.change}` : d.change}
-                  </td>
-                  <td className="py-3">
-                    <button className="hover:underline cursor-pointer">{d.category_univ}</button>
-                    <span className="mx-1 text-gray-400">&gt;</span>
-                    <button className="hover:underline cursor-pointer">{d.category_type}</button>
-                  </td>
-                  <td className="py-3">
-                    <Link to="#" className="hover:underline">
-                      {d.title}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* 페이지네이션 */}
+      <div className="mt-5 flex items-center gap-1 text-xs">
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
+        >
+          &lt; 이전
+        </button>
 
-        {/* 페이지네이션 */}
-        <div className="mt-5 flex items-center gap-1 text-xs">
+        {paginationNumbers.map((n) => (
           <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
+            key={n}
+            onClick={() => setPage(n)}
+            className={`px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer ${
+              n === page ? "bg-gray-100 font-semibold" : ""
+            }`}
           >
-            &lt; 이전
+            {n}
           </button>
+        ))}
 
-          {paginationNumbers.map((n) => (
-            <button
-              key={n}
-              onClick={() => setPage(n)}
-              className={`px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer ${
-                n === page ? "bg-gray-100 font-semibold" : ""
-              }`}
-            >
-              {n}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
-          >
-            다음 &gt;
-          </button>
-        </div>
-      </section>
-    </div>
+        <button
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
+        >
+          다음 &gt;
+        </button>
+      </div>
+    </>
   );
 }

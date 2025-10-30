@@ -10,6 +10,9 @@ export default {
         uniwikicolor: "#2c80a0",
         uniwikicolor_hover: "#256b86",
       },
+      fontFamily: {
+        pretendard: ['Pretendard', 'sans-serif']
+      }
     },
   },
   plugins: [],

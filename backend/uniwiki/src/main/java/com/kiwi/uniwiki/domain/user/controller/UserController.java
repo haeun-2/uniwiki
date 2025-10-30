@@ -2,8 +2,9 @@ package com.kiwi.uniwiki.domain.user.controller;
 
 import com.kiwi.uniwiki.domain.activity.dto.response.UserActivityResponseDTO;
 import com.kiwi.uniwiki.domain.activity.service.UserActivityService;
+
 import com.kiwi.uniwiki.domain.document.service.DocumentBookmarkService;
-import com.kiwi.uniwiki.domain.university.entity.UniversityBookmark;
+
 import com.kiwi.uniwiki.domain.university.service.UniversityBookmarkService;
 import com.kiwi.uniwiki.domain.user.dto.response.UserResponseDTO;
 import com.kiwi.uniwiki.domain.user.service.UserService;
@@ -27,7 +28,9 @@ public class UserController {
     private final UserService userService;
     private final UniversityBookmarkService universityBookmarkService;
     private final DocumentBookmarkService documentBookmarkService;
+
     private final UserActivityService userActivityService;
+
 
     @GetMapping("/me")
     @Operation(summary = "유저 정보 조회" , description = "유저 정보를 조회합니다.")
@@ -102,6 +105,7 @@ public class UserController {
     ) {
 
         List<UserResponseDTO.FavoriteDocumentList> response = documentBookmarkService.getFavoriteDocumentList(user.getUser());
+
         return ResponseEntity.ok(response);
     }
 
@@ -122,6 +126,7 @@ public class UserController {
     ) {
 
         List<UserActivityResponseDTO.UserDiscussionActivityResponse> response = userActivityService.getUserDiscussionActivities(user.getUser().getId());
+
         return ResponseEntity.ok(response);
     }
 }

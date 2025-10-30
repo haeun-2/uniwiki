@@ -28,15 +28,19 @@ import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminUserReportPage from './pages/admin/AdminUserReportPage'
 import AdminDiscussionReportPage from './pages/admin/AdminDiscussionReportPage'
 import AdminDocumentPage from './pages/admin/AdminDocumentPage'
+import AdminDiscussionPage from './pages/admin/AdminDiscussionPage'
+import AdminManualPage from './pages/admin/AdminManualPage'
 
 // 문서, 토론
 import DocumentViewPage from './pages/DocumentViewPage'
 import DiscussionListPage from './pages/DiscussionListPage'
-import DiscussionDetailPage from './pages/DiscussionDetailPage' // ✅ 추가
+import DiscussionDetailPage from './pages/DiscussionDetailPage'
 import DocumentEditPage from './pages/DocumentEditPage'         // ✅ 편집 화면 추가
 
-//즐겨찾기
+//즐겨찾기, 참여 토론
 import FavoritePage from './pages/FavoritePage'
+import DiscussionHistoryPage from './pages/DiscussionHistoryPage'
+
 
 // 카테고리
 import CategoryPage from './pages/CategoryPage'
@@ -60,7 +64,7 @@ const router = createBrowserRouter([
       { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
       { path: '/docs/:documentTitle/edit', element: <DocumentEditPage /> },          // ✅ 편집 라우트
       { path: '/docs/:documentTitle/discussions', element: <DiscussionListPage /> },
-      { path: '/docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> }, // ✅ 추가
+      { path: '/docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
     ],
   },
 
@@ -82,14 +86,14 @@ const router = createBrowserRouter([
       { index: true, element: <CategoryPage /> },
     ]
   },
-
-  // 즐겨찾기 페이지
+  
+// 사용자 페이지(즐겨찾기, 참여토론)
   {
     path: '/user',
     element: <UserLayout />,
     children: [
       { path: 'favorite', element: <FavoritePage /> },
-      // 나중에 기여 문서, 참여 토론 페이지도 여기 추가
+      { path: 'discussions', element: <DiscussionHistoryPage /> },
     ]
   },
 
@@ -102,7 +106,9 @@ const router = createBrowserRouter([
       { path: 'login', element: <AdminLoginPage /> },
       { path: 'user_report', element: <AdminUserReportPage /> },
       { path: 'discussion_report', element: <AdminDiscussionReportPage /> },
-      { path: 'document', element: <AdminDocumentPage /> }
+      { path: 'document', element: <AdminDocumentPage /> },
+      { path: 'discussion', element: <AdminDiscussionPage /> },
+      { path: 'manual', element: <AdminManualPage /> }
     ]
   }
 ]);
