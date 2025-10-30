@@ -4,6 +4,8 @@ import com.kiwi.uniwiki.domain.user.entity.User;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
+
 public class UserResponseDTO {
 
     @Builder
@@ -20,6 +22,16 @@ public class UserResponseDTO {
         private Short universityId;
         private String logoUrl;
         private String universityName;
+    }
+
+    @Getter
+    @Builder
+    public static class FavoriteDocumentList{
+        private Integer documentId;
+        private String documentTitle;
+        private String universityName;
+        //문서의 최근 수정시간
+        private LocalDateTime documentUpdateAt;
     }
 
 }
