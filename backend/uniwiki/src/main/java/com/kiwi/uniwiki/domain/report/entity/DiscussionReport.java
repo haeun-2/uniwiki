@@ -1,12 +1,10 @@
-package com.kiwi.uniwiki.domain.discussion.entity;
+package com.kiwi.uniwiki.domain.report.entity;
 
 import com.kiwi.uniwiki.domain.code.entity.Code;
+import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -17,24 +15,20 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "discussion_reports")
 @EntityListeners(AuditingEntityListener.class)
-@IdClass(DiscussionReport.DiscussionReportId.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DiscussionReport {
 
     @Id
-    @Column(name = "discussion_content_id")
-    private Integer discussionContentId;
-
-    @Id
-    @Column(name = "reporter_id")
-    private Integer reporterId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "discussion_report_id")
+    private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "discussion_content_id", insertable = false, updatable = false)
+    @JoinColumn(name = "discussion_content_id", nullable = false)
     private DiscussionContent discussionContent;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reporter_id", insertable = false, updatable = false)
+    @JoinColumn(name = "reporter_id", nullable = false)
     private User reporter;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -42,7 +36,7 @@ public class DiscussionReport {
     private User reportedUser;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewer_id", nullable = false)
+    @JoinColumn(name = "reviewer_id")
     private User reviewer;
 
     @CreatedDate
@@ -62,11 +56,13 @@ public class DiscussionReport {
     @JoinColumn(name = "code_id", nullable = false)
     private Code code;
 
-    @Getter
-    @EqualsAndHashCode
-    @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    public static class DiscussionReportId implements Serializable {
-        private Integer discussionContentId;
-        private Integer reporterId;
+    @Builder
+    public DiscussionReport(DiscussionContent discussionContent, User reporter, User reportedUser, String reason, Code code) {
+        this.discussionContent = discussionContent;
+        this.reporter = reporter;
+        this.reportedUser = reportedUser;
+        this.reason = reason;
+        this.code = code;
     }
+
 }
