@@ -5,6 +5,7 @@ package com.kiwi.uniwiki.security.service;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.domain.university.entity.University;
+import com.kiwi.uniwiki.domain.university.repository.UniversityRepository;
 import com.kiwi.uniwiki.domain.university.service.UniversityService;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import com.kiwi.uniwiki.domain.user.repository.UserRepository;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -70,6 +72,7 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
+
         // 비밀번호 확인
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             new CustomException(ErrorCode.INVALID_CREDENTIALS);
@@ -78,11 +81,14 @@ public class AuthService {
         // JWT 토큰 생성
         String token = jwtTokenProvider.createToken(user.getEmail(), user.getRole().toString());
 
+
+
         return AuthResponseDTO.LoginResponse.builder()
                 .accessToken(token)
                 .userId(user.getId())
                 .nickName(user.getNickname())
                 .role(user.getRole())
+                .universityId(user.getUniversity() != null ? user.getUniversity().getId() : null)
                 .build();
     }
 
