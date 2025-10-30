@@ -1,6 +1,7 @@
 package com.kiwi.uniwiki.domain.university.repository;
 
 import com.kiwi.uniwiki.domain.university.entity.University;
+import com.kiwi.uniwiki.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -24,4 +25,8 @@ public interface UniversityRepository extends JpaRepository<University, Short> {
      * 특정 지역 대학 목록 조회
      */
     List<University> findAllByRegionId(Short regionId);
+
+
+
+
 }
