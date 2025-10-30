@@ -28,7 +28,7 @@ public class UserActivity {
     private User user;
 
     @Column(name = "target_id", nullable = false)
-    private String targetId;
+    private Integer targetId;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false)
