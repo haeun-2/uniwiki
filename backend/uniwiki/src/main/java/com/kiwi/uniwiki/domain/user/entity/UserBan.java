@@ -1,5 +1,6 @@
 package com.kiwi.uniwiki.domain.user.entity;
 
+import com.kiwi.uniwiki.domain.report.entity.UserReport;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
