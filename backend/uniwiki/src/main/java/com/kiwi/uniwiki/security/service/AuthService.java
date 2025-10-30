@@ -5,6 +5,7 @@ package com.kiwi.uniwiki.security.service;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.domain.university.entity.University;
+import com.kiwi.uniwiki.domain.university.repository.UniversityRepository;
 import com.kiwi.uniwiki.domain.university.service.UniversityService;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import com.kiwi.uniwiki.domain.user.repository.UserRepository;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -41,11 +43,11 @@ public class AuthService {
             throw new CustomException(ErrorCode.NICKNAME_ALREADY_EXISTS);
         }
 
-        // 비밀번호 SHA-256 암호화
+
         String encodedPassword = passwordEncoder.encode(request.getPassword());
-        //이메일로 대학 찾기
+
         University university = universityService.getUniversity(request.getEmail());
-        // 사용자 생성
+
         User user = User.builder()
                         .university(university)
                 .email(request.getEmail())
@@ -70,6 +72,7 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
+
         // 비밀번호 확인
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             new CustomException(ErrorCode.INVALID_CREDENTIALS);
@@ -78,11 +81,14 @@ public class AuthService {
         // JWT 토큰 생성
         String token = jwtTokenProvider.createToken(user.getEmail(), user.getRole().toString());
 
+
+
         return AuthResponseDTO.LoginResponse.builder()
                 .accessToken(token)
                 .userId(user.getId())
                 .nickName(user.getNickname())
                 .role(user.getRole())
+                .universityId(user.getUniversity() != null ? user.getUniversity().getId() : null)
                 .build();
     }
 

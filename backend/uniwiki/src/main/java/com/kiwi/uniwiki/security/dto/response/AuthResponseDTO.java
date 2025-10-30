@@ -15,6 +15,7 @@ public class AuthResponseDTO {
         private Integer userId;
         private String nickName;
         private User.Role role;
+        private Short universityId;
     }
 
 
