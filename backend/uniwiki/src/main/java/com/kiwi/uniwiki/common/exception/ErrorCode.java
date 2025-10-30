@@ -18,8 +18,10 @@ public enum ErrorCode {
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON_400_01", "잘못된 입력값입니다."),
     MISSING_REQUIRED_FIELD(HttpStatus.BAD_REQUEST, "COMMON_400_02", "필수 입력값이 누락되었습니다."),
     INVALID_TYPE_VALUE(HttpStatus.BAD_REQUEST, "COMMON_400_03", "잘못된 타입의 값입니다."),
-    BAD_REQUEST(HttpStatus.BAD_REQUEST, "COMMON_400", "잘못된 요청입니다."),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST, "COMMON_400_04", "잘못된 요청입니다."),
 
+
+    INVALID_EMAIL_CODE(HttpStatus.BAD_REQUEST, "EMAIL_CODE_400_01", "잘못된 인증번호 입니다."),
     /**
      * 404 NOT_FOUND - 공통 리소스 없음
      */
@@ -126,8 +128,10 @@ public enum ErrorCode {
     /**
      * 404 NOT_FOUND - 토론 없음
      */
-    DISCUSSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DISCUSSION_404_01", "요청한 토론을 찾을 수 없습니다.");
+    DISCUSSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DISCUSSION_404_01", "요청한 토론을 찾을 수 없습니다."),
 
+
+    MAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MAIL_500_01", "메일 발송에 실패했습니다.");
 
     private final HttpStatus status;
     private final String code;

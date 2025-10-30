@@ -1,8 +1,10 @@
 package com.kiwi.uniwiki.security.controller;
 
 import com.kiwi.uniwiki.security.dto.request.AuthRequestDTO;
+import com.kiwi.uniwiki.security.dto.request.EmailVerificationRequestDTO;
 import com.kiwi.uniwiki.security.dto.response.AuthResponseDTO;
 import com.kiwi.uniwiki.security.service.AuthService;
+import com.kiwi.uniwiki.security.service.EmailVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final EmailVerificationService emailVerificationService;
 
     /**
      * 회원가입
@@ -58,5 +61,23 @@ public class AuthController {
     public ResponseEntity<AuthResponseDTO.DuplicateCheck> checkNicknameDuplicate(@RequestParam String nickname) {
         AuthResponseDTO.DuplicateCheck response =    authService.checkNicknameDuplicate(nickname);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/email/send-code")
+    @Operation(summary = "이메일 인증 코드 전송 ", description = "이메일 인증코드 전송 ")
+    public ResponseEntity<Void> sendEmailCode(@RequestBody EmailVerificationRequestDTO.EmailUrlRequest request) {
+        emailVerificationService.sendVerificationCode(request.getEmail());
+         return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .build();
+    }
+
+    @PostMapping("/email/verify")
+    @Operation(summary = "이메일 인증 코드 검증 ", description = "이메일 인증코드 검증 ")
+    public ResponseEntity<Void> verificationEmailCode(@RequestBody EmailVerificationRequestDTO.VerificationEmailCodeRequest request) {
+        emailVerificationService.verifyCode(request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .build();
     }
 }
