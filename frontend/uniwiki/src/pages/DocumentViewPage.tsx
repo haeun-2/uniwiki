@@ -1,6 +1,6 @@
 // src/pages/DocumentViewPage.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronUp } from 'lucide-react';
 
 // MD 미리보기
@@ -8,7 +8,7 @@ import MDEditor from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
-// 우측 레일 직접 사용 (라우터/레이아웃 변경 없음)
+// 우측 레일
 import RecentEdit from '@/layout/RecentEdit';
 import RecentDiscuss from '@/layout/RecentDiscuss';
 
@@ -69,6 +69,8 @@ console.log(hello({ id: 1, name: "UniWiki" }));
 `;
 
 export default function DocumentViewPage() {
+  const navigate = useNavigate();
+  const location = useLocation() as any;
   const { documentTitle = '문서 제목' } = useParams();
 
   // 24시간제 표기 (예: 2025. 10. 28. 23:22:33)
@@ -92,6 +94,18 @@ export default function DocumentViewPage() {
   const [tab, setTab] = useState<Tab>('edit');
   const [hasTalk] = useState(false); // API 붙기 전 false
   const [content] = useState<string>(INITIAL_MD);
+
+  // 플래시 배너 상태 (저장 성공 후 표시)
+  const [flashMsg, setFlashMsg] = useState<string | null>(() => location.state?.flash?.msg || null);
+  useEffect(() => {
+    if (location.state?.flash) {
+      // 뒤로가기 시 다시 뜨지 않도록 state 제거
+      navigate(location.pathname + location.search, { replace: true });
+      const t = setTimeout(() => setFlashMsg(null), 3000);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 스크롤 다운 시 우하단 고정 '상단으로' 버튼 노출
   const [showTop, setShowTop] = useState(false);
@@ -118,8 +132,27 @@ export default function DocumentViewPage() {
   return (
     <div className="bg-white">
       <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 좌측: 카테고리~본문 상자 */}
+        {/* 좌측: 문서 영역 */}
         <div className="lg:col-span-8">
+          {/* ✅ 상단 바깥(문서 박스 외부) 플래시 배너 — 배경 #2C80A0 + 흰 글자 */}
+          {flashMsg && (
+            <div
+              role="status"
+              className="mb-4 flex items-center justify-between rounded-lg border border-transparent bg-[#2C80A0] px-4 py-3 text-white"
+            >
+              <span className="text-[15px]">{flashMsg}</span>
+              <div className="flex items-center gap-4">
+                <Link to={`/docs/${docTitleParam}/edit`} className="underline hover:opacity-80">
+                  다시 편집
+                </Link>
+                <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+                  닫기
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 문서 내용 박스 */}
           <section className="relative rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
             {/* 브레드크럼 (18px) */}
             <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
@@ -168,14 +201,15 @@ export default function DocumentViewPage() {
                   ★
                 </button>
 
-                <button
+                {/* 편집 → 편집 화면 라우팅 */}
+                <Link
                   role="tab"
-                  aria-selected={tab === 'edit'}
-                  onClick={() => setTab('edit')}
+                  aria-selected={false}
+                  to={`/docs/${docTitleParam}/edit`}
                   className="h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
                 >
                   편집
-                </button>
+                </Link>
 
                 <Link
                   role="tab"
@@ -203,7 +237,6 @@ export default function DocumentViewPage() {
               <MDEditor.Markdown
                 source={content}
                 remarkPlugins={[remarkGfm]}
-                // 이미지/링크가 sanitize로 지워지지 않도록 스키마 적용
                 rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
                 style={{
                   backgroundColor: '#FAFAFA',
@@ -215,7 +248,7 @@ export default function DocumentViewPage() {
           </section>
         </div>
 
-        {/* 우측 : 최근 수정/토론 — sticky 제거, 상단 배치만 */}
+        {/* 우측 : 최근 수정/토론 */}
         <aside className="lg:col-span-4 space-y-6">
           <RecentEdit />
           <RecentDiscuss />
