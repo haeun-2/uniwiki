@@ -43,11 +43,11 @@ public class AuthService {
             throw new CustomException(ErrorCode.NICKNAME_ALREADY_EXISTS);
         }
 
-        // 비밀번호 SHA-256 암호화
+
         String encodedPassword = passwordEncoder.encode(request.getPassword());
-        //이메일로 대학 찾기
+
         University university = universityService.getUniversity(request.getEmail());
-        // 사용자 생성
+
         User user = User.builder()
                         .university(university)
                 .email(request.getEmail())
