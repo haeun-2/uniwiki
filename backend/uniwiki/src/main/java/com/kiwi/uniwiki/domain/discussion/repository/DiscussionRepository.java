@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface DiscussionRepository extends JpaRepository<Discussion, Integer> {
@@ -45,4 +46,7 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Integer>
         ORDER BY dc.contentNumber ASC
     """)
     Optional<Discussion> findWithContentsById(@Param("id") Integer id);
+
+
+
 }
