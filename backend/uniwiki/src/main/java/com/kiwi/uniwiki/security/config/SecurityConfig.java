@@ -40,7 +40,8 @@ public class SecurityConfig {
 
                         // 권한별 접근 제어
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/v1/users/**",
+                                        "/api/v1/s3/**").hasAnyRole("USER", "ADMIN")
 
                         // 나머지는 인증 필요
                         .anyRequest().permitAll()

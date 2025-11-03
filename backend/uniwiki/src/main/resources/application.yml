@@ -1,6 +1,8 @@
 spring:
   application:
     name: uniwiki
+  profiles:
+    include: aws
 
   redis:
     host: localhost
@@ -24,7 +26,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:
@@ -55,3 +57,15 @@ jwt:
 logging:
   level:
     com.kiwi.uniwiki: debug
+
+cloud:
+  aws:
+    s3:
+      bucket: ${S3_BUCKET_NAME}
+    stack:
+      auto: false
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: ${S3_ACCESS_KEY}
+      secret-key: ${S3_SECRET_KEY}
