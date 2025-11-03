@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Search, UserRound } from "lucide-react";
 
 interface HeaderProps {
@@ -14,7 +15,7 @@ export default function Header({
     <header className="top-0 z-30 w-full border-b border-gray-200 bg-uniwikicolor backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
         {/* 로고 */}
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <img
             src="/logo.png"
             alt="유니위키"
@@ -23,7 +24,7 @@ export default function Header({
               (e.target as HTMLImageElement).style.display = "none";
             }}
           />
-        </div>
+        </Link>
 
         {/* 검색창 (옵션) */}
         {showSearch && (
