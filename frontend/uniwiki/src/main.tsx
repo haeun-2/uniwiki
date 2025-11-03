@@ -35,9 +35,10 @@ import AdminManualPage from './pages/admin/AdminManualPage'
 import DocumentViewPage from './pages/DocumentViewPage'
 import DiscussionListPage from './pages/DiscussionListPage'
 import DiscussionDetailPage from './pages/DiscussionDetailPage'
-import DocumentEditPage from './pages/DocumentEditPage'         // ✅ 편집 화면 추가
+import DocumentEditPage from './pages/DocumentEditPage'         // ✅ 편집 화면
+import DocumentHistoryPage from './pages/DocumentHistoryPage'   // ✅ 역사 화면 추가
 
-//즐겨찾기, 참여 토론, 기여 문서
+// 즐겨찾기, 참여 토론, 기여 문서
 import FavoritePage from './pages/FavoritePage'
 import DiscussionHistoryPage from './pages/DiscussionHistoryPage'
 import AttributePage from './pages/AttributePage'
@@ -56,13 +57,14 @@ const router = createBrowserRouter([
 
       // 로그인
       { path: 'login', element: <LoginPage /> },
-      { path: 'signup', element: <SignupPage />},
+      { path: 'signup', element: <SignupPage /> },
       { path: 'signup/complete', element: <SignupCompletePage /> },
       { path: 'profile', element: <ProfilePage /> },
 
       // 문서, 토론
       { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
-      { path: '/docs/:documentTitle/edit', element: <DocumentEditPage /> },          // ✅ 편집 라우트
+      { path: '/docs/:documentTitle/history', element: <DocumentHistoryPage /> },   // ✅ 역사 라우트
+      { path: '/docs/:documentTitle/edit', element: <DocumentEditPage /> },         // ✅ 편집 라우트
       { path: '/docs/:documentTitle/discussions', element: <DiscussionListPage /> },
       { path: '/docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
     ],
@@ -87,7 +89,7 @@ const router = createBrowserRouter([
     ]
   },
   
-// 사용자 페이지(즐겨찾기, 참여토론)
+  // 사용자 페이지(즐겨찾기, 참여토론)
   {
     path: '/user',
     element: <UserLayout />,

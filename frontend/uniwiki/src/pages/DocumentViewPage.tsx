@@ -12,8 +12,6 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import RecentEdit from '@/layout/RecentEdit';
 import RecentDiscuss from '@/layout/RecentDiscuss';
 
-type Tab = 'edit' | 'talk' | 'history';
-
 const INITIAL_MD = `# UniWiki 문서 예시
 
 간단한 **데모 문서**입니다. _기울임_ / **굵게** / ~~취소선~~,  
@@ -91,8 +89,7 @@ export default function DocumentViewPage() {
   const docTitleParam = encodeURIComponent(documentTitle);
 
   const [favOn, setFavOn] = useState(false);
-  const [tab, setTab] = useState<Tab>('edit');
-  const [hasTalk] = useState(false); // API 붙기 전 false
+  const [hasTalk] = useState(false); // 아직 토론 미연동
   const [content] = useState<string>(INITIAL_MD);
 
   // 플래시 배너 상태 (저장 성공 후 표시)
@@ -134,7 +131,7 @@ export default function DocumentViewPage() {
       <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 좌측: 문서 영역 */}
         <div className="lg:col-span-8">
-          {/* ✅ 상단 바깥(문서 박스 외부) 플래시 배너 — 배경 #2C80A0 + 흰 글자 */}
+          {/* 상단 플래시 배너 — 배경 #2C80A0 + 흰 글자 */}
           {flashMsg && (
             <div
               role="status"
@@ -162,8 +159,9 @@ export default function DocumentViewPage() {
                 </li>
                 <li className="mx-1 text-gray-500">›</li>
                 <li>
+                  {/* ✅ URL 정리: /categories → /category 로 수정 */}
                   <Link
-                    to={`/categories/${encodeURIComponent('행사')}`} // TODO: 실제 라우트로 교체
+                    to={`/category/${encodeURIComponent('행사')}`}
                     className="text-[#2C80A0] hover:underline"
                   >
                     행사
@@ -211,6 +209,7 @@ export default function DocumentViewPage() {
                   편집
                 </Link>
 
+                {/* 토론 목록으로 이동 */}
                 <Link
                   role="tab"
                   aria-selected={false}
@@ -221,14 +220,15 @@ export default function DocumentViewPage() {
                   토론
                 </Link>
 
-                <button
+                {/* 역사 페이지로 이동 */}
+                <Link
                   role="tab"
-                  aria-selected={tab === 'history'}
-                  onClick={() => setTab('history')}
+                  aria-selected={false}
+                  to={`/docs/${docTitleParam}/history`}
                   className="h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
                 >
                   역사
-                </button>
+                </Link>
               </div>
             </div>
 

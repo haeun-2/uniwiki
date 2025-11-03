@@ -24,6 +24,15 @@ export const hello = (name: string) => \`hi, \${name}\`;
 
 type CategoryKey = 'school' | 'major' | 'lecture' | 'facility' | 'event' | 'etc';
 
+const CATEGORY_LABEL: Record<CategoryKey, string> = {
+  school: '학교',
+  major: '학과',
+  lecture: '강의',
+  facility: '시설',
+  event: '행사',
+  etc: '기타',
+};
+
 // ===== S3 Presign 업로드 유틸 =====
 const MAX_IMAGE_MB = 10;
 
@@ -76,19 +85,12 @@ export default function DocumentEditPage() {
   const { documentTitle = '문서 제목' } = useParams();
   const docTitleParam = encodeURIComponent(documentTitle);
 
-  const initialCategories: Record<CategoryKey, boolean> = {
-    school: true,
-    major: false,
-    lecture: false,
-    facility: false,
-    event: false,
-    etc: false,
-  };
+  // ✅ 카테고리 단일 선택으로 변경
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey>('school');
 
   const [value, setValue] = useState<string>(SAMPLE_MD);
   const [summary, setSummary] = useState<string>(''); // 선택값(필수 아님)
   const [agree, setAgree] = useState<boolean>(true);
-  const [categories, setCategories] = useState<Record<CategoryKey, boolean>>(initialCategories);
   const [busy, setBusy] = useState<boolean>(false);     // 업로드 중
   const [saving, setSaving] = useState<boolean>(false); // 저장 중
 
@@ -96,17 +98,13 @@ export default function DocumentEditPage() {
   const initialRef = useRef({
     value: SAMPLE_MD,
     summary: '',
-    categories: initialCategories,
+    category: 'school' as CategoryKey,
   });
 
   const isDirty = useMemo(() => {
     const i = initialRef.current;
-    return (
-      value !== i.value ||
-      summary !== i.summary ||
-      JSON.stringify(categories) !== JSON.stringify(i.categories)
-    );
-  }, [value, summary, categories]);
+    return value !== i.value || summary !== i.summary || selectedCategory !== i.category;
+  }, [value, summary, selectedCategory]);
 
   // 저장 가능 조건: 라이선스 동의 + 변경 발생 + 진행중 아님
   const canSave = agree && isDirty && !busy && !saving;
@@ -124,7 +122,7 @@ export default function DocumentEditPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canSave, value, summary, categories, agree]);
+  }, [canSave, value, summary, selectedCategory, agree]);
 
   const sanitizeSchema: any = useMemo(() => {
     return {
@@ -204,9 +202,7 @@ export default function DocumentEditPage() {
         body: JSON.stringify({
           content: value,        // 마크다운 본문(여기에 S3 URL이 들어있음)
           summary,
-          categories: Object.entries(categories)
-            .filter(([, v]) => v)
-            .map(([k]) => k),
+          categories: [selectedCategory], // ✅ 단일 선택만 전달
         }),
       });
 
@@ -270,58 +266,21 @@ export default function DocumentEditPage() {
             />
           </div>
 
-          {/* 카테고리 */}
+          {/* 카테고리 — ✅ 라디오로 단일 선택 */}
           <div className="mt-6">
             <p className="mb-3 text-gray-900 font-medium">카테고리</p>
             <div className="flex flex-wrap gap-x-8 gap-y-2 text-[15px]">
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={categories.school}
-                  onChange={(e) => setCategories((c) => ({ ...c, school: e.target.checked }))}
-                />
-                학교
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={categories.major}
-                  onChange={(e) => setCategories((c) => ({ ...c, major: e.target.checked }))}
-                />
-                학과
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={categories.lecture}
-                  onChange={(e) => setCategories((c) => ({ ...c, lecture: e.target.checked }))}
-                />
-                강의
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={categories.facility}
-                  onChange={(e) => setCategories((c) => ({ ...c, facility: e.target.checked }))}
-                />
-                시설
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={categories.event}
-                  onChange={(e) => setCategories((c) => ({ ...c, event: e.target.checked }))}
-                />
-                행사
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={categories.etc}
-                  onChange={(e) => setCategories((c) => ({ ...c, etc: e.target.checked }))}
-                />
-                기타
-              </label>
+              {(Object.keys(CATEGORY_LABEL) as CategoryKey[]).map((key) => (
+                <label key={key} className="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="doc-category"
+                    checked={selectedCategory === key}
+                    onChange={() => setSelectedCategory(key)}
+                  />
+                  {CATEGORY_LABEL[key]}
+                </label>
+              ))}
             </div>
           </div>
 
@@ -362,7 +321,7 @@ export default function DocumentEditPage() {
             <button
               onClick={onSave}
               disabled={!canSave}
-              className="inline-flex min-w={[104]} items-center justify-center rounded-xl bg-[#2C80A0] px-5 py-2 font-medium text-white hover:bg-[#276E86] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex min-w-[104px] items-center justify-center rounded-xl bg-[#2C80A0] px-5 py-2 font-medium text-white hover:bg-[#276E86] disabled:opacity-40 disabled:cursor-not-allowed"
               title={
                 !agree
                   ? '라이선스 동의가 필요합니다.'

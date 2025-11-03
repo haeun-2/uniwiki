@@ -43,7 +43,12 @@ public class SecurityConfig {
                                 "/swagger-resources/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
                         .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
+
+                        .requestMatchers("/api/v1/users/**",
+                                        "/api/v1/s3/**").hasAnyRole("USER", "ADMIN")
+
                         .anyRequest().permitAll()
                 )
                 .headers(headers -> headers
