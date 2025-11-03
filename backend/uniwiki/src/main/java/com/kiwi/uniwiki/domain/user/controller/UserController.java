@@ -1,7 +1,12 @@
 package com.kiwi.uniwiki.domain.user.controller;
 
+import com.kiwi.uniwiki.common.page.PageResponse;
+import com.kiwi.uniwiki.domain.activity.dto.response.UserActivityResponseDTO;
+
+import com.kiwi.uniwiki.domain.activity.service.UserActivityService;
+
 import com.kiwi.uniwiki.domain.document.service.DocumentBookmarkService;
-import com.kiwi.uniwiki.domain.university.entity.UniversityBookmark;
+
 import com.kiwi.uniwiki.domain.university.service.UniversityBookmarkService;
 import com.kiwi.uniwiki.domain.user.dto.response.UserResponseDTO;
 import com.kiwi.uniwiki.domain.user.service.UserService;
@@ -13,6 +18,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+
 
 import java.util.List;
 
@@ -25,6 +32,9 @@ public class UserController {
     private final UserService userService;
     private final UniversityBookmarkService universityBookmarkService;
     private final DocumentBookmarkService documentBookmarkService;
+
+    private final UserActivityService userActivityService;
+
 
     @GetMapping("/me")
     @Operation(summary = "유저 정보 조회" , description = "유저 정보를 조회합니다.")
@@ -99,6 +109,32 @@ public class UserController {
     ) {
 
         List<UserResponseDTO.FavoriteDocumentList> response = documentBookmarkService.getFavoriteDocumentList(user.getUser());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me/documents")
+    @Operation(summary = "내가 기여한 문서", description = "내가 기여한 문서 (작성했거나, 수정한) 문서를 조회합니다.")
+    public ResponseEntity<PageResponse<UserActivityResponseDTO.UserDocumentActivityResponse>> getUserByDocuments(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<UserActivityResponseDTO.UserDocumentActivityResponse> response =
+                userActivityService.getUserDocumentActivities(user.getUser().getId(), page, size);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me/discussions")
+    @Operation(summary = "내가 기여한 토론" , description = "내가 기여한  토론 (생성, 댓글) 문서를 조회합니다.")
+    public ResponseEntity<PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse>> getUserByDiscussion(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+
+        PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse> response = userActivityService.getUserDiscussionActivities(user.getUser().getId(),page,size);
+
         return ResponseEntity.ok(response);
     }
 }
