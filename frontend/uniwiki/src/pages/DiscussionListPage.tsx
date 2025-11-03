@@ -70,8 +70,9 @@ export default function DiscussionListPage() {
                 <li><Link to="/" className="text-[#2C80A0] hover:underline">학교이름</Link></li>
                 <li className="mx-1 text-gray-500">›</li>
                 <li>
+                  {/* 🔧 URL 정리: /categories → /category */}
                   <Link
-                    to={`/categories/${encodeURIComponent("행사")}`}
+                    to={`/category/${encodeURIComponent("행사")}`}
                     className="text-[#2C80A0] hover:underline"
                   >
                     행사
