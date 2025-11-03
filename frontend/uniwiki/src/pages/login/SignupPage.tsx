@@ -6,11 +6,14 @@ import { useNavigate } from "react-router-dom";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [isCodeSent, setIsCodeSent] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // 1단계: 인증 코드 전송
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!agreed) {
@@ -20,16 +23,8 @@ export default function SignupPage() {
 
     setIsLoading(true);
 
-// 백엔드 서버 없이 테스트: 바로 다음 페이지로 이동
-    setTimeout(() => {
-      setIsLoading(false);
-      alert("인증 메일이 발송되었습니다. (테스트 모드)");
-      navigate(`/signup/complete?email=${encodeURIComponent(email)}`);
-    }, 500);
-
     try {
-      // API 호출: 이메일 인증 요청
-      const response = await fetch("/api/v1/auth/signup", {
+      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/email/send-code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -38,17 +33,48 @@ export default function SignupPage() {
       });
 
       if (response.ok) {
-        // 이메일 인증 메일 발송 성공
-        alert("인증 메일이 발송되었습니다. 이메일을 확인해주세요.");
-        // 실제로는 이메일의 인증 링크를 클릭하면 토큰과 함께 다음 페이지로 이동
-        // 여기서는 테스트를 위해 바로 이동
+        alert("인증 코드가 이메일로 발송되었습니다.");
+        setIsCodeSent(true);
+      } else {
+        const error = await response.json();
+        alert(error.message || "인증 코드 전송 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("Send code error:", error);
+      alert("서버와의 연결에 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 2단계: 인증 코드 검증 및 다음 페이지로 이동
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/email/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          code: verificationCode
+        }),
+      });
+
+      if (response.ok) {
+        alert("이메일 인증이 완료되었습니다!");
+        // 인증 완료 후 회원가입 완료 페이지로 이동
         navigate(`/signup/complete?email=${encodeURIComponent(email)}`);
       } else {
         const error = await response.json();
-        alert(error.message || "회원가입 중 오류가 발생했습니다.");
+        alert(error.message || "인증 코드가 일치하지 않습니다.");
       }
     } catch (error) {
-      console.error("Signup error:", error);
+      console.error("Verify code error:", error);
       alert("서버와의 연결에 실패했습니다.");
     } finally {
       setIsLoading(false);
@@ -59,49 +85,104 @@ export default function SignupPage() {
     <div className="flex min-h-[70vh] items-center justify-center">
       <div className="w-full max-w-md">
         <h1 className="mb-8 text-center text-3xl font-semibold text-gray-900">계정 만들기</h1>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-700">
-              이메일
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        
+        {!isCodeSent ? (
+          // 1단계: 이메일 입력
+          <form onSubmit={handleSendCode} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-700">
+                이메일
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="이메일을 입력해주세요"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-gray-300 px-10 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                학교 이메일(@univ.ac.kr)을 인증 시 학교 우위 소속 권리이 부여됩니다.
+              </p>
+            </div>
+
+            <div className="flex items-start">
+              <input
+                id="agree"
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="agree" className="ml-2 text-sm text-gray-700">
+                개인정보 처리방침 및 이용약관에 동의합니다
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-lg bg-[#5b7c99] px-4 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
+            >
+              {isLoading ? "전송 중..." : "인증 코드 받기"}
+            </button>
+          </form>
+        ) : (
+          // 2단계: 인증 코드 입력
+          <form onSubmit={handleVerifyCode} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-700">
+                이메일
+              </label>
               <input
                 id="email"
                 type="email"
-                placeholder="이메일을 입력해주세요"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full rounded-lg border border-gray-300 px-10 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                readOnly
+                className="w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-gray-600"
               />
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              학교 이메일(@univ.ac.kr)을 인증 시 학교 우위 소속 권리이 부여됩니다.
-            </p>
-          </div>
 
-          <div className="flex items-start">
-            <input
-              id="agree"
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label htmlFor="agree" className="ml-2 text-sm text-gray-700">
-              개인정보 처리방침 및 이용약관에 동의합니다
-            </label>
-          </div>
+            <div>
+              <label htmlFor="code" className="mb-2 block text-sm font-medium text-gray-700">
+                인증 코드
+              </label>
+              <input
+                id="code"
+                type="text"
+                placeholder="인증 코드를 입력해주세요"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                required
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                이메일로 발송된 6자리 인증 코드를 입력해주세요.
+              </p>
+            </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full rounded-lg bg-[#5b7c99] px-4 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
-          >
-            {isLoading ? "처리 중..." : "인증하기"}
-          </button>
-        </form>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCodeSent(false)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+              >
+                이전
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full rounded-lg bg-[#5b7c99] px-4 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
+              >
+                {isLoading ? "확인 중..." : "인증하기"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
