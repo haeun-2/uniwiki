@@ -1,6 +1,8 @@
 package com.kiwi.uniwiki.domain.user.controller;
 
+import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.activity.dto.response.UserActivityResponseDTO;
+
 import com.kiwi.uniwiki.domain.activity.service.UserActivityService;
 
 import com.kiwi.uniwiki.domain.document.service.DocumentBookmarkService;
@@ -16,6 +18,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+
 
 import java.util.List;
 
@@ -110,22 +114,26 @@ public class UserController {
     }
 
     @GetMapping("/me/documents")
-    @Operation(summary = "내가 기여한 문서" , description = "내가 기여한 문서 (작성했거나, 수정한) 문서를 조회합니다.")
-    public ResponseEntity<List<UserActivityResponseDTO.UserDocumentActivityResponse>> getUserByDocuments(
-            @AuthenticationPrincipal CustomUserDetails user
+    @Operation(summary = "내가 기여한 문서", description = "내가 기여한 문서 (작성했거나, 수정한) 문서를 조회합니다.")
+    public ResponseEntity<PageResponse<UserActivityResponseDTO.UserDocumentActivityResponse>> getUserByDocuments(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-
-        List<UserActivityResponseDTO.UserDocumentActivityResponse> response = userActivityService.getUserDocumentActivities(user.getUser().getId());
+        PageResponse<UserActivityResponseDTO.UserDocumentActivityResponse> response =
+                userActivityService.getUserDocumentActivities(user.getUser().getId(), page, size);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/me/discussions")
     @Operation(summary = "내가 기여한 토론" , description = "내가 기여한  토론 (생성, 댓글) 문서를 조회합니다.")
-    public ResponseEntity<List<UserActivityResponseDTO.UserDiscussionActivityResponse>> getUserByDiscussion(
-            @AuthenticationPrincipal CustomUserDetails user
+    public ResponseEntity<PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse>> getUserByDiscussion(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
 
-        List<UserActivityResponseDTO.UserDiscussionActivityResponse> response = userActivityService.getUserDiscussionActivities(user.getUser().getId());
+        PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse> response = userActivityService.getUserDiscussionActivities(user.getUser().getId(),page,size);
 
         return ResponseEntity.ok(response);
     }

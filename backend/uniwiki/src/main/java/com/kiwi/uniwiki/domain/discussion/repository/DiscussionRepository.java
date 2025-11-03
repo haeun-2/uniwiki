@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface DiscussionRepository extends JpaRepository<Discussion, Integer> {
@@ -46,8 +47,6 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Integer>
     """)
     Optional<Discussion> findWithContentsById(@Param("id") Integer id);
 
-    @Query("SELECT d FROM Discussion d " +
-            "JOIN FETCH d.document doc " +
-            "WHERE d.id = :discussionId")
-    Optional<Discussion> findByIdWithDocument(@Param("discussionId") Integer discussionId);
+
+
 }
