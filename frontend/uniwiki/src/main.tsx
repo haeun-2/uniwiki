@@ -37,10 +37,10 @@ import DiscussionListPage from './pages/DiscussionListPage'
 import DiscussionDetailPage from './pages/DiscussionDetailPage'
 import DocumentEditPage from './pages/DocumentEditPage'         // ✅ 편집 화면 추가
 
-//즐겨찾기, 참여 토론
+//즐겨찾기, 참여 토론, 기여 문서
 import FavoritePage from './pages/FavoritePage'
 import DiscussionHistoryPage from './pages/DiscussionHistoryPage'
-
+import AttributePage from './pages/AttributePage'
 
 // 카테고리
 import CategoryPage from './pages/CategoryPage'
@@ -92,6 +92,7 @@ const router = createBrowserRouter([
     path: '/user',
     element: <UserLayout />,
     children: [
+      { path: 'contributions', element: <AttributePage /> },
       { path: 'favorite', element: <FavoritePage /> },
       { path: 'discussions', element: <DiscussionHistoryPage /> },
     ]
