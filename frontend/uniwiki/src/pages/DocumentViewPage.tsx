@@ -26,6 +26,14 @@ type Status = 'loading' | 'ok' | 'notfound' | 'error';
 
 const API_BASE = 'http://k13d104.p.ssafy.io/api';
 
+// ✅ 임시 개발용 하드코딩 JWT (로그인 연동 전까지 사용)
+const DEV_JWT =
+  'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NjIyMTg1MTEsImV4cCI6MTc2MjMwNDkxMX0.my5-P2Kpoangdqt1qohAFyucIU8YDKfvOeMlnDmKwt6_zCK1Q-rZ2Gx6JyedWmBUT9vUTnwLfaisuW95BA7zVA';
+
+function authHeaders(extra: HeadersInit = {}) {
+  return DEV_JWT ? { ...extra, Authorization: `Bearer ${DEV_JWT}` } : extra;
+}
+
 export default function DocumentViewPage() {
   const navigate = useNavigate();
   const location = useLocation() as any;
@@ -50,8 +58,12 @@ export default function DocumentViewPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [meta, setMeta] = useState<Pick<DocumentDto, 'universityName' | 'categoryName'> | null>(null);
 
+  const [docId, setDocId] = useState<number | null>(null);
+
   const [favOn, setFavOn] = useState(false);
-  const [hasTalk, setHasTalk] = useState(false); // ✅ 열린 토론 여부
+  const [favBusy, setFavBusy] = useState(false);
+
+  const [hasTalk, setHasTalk] = useState(false); // 열린 토론 여부
 
   // 플래시 배너
   const [flashMsg, setFlashMsg] = useState<string | null>(() => location.state?.flash?.msg || null);
@@ -72,7 +84,7 @@ export default function DocumentViewPage() {
   }, []);
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // ✅ 문서 + 열린 토론 여부 로드
+  // ✅ 문서 + 열린 토론 여부 + 즐겨찾기 여부 로드
   useEffect(() => {
     const controller = new AbortController();
     (async () => {
@@ -80,6 +92,8 @@ export default function DocumentViewPage() {
         setStatus('loading');
         setApiError(null);
         setHasTalk(false);
+        setFavOn(false);
+        setDocId(null);
 
         const encoded = encodeURIComponent(documentTitle);
         const res = await fetch(`${API_BASE}/v1/documents/${encoded}`, {
@@ -101,14 +115,15 @@ export default function DocumentViewPage() {
         setContent(data.documentContent || '*내용이 없습니다.*');
         setMeta({ universityName: data.universityName, categoryName: data.categoryName });
         setLastUpdated(data.updatedAt ? formatKST(new Date(data.updatedAt)) : '');
+        setDocId(data.documentId);
         setStatus('ok');
 
-        // 🔎 열린 토론 여부 체크: content 배열이 비어있지 않으면 true
+        // 🔎 열린 토론 여부 체크
         try {
           const qs = new URLSearchParams({
             document: String(data.documentId),
             page: '0',
-            size: '1', // 한 개만 확인하면 충분
+            size: '1',
           }).toString();
 
           const talkRes = await fetch(`${API_BASE}/v1/discussions?${qs}`, {
@@ -125,6 +140,28 @@ export default function DocumentViewPage() {
         } catch {
           setHasTalk(false);
         }
+
+        // ⭐ 즐겨찾기 여부 초기화 (로그인 전까지 DEV_JWT 사용)
+        try {
+          if (!DEV_JWT) {
+            setFavOn(false);
+          } else {
+            const favRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents`, {
+              method: 'GET',
+              headers: authHeaders({ Accept: 'application/json' }),
+              credentials: 'include',
+              signal: controller.signal,
+            });
+            if (favRes.ok) {
+              const list: Array<{ documentId: number }> = await favRes.json();
+              setFavOn(Array.isArray(list) && list.some((it) => Number(it.documentId) === data.documentId));
+            } else {
+              setFavOn(false);
+            }
+          }
+        } catch {
+          setFavOn(false);
+        }
       } catch (e: any) {
         if (controller.signal.aborted) return;
         setApiError(e?.message || '문서를 불러오는 중 오류가 발생했습니다.');
@@ -134,16 +171,65 @@ export default function DocumentViewPage() {
     return () => controller.abort();
   }, [documentTitle]);
 
+  // ⭐ 즐겨찾기 토글 (POST 추가 / DELETE 제거)
+  const toggleFavorite = async () => {
+    if (!docId || favBusy) return;
+
+    // 로그인 미연결 시: DEV_JWT 없으면 동작하지 않음
+    if (!DEV_JWT) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    try {
+      setFavBusy(true);
+
+      if (favOn) {
+        // 삭제
+        const delRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents/${docId}`, {
+          method: 'DELETE',
+          headers: authHeaders({ Accept: '*/*' }),
+          credentials: 'include',
+        });
+        if (!delRes.ok && delRes.status !== 204) {
+          const t = await delRes.text().catch(() => '');
+          throw new Error(t || '즐겨찾기 해제 실패');
+        }
+        setFavOn(false);
+      } else {
+        // 추가
+        const addRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents/${docId}`, {
+          method: 'POST',
+          headers: authHeaders({ Accept: '*/*' }),
+          credentials: 'include',
+          body: '', // swagger 상 content-length: 0
+        });
+        if (!addRes.ok && addRes.status !== 201) {
+          const t = await addRes.text().catch(() => '');
+          throw new Error(t || '즐겨찾기 추가 실패');
+        }
+        setFavOn(true);
+      }
+    } catch (e: any) {
+      alert(e?.message || '즐겨찾기 처리 중 오류가 발생했습니다.');
+    } finally {
+      setFavBusy(false);
+    }
+  };
+
   // sanitize 확장
-  const sanitizeSchema: any = useMemo(() => ({
-    ...defaultSchema,
-    attributes: {
-      ...(defaultSchema as any).attributes,
-      img: ['src', 'alt', 'title', 'width', 'height'],
-      a: [ ...(((defaultSchema as any).attributes?.a) || []), 'target', 'rel' ],
-    },
-    tagNames: [ ...((defaultSchema as any).tagNames || []), 'img' ],
-  }), []);
+  const sanitizeSchema: any = useMemo(
+    () => ({
+      ...defaultSchema,
+      attributes: {
+        ...(defaultSchema as any).attributes,
+        img: ['src', 'alt', 'title', 'width', 'height'],
+        a: [...(((defaultSchema as any).attributes?.a) || []), 'target', 'rel'],
+      },
+      tagNames: [...(((defaultSchema as any).tagNames) || []), 'img'],
+    }),
+    []
+  );
 
   const uniLabel = meta?.universityName ?? '학교이름';
   const catLabel = meta?.categoryName ?? '카테고리';
@@ -158,11 +244,18 @@ export default function DocumentViewPage() {
         {/* 좌측 */}
         <div className="lg:col-span-8">
           {flashMsg && (
-            <div role="status" className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white">
+            <div
+              role="status"
+              className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
+            >
               <span className="text-[15px]">{flashMsg}</span>
               <div className="flex items-center gap-4">
-                <Link to={`/docs/${docTitleParam}/edit`} className="underline hover:opacity-80">다시 편집</Link>
-                <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">닫기</button>
+                <Link to={`/docs/${docTitleParam}/edit`} className="underline hover:opacity-80">
+                  다시 편집
+                </Link>
+                <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+                  닫기
+                </button>
               </div>
             </div>
           )}
@@ -176,9 +269,17 @@ export default function DocumentViewPage() {
               {/* 브레드크럼 */}
               <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
                 <ol className="flex items-center gap-1">
-                  <li><Link to={uniHref} className="text-[#2C80A0] hover:underline">{uniLabel}</Link></li>
+                  <li>
+                    <Link to={uniHref} className="text-[#2C80A0] hover:underline">
+                      {uniLabel}
+                    </Link>
+                  </li>
                   <li className="mx-1 text-gray-500">›</li>
-                  <li><Link to={catHref} className="text-[#2C80A0] hover:underline">{catLabel}</Link></li>
+                  <li>
+                    <Link to={catHref} className="text-[#2C80A0] hover:underline">
+                      {catLabel}
+                    </Link>
+                  </li>
                 </ol>
               </nav>
 
@@ -190,7 +291,9 @@ export default function DocumentViewPage() {
               {/* 날짜 + 액션바 */}
               <div className="mb-5 flex items-center gap-4">
                 {lastUpdated && (
-                  <p className="text-[18px] text-gray-800 whitespace-nowrap">최근 수정 시각 : {lastUpdated}</p>
+                  <p className="text-[18px] text-gray-800 whitespace-nowrap">
+                    최근 수정 시각 : {lastUpdated}
+                  </p>
                 )}
                 <div className="ml-auto" />
                 <div
@@ -199,11 +302,13 @@ export default function DocumentViewPage() {
                   className="grid grid-cols-4 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(280px,40vw,520px)]"
                 >
                   <button
-                    onClick={() => setFavOn(v => !v)}
+                    onClick={toggleFavorite}
+                    disabled={favBusy || !docId}
                     aria-pressed={favOn}
-                    title="즐겨찾기"
+                    title={favOn ? '즐겨찾기 해제' : '즐겨찾기 추가'}
                     className={`h-10 px-4 text-[18px] leading-tight flex items-center justify-center
-                      ${favOn ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg-white/60'}`}
+                      ${favOn ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg-white/60'}
+                      ${favBusy ? 'opacity-60 cursor-wait' : ''}`}
                   >
                     ★
                   </button>
