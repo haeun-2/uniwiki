@@ -1,10 +1,11 @@
+// main.tsx
 import '@uiw/react-md-editor/markdown-editor.css'
 import '@uiw/react-markdown-preview/markdown.css'
 
 import './index.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate, useParams } from 'react-router-dom'
 
 // 레이아웃
 import RootLayout from './layout/RootLayout'
@@ -46,6 +47,15 @@ import AttributePage from './pages/AttributePage'
 // 카테고리
 import CategoryPage from './pages/CategoryPage'
 
+/** 🔁 레거시 경로 호환:
+ *   /univ/:univName/docs/:documentTitle → /docs/:documentTitle 로 리다이렉트
+ *   (한글 타이틀 포함, 안전하게 encodeURIComponent 적용)
+ */
+function LegacyUnivDocRedirect() {
+  const { documentTitle = '' } = useParams()
+  return <Navigate to={`/docs/${encodeURIComponent(documentTitle)}`} replace />
+}
+
 const router = createBrowserRouter([
   // 메인 페이지
   {
@@ -69,6 +79,9 @@ const router = createBrowserRouter([
       { path: '/docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
     ],
   },
+
+  /** ✅ 레거시 경로 리다이렉트(404 방지) */
+  { path: '/univ/:univName/docs/:documentTitle', element: <LegacyUnivDocRedirect /> },
 
   // 대학교 메인 페이지
   {
@@ -114,7 +127,7 @@ const router = createBrowserRouter([
       { path: 'manual', element: <AdminManualPage /> }
     ]
   }
-]);
+])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
