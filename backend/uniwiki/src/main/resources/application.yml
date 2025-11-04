@@ -47,8 +47,13 @@ spring:
           starttls:
             enable: true
 
-
-
+  elasticsearch:
+    uris: ${ELASTIC_URL}
+    username: ${ELASTIC_USERNAME}
+    password: ${ELASTIC_PASSWORD}
+    connection-timeout: 5s
+    socket-timeout: 3s
+    connection-request-timeout: 2s
 
 jwt:
   secret: ${JWT_SECRET}

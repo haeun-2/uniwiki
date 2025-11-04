@@ -1,0 +1,45 @@
+{
+  "analysis": {
+    "tokenizer": {
+      "nori_tokenizer_custom": {
+        "type": "nori_tokenizer",
+        "decompound_mode": "mixed"
+      },
+      "ngram_tokenizer_custom": {
+        "type": "ngram",
+        "min_gram": 2,
+        "max_gram": 3,
+        "token_chars": ["letter", "digit"]
+      }
+    },
+    "filter": {
+      "nori_pos_filter": {
+        "type": "nori_part_of_speech",
+        "stoptags": [
+          "E", "IC", "J", "MAG", "MAJ", "MM",
+          "SP", "SSC", "SSO", "SC", "SE", "XPN",
+          "XSA", "XSN", "XSV", "UNA", "NA", "VSV"
+        ]
+      },
+      "korean_stop": {
+        "type": "stop",
+        "stopwords": [
+          "의", "가", "이", "은", "는", "을", "를",
+          "에", "에서", "으로", "로", "와", "과", "그리고"
+        ]
+      }
+    },
+    "analyzer": {
+      "nori_content_analyzer": {
+        "type": "custom",
+        "tokenizer": "nori_tokenizer_custom",
+        "filter": ["nori_pos_filter", "lowercase", "korean_stop"]
+      },
+      "ngram_analyzer": {
+        "type": "custom",
+        "tokenizer": "ngram_tokenizer_custom",
+        "filter": ["lowercase", "trim"]
+      }
+    }
+  }
+}

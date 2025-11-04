@@ -1,5 +1,6 @@
 package com.kiwi.uniwiki.domain.university.repository;
 
+import com.kiwi.uniwiki.domain.university.entity.University;
 import com.kiwi.uniwiki.domain.university.entity.UniversityBookmark;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,4 +18,14 @@ public interface UniversityBookmarkRepository extends JpaRepository<UniversityBo
     List<UniversityBookmark> findByUserId(@Param("userId") Integer userId);
 
     boolean existsByUserIdAndUniversityId(Integer userId, Short universityId);
+
+    @Query("""
+        SELECT u
+        FROM UniversityBookmark ub
+        JOIN ub.university u
+        GROUP BY u
+        ORDER BY COUNT(ub) DESC, MAX(ub.createdAt) DESC
+        LIMIT 10
+    """)
+    List<University> findTop10UniversitiesByBookmarkCount();
 }
