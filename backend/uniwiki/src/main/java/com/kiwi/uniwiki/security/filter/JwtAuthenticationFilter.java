@@ -1,5 +1,8 @@
 package com.kiwi.uniwiki.security.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kiwi.uniwiki.domain.user.entity.UserBan;
+import com.kiwi.uniwiki.domain.user.repository.UserBanRepository;
 import com.kiwi.uniwiki.security.dto.CustomUserDetails;
 import com.kiwi.uniwiki.security.service.CustomUserDetailsService;
 import com.kiwi.uniwiki.security.util.JwtTokenProvider;
@@ -16,6 +19,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -23,6 +30,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final UserBanRepository userBanRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -38,6 +47,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
+            Integer userId = null;
+            if (userDetails instanceof CustomUserDetails) {
+                userId = ((CustomUserDetails) userDetails).getUser().getId();
+            }
+
+
+            if (userId != null && userBanRepository.existsActiveBanByUserId(userId, LocalDateTime.now())) {
+                sendBanResponse(response, userId);
+                return;
+            }
+
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
@@ -50,6 +70,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void sendBanResponse(HttpServletResponse response, Integer userId) throws IOException {
+        // Repository를 직접 사용하는 경우
+        UserBan ban = userBanRepository.findActiveBanByUserId(userId, LocalDateTime.now())
+                .orElse(null);
+
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("error", "USER_BANNED");
+        errorResponse.put("message", "계정이 차단되었습니다.");
+
+        if (ban != null) {
+            errorResponse.put("reason", ban.getReason());
+            errorResponse.put("bannedUntil", ban.getBannedUntil().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        }
+
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 
     /**

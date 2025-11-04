@@ -4,10 +4,12 @@ package com.kiwi.uniwiki.security.service;
 
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
+import com.kiwi.uniwiki.domain.report.entity.UserReport;
 import com.kiwi.uniwiki.domain.university.entity.University;
 import com.kiwi.uniwiki.domain.university.repository.UniversityRepository;
 import com.kiwi.uniwiki.domain.university.service.UniversityService;
 import com.kiwi.uniwiki.domain.user.entity.User;
+import com.kiwi.uniwiki.domain.user.repository.UserBanRepository;
 import com.kiwi.uniwiki.domain.user.repository.UserRepository;
 import com.kiwi.uniwiki.security.dto.request.AuthRequestDTO;
 import com.kiwi.uniwiki.security.dto.response.AuthResponseDTO;
@@ -28,7 +30,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final UniversityService universityService;
-
+    private final UserBanRepository userBanRepository;
     /**
      * 회원가입
      */
@@ -77,6 +79,8 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
+
+
 
         // JWT 토큰 생성
         String token = jwtTokenProvider.createToken(user.getEmail(), user.getRole().toString());
