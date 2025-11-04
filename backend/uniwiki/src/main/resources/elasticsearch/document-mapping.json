@@ -1,0 +1,45 @@
+{
+  "properties": {
+    "id": {
+      "type": "integer"
+    },
+    "title": {
+      "type": "text",
+      "analyzer": "nori_content_analyzer",
+      "search_analyzer": "nori_content_analyzer",
+      "fields": {
+        "ngram": {
+          "type": "text",
+          "analyzer": "ngram_analyzer"
+        },
+        "keyword": {
+          "type": "keyword",
+          "ignore_above": 256
+        }
+      }
+    },
+    "content": {
+      "type": "text",
+      "analyzer": "nori_content_analyzer",
+      "search_analyzer": "nori_content_analyzer"
+    },
+    "universityId": {
+      "type": "short"
+    },
+    "categoryId": {
+      "type": "short"
+    },
+    "universityName": {
+      "type": "keyword",
+      "fields": {
+        "ngram": {
+          "type": "text",
+          "analyzer": "ngram_analyzer"
+        }
+      }
+    },
+    "categoryName": {
+      "type": "keyword"
+    }
+  }
+}
