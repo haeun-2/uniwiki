@@ -3,6 +3,8 @@ package com.kiwi.uniwiki.domain.discussion.service;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.common.page.PageResponse;
+import com.kiwi.uniwiki.domain.activity.entity.UserActivity;
+import com.kiwi.uniwiki.domain.activity.service.AsyncUserActivityService;
 import com.kiwi.uniwiki.domain.code.service.CodeService;
 import com.kiwi.uniwiki.domain.discussion.dto.request.DiscussionRequestDTO;
 import com.kiwi.uniwiki.domain.discussion.dto.response.DiscussionResponseDTO;
@@ -32,6 +34,7 @@ public class DiscussionService {
     private final DiscussionContentRepository discussionContentRepository;
     private final DocumentRepository documentRepository;
     private final CodeService codeService;
+    private final AsyncUserActivityService asyncUserActivityService;
 
     @Transactional
     public DiscussionResponseDTO.CreateResponse createDiscussion(DiscussionRequestDTO.CreateRequest request, User user) {
@@ -60,6 +63,9 @@ public class DiscussionService {
                 .build();
 
         discussionContentRepository.save(discussionContent);
+        
+        // CREATE_DISCUSSION 활동 내역 저장
+        asyncUserActivityService.createDiscussionActivity(user, discussionContent, "CREATE_DISCUSSION");
 
         return DiscussionResponseDTO.CreateResponse.from(savedDiscussion);
     }

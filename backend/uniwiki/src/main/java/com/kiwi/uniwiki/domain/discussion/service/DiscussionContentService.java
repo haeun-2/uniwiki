@@ -2,6 +2,7 @@ package com.kiwi.uniwiki.domain.discussion.service;
 
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
+import com.kiwi.uniwiki.domain.activity.service.AsyncUserActivityService;
 import com.kiwi.uniwiki.domain.code.service.CodeService;
 import com.kiwi.uniwiki.domain.discussion.dto.request.DiscussionContentRequestDTO;
 import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
@@ -24,6 +25,7 @@ public class DiscussionContentService {
     private final DiscussionContentRepository discussionContentRepository;
     private final DiscussionSseService discussionSseService;
     private final CodeService codeService;
+    private final AsyncUserActivityService asyncUserActivityService;
 
     @Transactional
     public void closeDiscussion(Integer discussionId, User user) {
@@ -54,6 +56,9 @@ public class DiscussionContentService {
 
         // 새 토론 내용 이벤트 전송
         discussionSseService.sendDiscussionContent(discussionId, discussionContent);
+
+        // REPLY_DISCUSSION 활동 내역 저장
+        asyncUserActivityService.createDiscussionActivity(user, discussionContent, "REPLY_DISCUSSION");
     }
 
     private void updateDiscussionStatus(Integer discussionId, User user, String status) {
@@ -73,6 +78,9 @@ public class DiscussionContentService {
         // 상태 변경 이벤트 전송
         discussionSseService.sendDiscussionContent(discussionId, discussionContent);
         discussionSseService.sendDiscussionStatus(discussionId, status);
+
+        // REPLY_DISCUSSION 활동 내역 저장
+        asyncUserActivityService.createDiscussionActivity(user, discussionContent, "REPLY_DISCUSSION");
     }
 
     private DiscussionContent createDiscussionContent(Discussion discussion, User user, String content, String type) {
