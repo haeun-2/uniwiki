@@ -2,6 +2,7 @@ package com.kiwi.uniwiki.domain.university.controller;
 
 import com.kiwi.uniwiki.domain.university.dto.response.UniversityDetailResponseDTO;
 import com.kiwi.uniwiki.domain.university.dto.response.UniversityResponseDTO;
+import com.kiwi.uniwiki.domain.university.service.PopularUniversityService;
 import com.kiwi.uniwiki.domain.university.service.UniversityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +19,7 @@ import java.util.List;
 public class UniversityController {
 
     private final UniversityService universityService;
+    private final PopularUniversityService popularUniversityService;
 
     @GetMapping
     @Operation(summary = "전체/지역별 대학 목록 조회", description = "전체/지역별 대학 목록을 조회합니다.")
@@ -39,10 +41,10 @@ public class UniversityController {
         return ResponseEntity.ok(response);
     }
 
-//    @GetMapping("/popular")
-//    @Operation(summary = "인기 대학 목록 조회", description = "인기 TOP10 대학 목록을 조회합니다.")
-//    public ResponseEntity<List<UniversityResponseDTO>> getUniversities() {
-//        List<UniversityResponseDTO> responses = universityService.getPopularUniversities();
-//        return ResponseEntity.ok(responses);
-//    }
+    @GetMapping("/popular")
+    @Operation(summary = "인기 대학 목록 조회", description = "인기 TOP10 대학 목록을 조회합니다.")
+    public ResponseEntity<List<UniversityResponseDTO>> getUniversities() {
+        List<UniversityResponseDTO> responses = popularUniversityService.getPopularUniversities();
+        return ResponseEntity.ok(responses);
+    }
 }

@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 public class UniversityBookmarkService {
     private final UniversityRepository universityRepository;
     private final UniversityBookmarkRepository universityBookmarkRepository;
+    private final PopularUniversityService popularUniversityService;
+
     public void createFavoriteUniversity(User user, Short universityId){
 
         University university = universityRepository.findById(universityId)
@@ -35,6 +37,8 @@ public class UniversityBookmarkService {
                 .build();
         universityBookmarkRepository.save(bookmark);
 
+        // 캐시 무효화
+        popularUniversityService.evictPopularUniversities();
     }
 
     public void deleteFavoriteUniversity(Integer userId, Short universityId){
@@ -46,6 +50,9 @@ public class UniversityBookmarkService {
                 .orElseThrow(() -> new CustomException(ErrorCode.UNIVERSITY_FAVORITE_NOT_FOUND));
 
         universityBookmarkRepository.delete(university);
+
+        // 캐시 무효화
+        popularUniversityService.evictPopularUniversities();
     }
 
     public List<UserResponseDTO.FavoriteUniversityList> getFavoriteUniversityList(User user){
@@ -57,6 +64,5 @@ public class UniversityBookmarkService {
                         .universityName(bookmark.getUniversity().getName())
                         .build())
                 .collect(Collectors.toList());
-
     }
 }
