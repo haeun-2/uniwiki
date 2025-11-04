@@ -28,8 +28,6 @@ public class AdminWriteService {
     private final UserReportRepository userReportRepository;
     private final CodeService codeService;
     private final UserBanRepository userBanRepository;
-    private static final String BAN_KEY_PREFIX="user:ban:";
-    private final RedisTemplate<String, String> redisTemplate;
 
     @Transactional
     public void rejectUserReport(User admin, Integer reportId, AdminRequestDTO.ReportRejectedRequest request){
