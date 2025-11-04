@@ -12,6 +12,9 @@ export default function SignupCompletePage() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingNickname, setIsCheckingNickname] = useState(false);
+  const [nicknameChecked, setNicknameChecked] = useState(false);
+  const [nicknameAvailable, setNicknameAvailable] = useState(false);
 
   // 닉네임 유효성 검사
   const isNicknameValid = nickname.length >= 2;
@@ -22,11 +25,64 @@ export default function SignupCompletePage() {
   // 비밀번호 확인
   const isPasswordMatch = password === passwordConfirm && passwordConfirm !== "";
 
+  // 닉네임 중복 검사
+  const handleCheckNickname = async () => {
+    if (!isNicknameValid) {
+      alert("닉네임은 2자 이상이어야 합니다.");
+      return;
+    }
+
+    setIsCheckingNickname(true);
+
+    try {
+      const response = await fetch(
+        `http://k13d104.p.ssafy.io/api/v1/auth/nickname/check?nickname=${encodeURIComponent(nickname)}`,
+        {
+          method: "GET",
+          headers: {
+            "Accept": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setNicknameChecked(true);
+        setNicknameAvailable(data.available);
+        
+        if (data.available) {
+          alert("사용 가능한 닉네임입니다!");
+        } else {
+          alert("이미 사용 중인 닉네임입니다.");
+        }
+      } else {
+        alert("닉네임 확인 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("Nickname check error:", error);
+      alert("서버와의 연결에 실패했습니다.");
+    } finally {
+      setIsCheckingNickname(false);
+    }
+  };
+
+  // 닉네임 변경 시 중복 검사 초기화
+  const handleNicknameChange = (value: string) => {
+    setNickname(value);
+    setNicknameChecked(false);
+    setNicknameAvailable(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isNicknameValid) {
       alert("닉네임은 2자 이상이어야 합니다.");
+      return;
+    }
+
+    if (!nicknameChecked || !nicknameAvailable) {
+      alert("닉네임 중복 확인을 해주세요.");
       return;
     }
 
@@ -44,7 +100,7 @@ export default function SignupCompletePage() {
 
     try {
       // API 호출: 회원가입 완료
-      const response = await fetch("/api/v1/auth/signup", {
+      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -58,7 +114,7 @@ export default function SignupCompletePage() {
 
       if (response.ok) {
         alert("회원가입이 완료되었습니다!");
-        navigate("/login");
+        navigate("/");
       } else {
         const error = await response.json();
         alert(error.message || "회원가입 중 오류가 발생했습니다.");
@@ -95,18 +151,33 @@ export default function SignupCompletePage() {
             <label htmlFor="nickname" className="mb-2 block text-sm font-medium text-gray-700">
               사용자 닉네임
             </label>
-            <input
-              id="nickname"
-              type="text"
-              placeholder="닉네임을 입력해주세요"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              required
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-            {nickname && (
-              <p className={`mt-1 text-xs ${isNicknameValid ? "text-green-600" : "text-red-600"}`}>
-                {isNicknameValid ? "사용 가능한 닉네임입니다." : "닉네임은 2자 이상이어야 합니다."}
+            <div className="flex gap-2">
+              <input
+                id="nickname"
+                type="text"
+                placeholder="닉네임을 입력해주세요"
+                value={nickname}
+                onChange={(e) => handleNicknameChange(e.target.value)}
+                required
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleCheckNickname}
+                disabled={!isNicknameValid || isCheckingNickname}
+                className="rounded-lg bg-gray-600 px-4 py-2.5 font-medium text-white hover:bg-gray-700 disabled:bg-gray-400 whitespace-nowrap"
+              >
+                {isCheckingNickname ? "확인 중..." : "중복 확인"}
+              </button>
+            </div>
+            {nickname && !nicknameChecked && (
+              <p className={`mt-1 text-xs ${isNicknameValid ? "text-gray-600" : "text-red-600"}`}>
+                {isNicknameValid ? "닉네임 중복 확인이 필요합니다." : "닉네임은 2자 이상이어야 합니다."}
+              </p>
+            )}
+            {nicknameChecked && (
+              <p className={`mt-1 text-xs ${nicknameAvailable ? "text-green-600" : "text-red-600"}`}>
+                {nicknameAvailable ? "✓ 사용 가능한 닉네임입니다." : "✗ 이미 사용 중인 닉네임입니다."}
               </p>
             )}
           </div>
@@ -157,7 +228,7 @@ export default function SignupCompletePage() {
 
           <button
             type="submit"
-            disabled={isLoading || !isNicknameValid || !isPasswordValid || !isPasswordMatch}
+            disabled={isLoading || !nicknameChecked || !nicknameAvailable || !isPasswordValid || !isPasswordMatch}
             className="w-full rounded-lg bg-[#5b7c99] px-4 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
           >
             {isLoading ? "처리 중..." : "가입"}

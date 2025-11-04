@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Mail, Lock, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // 모달 관련 상태
@@ -33,9 +35,52 @@ export default function LoginPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", { email, password });
+    
+    if (!email || !password) {
+      alert("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // 토큰과 사용자 정보 저장
+        localStorage.setItem("accessToken", data.accessToken);
+        localStorage.setItem("userId", data.userId.toString());
+        localStorage.setItem("nickName", data.nickName);
+        localStorage.setItem("role", data.role);
+        if (data.universityId) {
+          localStorage.setItem("universityId", data.universityId.toString());
+        }
+
+        alert(`${data.nickName}님, 환영합니다!`);
+        navigate("/"); // 메인 페이지로 이동
+      } else {
+        const error = await response.json();
+        alert(error.message || "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("서버와의 연결에 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePasswordReset = (e: React.FormEvent) => {
@@ -76,6 +121,7 @@ export default function LoginPage() {
                   placeholder="이메일을 입력해주세요"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                   className="w-full rounded-lg border border-gray-300 px-10 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
@@ -93,6 +139,7 @@ export default function LoginPage() {
                   placeholder="비밀번호를 입력해주세요"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
                   className="w-full rounded-lg border border-gray-300 px-10 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
@@ -115,9 +162,10 @@ export default function LoginPage() {
                 </Link>
                 <button
                   type="submit"
-                  className="rounded-lg bg-[#5b7c99] px-4 py-2.5 font-medium text-white hover:bg-[#4a6578]"
+                  disabled={isLoading}
+                  className="rounded-lg bg-[#5b7c99] px-4 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
                 >
-                  로그인
+                  {isLoading ? "로그인 중..." : "로그인"}
                 </button>
               </div>
             </div>
