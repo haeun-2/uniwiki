@@ -21,7 +21,7 @@ public class PopularUniversityService {
     private final UniversityBookmarkRepository universityBookmarkRepository;
 
     private static final String CACHE_KEY = "university:popular";
-    private static final Duration CACHE_TTL = Duration.ofHours(24);
+    private static final Duration CACHE_TTL = Duration.ofHours(12);
 
     /**
      * 인기 top10 대학 목록 조회 (Redis -> DB)
@@ -64,18 +64,6 @@ public class PopularUniversityService {
             log.debug("[REDIS] 인기 top10 대학 redis 캐싱 완료");
         } catch (Exception e) {
             log.error("[REDIS] 인기 top10 대학 redis 캐싱 실패", e);
-        }
-    }
-
-    /**
-     * 인기 top10 대학 목록 캐시 무효화
-     */
-    public void evictPopularUniversities() {
-        try {
-            redisTemplate.delete(CACHE_KEY);
-            log.debug("[REDIS] 인기 top10 대학 redis 캐시 무효화 완료");
-        } catch (Exception e) {
-            log.error("[REDIS] 인기 top10 대학 redis 캐시 무효화 실패", e);
         }
     }
 }
