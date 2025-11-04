@@ -5,79 +5,99 @@ import MDEditor, { ICommand, TextAreaTextApi, TextState } from '@uiw/react-md-ed
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
-// 우측 레일 — 문서 조회 화면과 동일
 import RecentEdit from '@/layout/RecentEdit';
 import RecentDiscuss from '@/layout/RecentDiscuss';
 
-const SAMPLE_MD = `# 제목 예시
+const API_BASE = 'http://k13d104.p.ssafy.io/api';
+const PRESIGN_API = `${API_BASE}/v1/s3/presigned-urls`;
 
-1. 서울대학교 문서에 대한 내용
-2. 서울대학교 문서에 대한 내용
-3. 서울대학교 문서에 대한 내용
+// ✅ 임시 개발용 하드코딩 JWT (로그인 연동 전까지 사용)
+const DEV_JWT =
+  'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NjIyMTg1MTEsImV4cCI6MTc2MjMwNDkxMX0.my5-P2Kpoangdqt1qohAFyucIU8YDKfvOeMlnDmKwt6_zCK1Q-rZ2Gx6JyedWmBUT9vUTnwLfaisuW95BA7zVA';
 
-- **굵게**, _기울임_, ~~취소선~~
-- [링크](https://www.snu.ac.kr/)
-\`\`\`ts
-export const hello = (name: string) => \`hi, \${name}\`;
-\`\`\`
-`;
+// 공통 헤더 유틸
+function authHeaders(extra: HeadersInit = {}) {
+  return DEV_JWT ? { ...extra, Authorization: `Bearer ${DEV_JWT}` } : extra;
+}
 
-type CategoryKey = 'school' | 'major' | 'lecture' | 'facility' | 'event' | 'etc';
+type Status = 'loading' | 'ok' | 'notfound' | 'error';
 
-const CATEGORY_LABEL: Record<CategoryKey, string> = {
-  school: '학교',
-  major: '학과',
-  lecture: '강의',
-  facility: '시설',
-  event: '행사',
-  etc: '기타',
+type DocumentDto = {
+  universityId: number;
+  universityName: string;
+  categoryId: number;
+  categoryName: string;
+  documentId: number;
+  versionNumber: number;
+  documentTitle: string;
+  documentContent: string;
+  updatedAt: string;
 };
 
-// ===== S3 Presign 업로드 유틸 =====
+// ✅ 카테고리 하드코딩(백 응답 사용 안 함)
+const CATEGORY_OPTIONS = [
+  { id: 1, name: '학교' },
+  { id: 2, name: '학과' },
+  { id: 3, name: '강의' },
+  { id: 4, name: '시설' },
+  { id: 5, name: '행사' },
+  { id: 6, name: '기타' },
+] as const;
+
 const MAX_IMAGE_MB = 10;
+const isImage = (f?: File | null) => !!f && f.type.startsWith('image/');
+const overLimit = (f: File) => f.size > MAX_IMAGE_MB * 1024 * 1024;
 
-function isImage(file?: File | null) {
-  return !!file && file.type.startsWith('image/');
-}
-function overLimit(file: File) {
-  return file.size > MAX_IMAGE_MB * 1024 * 1024;
-}
-
-type PresignResp = {
-  uploadUrl: string; // PUT presigned URL
-  fileUrl: string;   // 업로드 후 접근할 최종 공개 URL
-};
-
-async function getPresignedPutUrl(file: File): Promise<PresignResp> {
-  const resp = await fetch('/api/uploads/presign', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      filename: file.name,
-      contentType: file.type,
-    }),
+/* ---------- S3 Presign 발급/업로드 ---------- */
+async function getPresignedUrl(): Promise<string> {
+  const r = await fetch(PRESIGN_API, {
+    method: 'GET',
+    headers: authHeaders({ Accept: 'application/json' }),
+    credentials: 'include',
   });
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => '');
-    throw new Error(txt || 'S3 presign 발급 실패');
+
+  if (r.status === 401 || r.status === 403) {
+    const msg = await r.text().catch(() => '');
+    throw new Error(msg || '인증 오류: 개발용 JWT가 없거나 만료/권한 문제입니다. (401/403)');
   }
-  const data = (await resp.json()) as PresignResp;
-  if (!data?.uploadUrl || !data?.fileUrl) throw new Error('presign 응답값(uploadUrl/fileUrl) 없음');
-  return data;
+  if (!r.ok) throw new Error((await r.text().catch(() => '')) || 'presigned URL 발급 실패');
+
+  const j = await r.json();
+  if (!j?.presignedUrl) throw new Error('presignedUrl 없음');
+  return j.presignedUrl as string;
 }
 
 async function uploadToS3ViaPresign(file: File): Promise<string> {
-  const { uploadUrl, fileUrl } = await getPresignedPutUrl(file);
-  const put = await fetch(uploadUrl, {
+  const presignedUrl = await getPresignedUrl();
+  const fileUrl = presignedUrl.split('?')[0];
+
+  // PUT (Content-Type 지정 → 실패 시 무헤더 재시도)
+  let put = await fetch(presignedUrl, {
     method: 'PUT',
-    headers: { 'Content-Type': file.type },
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
     body: file,
   });
-  if (!put.ok) {
-    const t = await put.text().catch(() => '');
-    throw new Error(t || 'S3 업로드 실패');
+  if (!put.ok) put = await fetch(presignedUrl, { method: 'PUT', body: file });
+  if (!put.ok) throw new Error((await put.text().catch(() => '')) || 'S3 업로드 실패');
+
+  return fileUrl;
+}
+
+/* ---------- 저장 응답 파싱(JSON / text / 204) ---------- */
+async function getSavedTitleFromResponse(res: Response, fallbackTitle: string) {
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) {
+    try {
+      const j: any = await res.json();
+      const v = (j?.documentTitle || j?.title || '').toString().trim();
+      if (v) return v;
+    } catch { /* ignore */ }
   }
-  return fileUrl; // 최종 마크다운에 넣을 공개 URL
+  try {
+    const t = (await res.text()).trim();
+    if (t) return t.replace(/^"+|"+$/g, '');
+  } catch { /* ignore */ }
+  return fallbackTitle;
 }
 
 export default function DocumentEditPage() {
@@ -85,29 +105,39 @@ export default function DocumentEditPage() {
   const { documentTitle = '문서 제목' } = useParams();
   const docTitleParam = encodeURIComponent(documentTitle);
 
-  // ✅ 카테고리 단일 선택으로 변경
-  const [selectedCategory, setSelectedCategory] = useState<CategoryKey>('school');
+  // 상태
+  const [status, setStatus] = useState<Status>('loading');
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const [value, setValue] = useState<string>(SAMPLE_MD);
-  const [summary, setSummary] = useState<string>(''); // 선택값(필수 아님)
+  // 편집값
+  const [value, setValue] = useState<string>('');
+  const [summary, setSummary] = useState<string>(''); // editMemo
   const [agree, setAgree] = useState<boolean>(true);
-  const [busy, setBusy] = useState<boolean>(false);     // 업로드 중
-  const [saving, setSaving] = useState<boolean>(false); // 저장 중
 
-  // 최초 상태 스냅샷 → 변경사항(dirty) 판단
-  const initialRef = useRef({
-    value: SAMPLE_MD,
+  // 메타(저장에 필요)
+  const [docId, setDocId] = useState<number | null>(null);
+  const [baseVersionNumber, setBaseVersionNumber] = useState<number | null>(null);
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [categoryName, setCategoryName] = useState<string>(''); // 초기 표시 보조
+
+  // 진행 상태
+  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // 변경 여부(카테고리 포함)
+  const initialRef = useRef<{ value: string; summary: string; categoryId: number | null }>({
+    value: '',
     summary: '',
-    category: 'school' as CategoryKey,
+    categoryId: null,
   });
-
   const isDirty = useMemo(() => {
     const i = initialRef.current;
-    return value !== i.value || summary !== i.summary || selectedCategory !== i.category;
-  }, [value, summary, selectedCategory]);
+    return value !== i.value || summary !== i.summary || categoryId !== i.categoryId;
+  }, [value, summary, categoryId]);
 
-  // 저장 가능 조건: 라이선스 동의 + 변경 발생 + 진행중 아님
-  const canSave = agree && isDirty && !busy && !saving;
+  const canSave =
+    agree && isDirty && !busy && !saving &&
+    docId !== null && baseVersionNumber !== null && categoryId !== null;
 
   // Ctrl/Cmd + S → 저장
   useEffect(() => {
@@ -121,21 +151,70 @@ export default function DocumentEditPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canSave, value, summary, selectedCategory, agree]);
+  }, [canSave, value, summary, agree, categoryId]);
 
-  const sanitizeSchema: any = useMemo(() => {
-    return {
+  // sanitize 확장
+  const sanitizeSchema: any = useMemo(
+    () => ({
       ...defaultSchema,
       attributes: {
         ...(defaultSchema as any).attributes,
-        a: [ ...(((defaultSchema as any).attributes?.a) || []), 'target', 'rel' ],
-        img: ['src', 'alt', 'title'], // 렌더에서 이미지 허용
+        a: [...(((defaultSchema as any).attributes?.a) || []), 'target', 'rel'],
+        img: ['src', 'alt', 'title'],
       },
-    };
-  }, []);
+    }),
+    []
+  );
 
-  // ===== 붙여넣기/드래그앤드롭 처리 =====
+  /* ---------- 문서 로드 ---------- */
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      try {
+        setStatus('loading');
+        setApiError(null);
+
+        const encoded = encodeURIComponent(documentTitle);
+        const r = await fetch(`${API_BASE}/v1/documents/${encoded}`, {
+          method: 'GET',
+          headers: authHeaders({ Accept: 'application/json' }),
+          cache: 'no-store',
+          signal: controller.signal,
+          credentials: 'include',
+        });
+
+        if (r.status === 404) {
+          setStatus('notfound');
+          setValue('');
+          initialRef.current = { value: '', summary: '', categoryId: null };
+          return;
+        }
+        if (!r.ok) throw new Error('문서를 불러오는 중 오류가 발생했습니다.');
+
+        const data: DocumentDto = await r.json();
+        setValue(data.documentContent || '');
+        setDocId(data.documentId);
+        setBaseVersionNumber(data.versionNumber);
+        setCategoryId(data.categoryId);
+        setCategoryName(data.categoryName || '');
+
+        // 초기 스냅샷
+        initialRef.current = {
+          value: data.documentContent || '',
+          summary: '',
+          categoryId: data.categoryId ?? null,
+        };
+        setStatus('ok');
+      } catch (e: any) {
+        if (controller.signal.aborted) return;
+        setApiError(e?.message || '문서를 불러오는 중 오류가 발생했습니다.');
+        setStatus('error');
+      }
+    })();
+    return () => controller.abort();
+  }, [documentTitle]);
+
+  /* ---------- 붙여넣기/드롭 업로드 ---------- */
   async function handleFiles(files: FileList | null, appendAtEnd = true) {
     if (!files || files.length === 0) return;
     const images = Array.from(files).filter(isImage);
@@ -159,7 +238,7 @@ export default function DocumentEditPage() {
     }
   }
 
-  // ===== 툴바: 이미지 업로드 버튼 =====
+  // 툴바 업로드 버튼
   const uploadImageCommand: ICommand = {
     name: 'uploadImage',
     keyCommand: 'uploadImage',
@@ -179,8 +258,7 @@ export default function DocumentEditPage() {
         try {
           setBusy(true);
           const url = await uploadToS3ViaPresign(file!);
-          const md = `![${file!.name}](${url} "${file!.name}")`;
-          api.replaceSelection(md); // 커서 위치에 삽입
+          api.replaceSelection(`![${file!.name}](${url} "${file!.name}")`);
         } catch (e: any) {
           alert(e?.message || '이미지 업로드 실패');
         } finally {
@@ -191,22 +269,37 @@ export default function DocumentEditPage() {
     },
   };
 
+  /* ---------- 저장: POST /v1/documents/{document_id} ---------- */
   const onSave = async () => {
     if (!canSave) return;
     try {
       setSaving(true);
-      // 실제 저장 API 연결 (예시)
-      await fetch(`/api/v1/documents/${encodeURIComponent(documentTitle)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: value,        // 마크다운 본문(여기에 S3 URL이 들어있음)
-          summary,
-          categories: [selectedCategory], // ✅ 단일 선택만 전달
+      const id = docId!;
+      const body = {
+        baseVersionNumber: baseVersionNumber!, // 충돌 방지
+        categoryId: categoryId!,               // 선택한 카테고리
+        documentContent: value,                // 본문(MD)
+        editMemo: summary,                     // 편집 요약
+      };
+
+      const res = await fetch(`${API_BASE}/v1/documents/${id}`, {
+        method: 'POST',
+        headers: authHeaders({
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/plain, */*',
         }),
+        credentials: 'include',
+        body: JSON.stringify(body),
       });
 
-      navigate(`/docs/${docTitleParam}`, {
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error(t || '문서 저장 실패');
+      }
+
+      const nextTitle = await getSavedTitleFromResponse(res, documentTitle);
+
+      navigate(`/docs/${encodeURIComponent(nextTitle)}`, {
         state: { flash: { type: 'success', msg: '저장되었습니다.' } },
         replace: false,
       });
@@ -217,14 +310,20 @@ export default function DocumentEditPage() {
     }
   };
 
+  // 현재 선택된 카테고리 이름(표시용)
+  const selectedCatName =
+    CATEGORY_OPTIONS.find((c) => c.id === categoryId)?.name || categoryName || '—';
+
   return (
     <div className="bg-white">
-      {/* 문서 조회 화면과 동일한 2열 레이아웃(우측 레일 유지) */}
       <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 좌측 메인 */}
         <div className="lg:col-span-8">
           <h1 className="text-[28px] leading-tight font-semibold text-gray-900">
-            {documentTitle} <span className="text-gray-900 text-lg">(r10 편집)</span>
+            {documentTitle}{' '}
+            <span className="text-gray-900 text-lg">
+              ({baseVersionNumber != null ? `r${baseVersionNumber} 편집` : '편집'})
+            </span>
           </h1>
 
           {(busy || saving) && (
@@ -233,55 +332,70 @@ export default function DocumentEditPage() {
             </div>
           )}
 
-          {/* 에디터 */}
+          {(status === 'notfound' || status === 'error') && apiError && (
+            <div className="mt-3 rounded-lg bg-[#2C80A0] px-4 py-2 text-white">{apiError}</div>
+          )}
+
           <div className="mt-4" data-color-mode="light">
-            <MDEditor
-              height={520}
-              value={value}
-              onChange={(v) => setValue(v || '')}
-              preview="live"
-              previewOptions={{
-                remarkPlugins: [remarkGfm],
-                rehypePlugins: [[rehypeSanitize, sanitizeSchema]],
-              }}
-              extraCommands={[uploadImageCommand]}
-              textareaProps={{
-                placeholder:
-                  '마크다운 작성. 이미지 파일을 붙여넣기/드래그앤드롭하거나 IMG 버튼으로 업로드하세요.',
-                onPaste: async (e) => {
-                  const items = Array.from(e.clipboardData?.items || []);
-                  const file = items.find((i) => i.kind === 'file')?.getAsFile();
-                  if (isImage(file)) {
-                    e.preventDefault();
-                    await handleFiles({ 0: file!, length: 1, item: () => file! } as any, true);
-                  }
-                },
-                onDrop: async (e) => {
-                  if (e.dataTransfer?.files?.length) {
-                    e.preventDefault();
-                    await handleFiles(e.dataTransfer.files, true);
-                  }
-                },
-              }}
-            />
+            {status === 'loading' ? (
+              <div className="animate-pulse rounded-lg border p-4">
+                <div className="mb-3 h-6 w-1/3 rounded bg-gray-200" />
+                <div className="mb-2 h-4 w-full rounded bg-gray-200" />
+                <div className="mb-2 h-4 w-11/12 rounded bg-gray-200" />
+                <div className="h-4 w-10/12 rounded bg-gray-200" />
+              </div>
+            ) : (
+              <MDEditor
+                height={520}
+                value={value}
+                onChange={(v) => setValue(v || '')}
+                preview="live"
+                previewOptions={{
+                  remarkPlugins: [remarkGfm],
+                  rehypePlugins: [[rehypeSanitize, sanitizeSchema]],
+                }}
+                extraCommands={[uploadImageCommand]}
+                textareaProps={{
+                  placeholder:
+                    '마크다운 작성. 이미지 파일을 붙여넣기/드래그앤드롭하거나 IMG 버튼으로 업로드하세요.',
+                  onPaste: async (e) => {
+                    const items = Array.from(e.clipboardData?.items || []);
+                    const file = items.find((i) => i.kind === 'file')?.getAsFile();
+                    if (isImage(file)) {
+                      e.preventDefault();
+                      await handleFiles({ 0: file!, length: 1, item: () => file! } as any, true);
+                    }
+                  },
+                  onDrop: async (e) => {
+                    if (e.dataTransfer?.files?.length) {
+                      e.preventDefault();
+                      await handleFiles(e.dataTransfer.files, true);
+                    }
+                  },
+                }}
+              />
+            )}
           </div>
 
-          {/* 카테고리 — ✅ 라디오로 단일 선택 */}
+          {/* 카테고리(라디오 단일 선택) */}
           <div className="mt-6">
-            <p className="mb-3 text-gray-900 font-medium">카테고리</p>
-            <div className="flex flex-wrap gap-x-8 gap-y-2 text-[15px]">
-              {(Object.keys(CATEGORY_LABEL) as CategoryKey[]).map((key) => (
-                <label key={key} className="inline-flex items-center gap-2">
+            <p className="mb-2 text-gray-900 font-medium">카테고리</p>
+            <div className="flex flex-wrap gap-x-10 gap-y-2 text-[15px]">
+              {CATEGORY_OPTIONS.map((opt) => (
+                <label key={opt.id} className="inline-flex items-center gap-2">
                   <input
                     type="radio"
                     name="doc-category"
-                    checked={selectedCategory === key}
-                    onChange={() => setSelectedCategory(key)}
+                    checked={categoryId === opt.id}
+                    onChange={() => setCategoryId(opt.id)}
                   />
-                  {CATEGORY_LABEL[key]}
+                  {opt.name}
                 </label>
               ))}
             </div>
+            <p className="mt-2 text-sm text-gray-500">
+              현재 선택: <span className="font-medium text-gray-800">{selectedCatName}</span>
+            </p>
           </div>
 
           {/* 편집 요약 */}
@@ -331,6 +445,8 @@ export default function DocumentEditPage() {
                   ? '이미지 업로드가 끝난 뒤 저장할 수 있습니다.'
                   : saving
                   ? '저장 중입니다.'
+                  : docId === null
+                  ? '문서 식별자를 불러오지 못했습니다.'
                   : undefined
               }
             >
