@@ -27,11 +27,13 @@ public enum ErrorCode {
      */
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_404_01", "요청한 리소스를 찾을 수 없습니다."),
     USER_FOUND_FOUND(HttpStatus.NOT_FOUND, "COMMON_404_1", "해당 회원을 찾을 수 없습니다."),
+
     /**
      * 409 CONFLICT - 중복 리소스
      */
     DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "COMMON_409_01", "이미 존재하는 리소스입니다."),
-    REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "REPORT_4001", "이미 처리된 신고입니다."),
+
+
     /**
      * 500 INTERNAL_SERVER_ERROR - 서버 공통 오류
      */
@@ -80,6 +82,7 @@ public enum ErrorCode {
      */
     UNIVERSITY_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_01", "요청한 대학을 찾을 수 없습니다."),
     UNIVERSITY_FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "UNIVERSITY_404_02", "요청한 대학의 즐겨찾기 목록을 찾을 수 없습니다."),
+
     // ======================================
     // CATEGORY (카테고리)
     // ======================================
@@ -130,10 +133,15 @@ public enum ErrorCode {
      */
     DISCUSSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DISCUSSION_404_01", "요청한 토론을 찾을 수 없습니다."),
 
-    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_404_01", "요청한 신고를 찾을 수 없습니다."),
 
-    MAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MAIL_500_01", "메일 발송에 실패했습니다.");
 
+    MAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MAIL_500_01", "메일 발송에 실패했습니다."),
+
+    /**
+     * 신고
+     * **/
+    REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "REPORT_4001", "이미 처리된 신고입니다."),
+    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_404_01", "요청한 신고를 찾을 수 없습니다.");
     private final HttpStatus status;
     private final String code;
     private final String message;

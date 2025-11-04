@@ -30,9 +30,9 @@ public class AdminWriteService {
         UserReport userReport = userReportRepository.findById(reportId)
                 .orElseThrow(() -> new CustomException(ErrorCode.REPORT_NOT_FOUND));
         //이미 신고 처리가 됬다면
-    if(userReport.getCode().getId() != 9){
-        throw new CustomException(ErrorCode.REPORT_ALREADY_PROCESSED);
-    }
+        if(userReport.getCode().getId() != codeService.get("USER_REPORT_STATUS","PENDING").getId()){
+            throw new CustomException(ErrorCode.REPORT_ALREADY_PROCESSED);
+        }
 
         userReport.reportProcess(admin, request.getReason(), codeService.get("USER_REPORT_STATUS","REJECTED"));
 
@@ -46,7 +46,7 @@ public class AdminWriteService {
                 .orElseThrow(() -> new CustomException(ErrorCode.REPORT_NOT_FOUND));
 
         //이미 신고 처리가 됬다면
-        if(userReport.getCode().getId() != 9){
+        if(userReport.getCode().getId() != codeService.get("USER_REPORT_STATUS","PENDING").getId()){
             throw new CustomException(ErrorCode.REPORT_ALREADY_PROCESSED);
         }
 
