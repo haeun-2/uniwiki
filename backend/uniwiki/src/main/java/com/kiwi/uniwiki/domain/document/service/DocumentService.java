@@ -3,6 +3,7 @@ package com.kiwi.uniwiki.domain.document.service;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.common.page.PageResponse;
+import com.kiwi.uniwiki.domain.activity.service.AsyncUserActivityService;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentCreateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentUpdateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.response.DocumentDetailResponseDTO;
@@ -35,6 +36,8 @@ public class DocumentService {
     private final CategoryService categoryService;
     private final DocumentVersionUpdateService documentVersionUpdateService;
 
+    private final AsyncUserActivityService asyncUserActivityService;
+
     /**
      * 새 문서 생성
      */
@@ -64,6 +67,9 @@ public class DocumentService {
                 .build();
 
         documentVersionRepository.save(documentVersion);
+
+        // CREATE_DOCUMENT 활동 내역 저장
+        asyncUserActivityService.createDocumentActivity(user, documentVersion, "CREATE_DOCUMENT");
 
         return document.getTitle();
     }
@@ -103,7 +109,7 @@ public class DocumentService {
         DocumentVersion oldVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
-        documentVersionUpdateService.createNewVersionAndUpdateDocument(
+        DocumentVersion newVersion = documentVersionUpdateService.createNewVersionAndUpdateDocument(
                 document,
                 user,
                 category,
@@ -111,6 +117,9 @@ public class DocumentService {
                 request.getDocumentContent(),
                 request.getEditMemo()
         );
+
+        // EDIT_DOCUMENT 활동 내역 저장
+        asyncUserActivityService.createDocumentActivity(user, newVersion, "EDIT_DOCUMENT");
 
         return document.getTitle();
     }
