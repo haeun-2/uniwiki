@@ -19,6 +19,7 @@ public class AuthResponseDTO {
     }
 
 
+
     @Getter
     @Builder
     public static class DuplicateCheck{
