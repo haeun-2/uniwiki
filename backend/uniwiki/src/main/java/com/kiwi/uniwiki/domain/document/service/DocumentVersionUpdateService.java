@@ -29,7 +29,7 @@ public class DocumentVersionUpdateService {
      * 새 버전 생성 및 문서 업데이트 메서드
      */
     @Transactional
-    public void createNewVersionAndUpdateDocument(Document document, User editor, Category category,
+    public DocumentVersion createNewVersionAndUpdateDocument(Document document, User editor, Category category,
                                                   String oldContent, String newContent, String editMemo) {
 
         // 버전 비교
@@ -56,5 +56,7 @@ public class DocumentVersionUpdateService {
         } catch (OptimisticLockException | ObjectOptimisticLockingFailureException e) {
             throw new CustomException(ErrorCode.DOCUMENT_CONCURRENT_MODIFICATION);
         }
+
+        return newVersion;
     }
 }
