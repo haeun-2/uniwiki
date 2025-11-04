@@ -11,8 +11,14 @@ import com.kiwi.uniwiki.domain.user.entity.UserBan;
 import com.kiwi.uniwiki.domain.user.repository.UserBanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cglib.core.Local;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +28,8 @@ public class AdminWriteService {
     private final UserReportRepository userReportRepository;
     private final CodeService codeService;
     private final UserBanRepository userBanRepository;
+    private static final String BAN_KEY_PREFIX="user:ban:";
+    private final RedisTemplate<String, String> redisTemplate;
 
     @Transactional
     public void rejectUserReport(User admin, Integer reportId, AdminRequestDTO.ReportRejectedRequest request){
@@ -64,6 +72,5 @@ public class AdminWriteService {
         userReport.reportProcess(admin, request.getReason(), codeService.get("USER_REPORT_STATUS","RESOLVED"));
 
     }
-
 
 }
