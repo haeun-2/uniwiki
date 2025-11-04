@@ -98,11 +98,17 @@ public enum ErrorCode {
     // ======================================
 
     /**
+     * 403 FORBIDDEN - 접근 권한 없음
+     */
+    DOCUMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DOCUMENT_403_01", "소속 대학생만 문서 작업을 할 수 있습니다."),
+
+    /**
      * 404 NOT_FOUND - 문서 없음
      */
     DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_01", "요청한 문서를 찾을 수 없습니다."),
     DOCUMENT_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_02", "요청한 버전의 문서를 찾을 수 없습니다."),
     DOCUMENT_FAVORITE_NOT_FOUND(HttpStatus.NOT_FOUND, "DOCUMENT_404_03", "요청한 문서의 즐겨찾기 목록을 찾을 수 없습니다."),
+
     /**
      * 409 CONFLICT - 중복 리소스
      */

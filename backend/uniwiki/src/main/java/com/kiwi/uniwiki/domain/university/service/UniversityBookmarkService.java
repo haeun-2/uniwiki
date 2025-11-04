@@ -36,9 +36,6 @@ public class UniversityBookmarkService {
                 .university(university)
                 .build();
         universityBookmarkRepository.save(bookmark);
-
-        // 캐시 무효화
-        popularUniversityService.evictPopularUniversities();
     }
 
     public void deleteFavoriteUniversity(Integer userId, Short universityId){
@@ -50,9 +47,6 @@ public class UniversityBookmarkService {
                 .orElseThrow(() -> new CustomException(ErrorCode.UNIVERSITY_FAVORITE_NOT_FOUND));
 
         universityBookmarkRepository.delete(university);
-
-        // 캐시 무효화
-        popularUniversityService.evictPopularUniversities();
     }
 
     public List<UserResponseDTO.FavoriteUniversityList> getFavoriteUniversityList(User user){

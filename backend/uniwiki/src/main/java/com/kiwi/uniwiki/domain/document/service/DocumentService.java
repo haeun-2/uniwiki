@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -43,6 +44,11 @@ public class DocumentService {
      */
     @Transactional
     public String createDocument(DocumentCreateRequestDTO request, User user) {
+
+        // 대학 확인
+        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), request.getUniversityId())) {
+            throw new CustomException(ErrorCode.DOCUMENT_ACCESS_DENIED);
+        }
 
         // 제목 중복 검사
         if (documentRepository.existsByTitle(request.getDocumentTitle())) {
@@ -98,6 +104,11 @@ public class DocumentService {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
 
+        // 대학 확인
+        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), document.getUniversity().getId())) {
+            throw new CustomException(ErrorCode.DOCUMENT_ACCESS_DENIED);
+        }
+
         // 클라이언트가 본 버전과 현재 버전 비교 (동시 수정 감지)
         if (!document.getLatestVersionNumber().equals(request.getBaseVersionNumber())) {
             log.debug("document {}: 동시 수정 발생", document.getId());
@@ -109,7 +120,7 @@ public class DocumentService {
         DocumentVersion oldVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
-        DocumentVersion newVersion = documentVersionUpdateService.createNewVersionAndUpdateDocument(
+        documentVersionUpdateService.createNewVersionAndUpdateDocument(
                 document,
                 user,
                 category,
@@ -117,9 +128,6 @@ public class DocumentService {
                 request.getDocumentContent(),
                 request.getEditMemo()
         );
-
-        // EDIT_DOCUMENT 활동 내역 저장
-        asyncUserActivityService.createDocumentActivity(user, newVersion, "EDIT_DOCUMENT");
 
         return document.getTitle();
     }

@@ -19,6 +19,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -75,6 +77,11 @@ public class DocumentVersionService {
 
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
+
+        // 대학 확인
+        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), document.getUniversity().getId())) {
+            throw new CustomException(ErrorCode.DOCUMENT_ACCESS_DENIED);
+        }
 
         DocumentVersion targetVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(documentId, targetVersionNumber)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
