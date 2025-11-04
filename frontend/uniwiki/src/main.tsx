@@ -25,6 +25,8 @@ import SignupCompletePage from './pages/login/SignupCompletePage'
 import ProfilePage from './pages/ProfilePage'
 
 // 관리자
+import AdminIndexGate from './utils/AdminIndexGate'
+import RequireAdmin from './utils/RequireAdmin'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminUserReportPage from './pages/admin/AdminUserReportPage'
 import AdminDiscussionReportPage from './pages/admin/AdminDiscussionReportPage'
@@ -119,12 +121,24 @@ const router = createBrowserRouter([
     element: <AdminLayout />,
     children: [
       // 관리자
+
+      // admin 으로 들어오면 역할에 따라 분기
+      { index: true, element: <AdminIndexGate /> }, 
+
+      // login 페이지는 접근 가능
       { path: 'login', element: <AdminLoginPage /> },
-      { path: 'user_report', element: <AdminUserReportPage /> },
-      { path: 'discussion_report', element: <AdminDiscussionReportPage /> },
-      { path: 'document', element: <AdminDocumentPage /> },
-      { path: 'discussion', element: <AdminDiscussionPage /> },
-      { path: 'manual', element: <AdminManualPage /> }
+      
+      // 아래 페이지는 관리자만 접근 가능
+      { 
+        element: <RequireAdmin />, 
+        children: [
+          { path: 'user_report', element: <AdminUserReportPage /> },
+          { path: 'discussion_report', element: <AdminDiscussionReportPage /> },
+          { path: 'document', element: <AdminDocumentPage /> },
+          { path: 'discussion', element: <AdminDiscussionPage /> },
+          { path: 'manual', element: <AdminManualPage /> }
+        ]
+      }
     ]
   }
 ])
