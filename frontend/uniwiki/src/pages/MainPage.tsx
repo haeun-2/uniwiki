@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom"
 
-// 더미 데이터
+
+// 인기 학교 더미 데이터
 const popularSchools = [
   { name: "서울대학교", city: "서울특별시", slug: "snu" },
   { name: "연세대학교", city: "서울특별시", slug: "yonsei" },
@@ -11,7 +12,101 @@ const popularSchools = [
   { name: "한양대학교", city: "서울특별시", slug: "hyu" },
 ];
 
+
+
+// 지역별
+
+type Region = {
+  regionId: number;
+  regionName: string;
+};
+
+const shortenRegion = (name: string) => {
+  if (name.endsWith("특별시")) return name.replace("특별시", "");
+  if (name.endsWith("광역시")) return name.replace("광역시", "");
+  if (name.endsWith("특별자치시")) return name.replace("특별자치시", "");
+  if (name.endsWith("특별자치도")) return name.replace("특별자치도", "");
+  if (name.endsWith("도")) return name.replace("경상", "경").replace("전라", "전").replace("충청", "충").replace("강원", "강원").replace("도", "");
+  return name;
+};
+
+
+
+// 대학교
+
+type University = {
+  universityId: number;
+  universityName: string;
+  logoUrl: string | null;
+};
+
+
 export default function MainPage() {
+
+  // ---------------- Regions ----------------
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [loadingRegions, setLoadingRegions] = useState(false);
+  const [regionError, setRegionError] = useState<string | null>(null);
+
+  // 선택된 지역 (0은 "전체")
+  const [selectedRegionId, setSelectedRegionId] = useState<number>(0);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingRegions(true);
+        setRegionError(null);
+        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/regions", { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: Region[] = await res.json();
+        if (mounted) setRegions(data);
+      } catch (e: any) {
+        if (mounted) setRegionError(e?.message ?? "지역 목록을 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setLoadingRegions(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // "전체" 가상 항목을 앞에 추가
+  const regionChips = useMemo(
+    () => [{ regionId: 0, regionName: "전체" } as Region, ...regions],
+    [regions]
+  );
+
+
+
+  // ---------------- Universities ----------------
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [loadingUniversities, setLoadingUniversities] = useState(false);
+  const [univError, setUnivError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingUniversities(true);
+        setUnivError(null);
+        const url = selectedRegionId === 0
+          ? `http://k13d104.p.ssafy.io/api/v1/universities`
+          : `http://k13d104.p.ssafy.io/api/v1/universities?region=${selectedRegionId}`;
+        const res = await fetch(url, { headers: { accept: "*/*" } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: University[] = await res.json();
+        if (mounted) setUniversities(data);
+      } catch (e: any) {
+        if (mounted) setUnivError(e?.message ?? "대학교 목록을 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setLoadingUniversities(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [selectedRegionId]);
+
+  
+
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-8">
       {/* 인기 많은 학교 */}
@@ -63,33 +158,62 @@ export default function MainPage() {
       {/* 학교별 위키 탐색 */}
       <section className="mb-14">
         <h2 className="mb-4 text-xl font-semibold">학교별 위키 탐색</h2>
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          {["전체", "서울", "경기", "대전", "대구", "경북", "제주", "기타"].map((region, idx) => (
-            <button
-              key={idx}
-              className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-600 hover:bg-gray-100"
-            >
-              {region}
-            </button>
-          ))}
+
+        {/* 지역 칩 */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {loadingRegions && (
+            <>
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-7 w-14 animate-pulse rounded-full bg-gray-100" />
+              ))}
+            </>
+          )}
+
+          {regionError && (
+            <span className="text-xs text-red-500">
+              지역 목록을 불러오지 못했습니다. 새로고침 해주세요.
+            </span>
+          )}
+
+          {!loadingRegions && !regionError && regionChips.map((r) => {
+            const isActive = selectedRegionId === r.regionId;
+            return (
+              <button
+                key={r.regionId}
+                onClick={() => setSelectedRegionId(r.regionId)}
+                className={[
+                  "rounded-full border px-3 py-1 text-xs transition",
+                  isActive
+                    ? "border-[#2C80A0] bg-[#2C80A0] text-white"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
+                ].join(" ")}
+                title={r.regionName}
+              >
+                {r.regionId === 0 ? "전체" : shortenRegion(r.regionName)}
+              </button>
+            );
+          })}
         </div>
 
+        {/* 대학교 목록 */}
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
-            {Array(4)
-              .fill(null)
-              .map((_, i) => (
-                <ul key={i} className="space-y-2 text-sm text-gray-700">
-                  {Array(14)
-                    .fill(null)
-                    .map((__, j) => (
-                      <li key={j} className="cursor-pointer truncate hover:underline">
-                        서울대학교
-                      </li>
-                    ))}
-                </ul>
-              ))}
-          </div>
+          {!loadingUniversities && !univError && universities.length > 0 && (
+            <div className="max-h-96 overflow-y-auto pr-2">
+              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 text-sm text-gray-700">
+                {universities.map((u) => (
+                  <div key={u.universityId} className="truncate">
+                    <Link
+                      to={`/univ/${u.universityId}`}
+                      className="cursor-pointer hover:underline"
+                      title={u.universityName}
+                    >
+                      {u.universityName}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
