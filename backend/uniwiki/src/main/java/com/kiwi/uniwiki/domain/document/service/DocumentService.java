@@ -109,7 +109,7 @@ public class DocumentService {
         DocumentVersion oldVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
-        DocumentVersion newVersion = documentVersionUpdateService.createNewVersionAndUpdateDocument(
+        documentVersionUpdateService.createNewVersionAndUpdateDocument(
                 document,
                 user,
                 category,
@@ -117,9 +117,6 @@ public class DocumentService {
                 request.getDocumentContent(),
                 request.getEditMemo()
         );
-
-        // EDIT_DOCUMENT 활동 내역 저장
-        asyncUserActivityService.createDocumentActivity(user, newVersion, "EDIT_DOCUMENT");
 
         return document.getTitle();
     }

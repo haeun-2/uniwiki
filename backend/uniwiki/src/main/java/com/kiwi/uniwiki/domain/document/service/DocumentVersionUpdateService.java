@@ -2,6 +2,7 @@ package com.kiwi.uniwiki.domain.document.service;
 
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
+import com.kiwi.uniwiki.domain.activity.service.AsyncUserActivityService;
 import com.kiwi.uniwiki.domain.document.dto.DiffDTO;
 import com.kiwi.uniwiki.domain.document.entity.Category;
 import com.kiwi.uniwiki.domain.document.entity.Document;
@@ -22,6 +23,7 @@ public class DocumentVersionUpdateService {
 
     private final DocumentRepository documentRepository;
     private final DocumentVersionRepository documentVersionRepository;
+    private final AsyncUserActivityService asyncUserActivityService;
 
     private final DocumentDiffUtil documentDiffUtil;
 
@@ -29,7 +31,7 @@ public class DocumentVersionUpdateService {
      * 새 버전 생성 및 문서 업데이트 메서드
      */
     @Transactional
-    public DocumentVersion createNewVersionAndUpdateDocument(Document document, User editor, Category category,
+    public void createNewVersionAndUpdateDocument(Document document, User editor, Category category,
                                                   String oldContent, String newContent, String editMemo) {
 
         // 버전 비교
@@ -57,6 +59,7 @@ public class DocumentVersionUpdateService {
             throw new CustomException(ErrorCode.DOCUMENT_CONCURRENT_MODIFICATION);
         }
 
-        return newVersion;
+        // EDIT_DOCUMENT 활동 내역 저장
+        asyncUserActivityService.createDocumentActivity(editor, newVersion, "EDIT_DOCUMENT");
     }
 }
