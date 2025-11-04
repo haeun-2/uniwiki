@@ -60,4 +60,14 @@ public class UserReport {
         this.reason = reason;
         this.code = code;
     }
+
+    //  신고 처리 메서드
+    public void reportProcess(User reviewer, String adminReason,Code code) {
+        this.reviewer = reviewer;
+        this.adminReason = adminReason;
+        this.reviewedAt = LocalDateTime.now();
+        this.code = code;
+
+    }
+
 }

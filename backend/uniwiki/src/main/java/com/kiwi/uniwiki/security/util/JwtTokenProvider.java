@@ -33,8 +33,8 @@ public class JwtTokenProvider {
         Date validity = new Date(now.getTime() + validityInMilliseconds);
 
         return Jwts.builder()
-                .subject(email)  // ← setSubject() 대신 subject()
-                .claims(Map.of("role", role)) // ← Jwts.claims() 대신 Map
+                .subject(email)
+                .claims(Map.of("role", role))
                 .issuedAt(now)
                 .expiration(validity)
                 .signWith(secretKey)
