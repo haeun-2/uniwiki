@@ -31,5 +31,23 @@ public class AuthRequestDTO {
 
     }
 
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FindPasswordRequest {
+        private String email;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ChangePasswordRequest{
+
+        private String email;
+        private String code;
+        private String newPassword;
+        private String confirmPassword;
+    }
+
 
 }
