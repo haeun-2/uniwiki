@@ -19,6 +19,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UniversityService {
 
     private final UniversityRepository universityRepository;
@@ -67,7 +68,7 @@ public class UniversityService {
      */
     public UniversityDetailResponseDTO getUniversityDetail(Short universityId) {
 
-        University university = universityRepository.findById(universityId)
+        University university = universityRepository.findByIdWithRegion(universityId)
                 .orElseThrow(() -> new CustomException(ErrorCode.UNIVERSITY_NOT_FOUND));
 
         return UniversityDetailResponseDTO.from(university);

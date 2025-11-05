@@ -64,4 +64,8 @@ public class User {
         USER,
         ADMIN
     }
+
+    public void updatePassword(String newPassword) {
+        this.password = newPassword;
+    }
 }

@@ -126,7 +126,9 @@ public enum ErrorCode {
      * 400 BAD_REQUEST
      */
     DISCUSSION_NOT_OPEN(HttpStatus.BAD_REQUEST, "DISCUSSION_400_01", "종료 혹은 중지된 토론입니다."),
-
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST,"PASSWORD_400_01", "현재 비밀번호가 일치하지 않습니다."),
+    PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "PASSWORD_400_02", "새 비밀번호가 일치하지 않습니다."),
+    SAME_AS_OLD_PASSWORD(HttpStatus.BAD_REQUEST, "PASSWORD_400_03", "새 비밀번호는 기존 비밀번호와 달라야 합니다."),
 
     /**
      * 403 FORBIDDEN - 토론 권한 없음

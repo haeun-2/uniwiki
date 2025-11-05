@@ -30,7 +30,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final UniversityService universityService;
-    private final UserBanRepository userBanRepository;
+
     /**
      * 회원가입
      */
@@ -113,4 +113,6 @@ public class AuthService {
         return AuthResponseDTO.DuplicateCheck.builder()
                 .available(!available).build();
     }
+
+
 }
