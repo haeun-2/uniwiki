@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Mail, Lock, X } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export default function LoginPage() {
+  
+  const location = useLocation();
+  const fromPath = (location.state as any)?.from || "/";
+
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,8 +73,12 @@ export default function LoginPage() {
           localStorage.setItem("universityId", data.universityId.toString());
         }
 
+        window.dispatchEvent(new Event("uniwiki:auth-changed"));
+
         alert(`${data.nickName}님, 환영합니다!`);
-        navigate("/"); // 메인 페이지로 이동
+
+        navigate(fromPath, { replace: true });
+
       } else {
         const error = await response.json();
         alert(error.message || "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
