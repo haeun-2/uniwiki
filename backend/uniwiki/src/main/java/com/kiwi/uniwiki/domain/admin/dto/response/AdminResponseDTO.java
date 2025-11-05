@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class AdminResponseDTO {
 
@@ -14,10 +15,21 @@ public class AdminResponseDTO {
     @NoArgsConstructor
     public static class UserReportResponse {
 
+        private Integer reportedId;
+        private String reportedName;
+
+      List<UserReportValue> reportValueList;
+    }
+
+
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class UserReportValue{
         private Integer reportId;
         private String code;
-        private String reporter;
-        private String reported;
+        private String reporterName;
         private LocalDateTime createdAt;
     }
+
 }

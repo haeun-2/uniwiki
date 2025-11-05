@@ -30,7 +30,7 @@ public class ReportService {
     @Transactional
     public void reportUser(ReportRequestDTO.CreateReport request, User user) {
         // 신고 대상 유저 조회
-        User target = userRepository.findById(request.getTargetId()).orElseThrow(() -> new CustomException(ErrorCode.USER_FOUND_FOUND));
+        User target = userRepository.findById(request.getTargetId()).orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         
         // 신고 생성
         UserReport userReport = UserReport.builder()
