@@ -1,6 +1,6 @@
 // src/pages/DocumentEditPage.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import MDEditor, { ICommand, TextAreaTextApi, TextState } from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
@@ -10,15 +10,82 @@ import RecentDiscuss from '@/layout/RecentDiscuss';
 
 const API_BASE = 'http://k13d104.p.ssafy.io/api';
 const PRESIGN_API = `${API_BASE}/v1/s3/presigned-urls`;
+const REFRESH_URL = `${API_BASE}/v1/auth/refresh`; // 실제 경로 다르면 수정
 
-// ✅ 임시 개발용 하드코딩 JWT (로그인 연동 전까지 사용)
-const DEV_JWT =
-  'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NjIyMTg1MTEsImV4cCI6MTc2MjMwNDkxMX0.my5-P2Kpoangdqt1qohAFyucIU8YDKfvOeMlnDmKwt6_zCK1Q-rZ2Gx6JyedWmBUT9vUTnwLfaisuW95BA7zVA';
-
-// 공통 헤더 유틸
-function authHeaders(extra: HeadersInit = {}) {
-  return DEV_JWT ? { ...extra, Authorization: `Bearer ${DEV_JWT}` } : extra;
+/** ===================== Auth utils ===================== */
+function decodeJwtPayload(token: string): any | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
 }
+
+function getAccessToken(): string {
+  try {
+    const t = localStorage.getItem('accessToken');
+    if (!t) return '';
+    const payload = decodeJwtPayload(t);
+    if (payload && typeof payload.exp === 'number') {
+      const now = Math.floor(Date.now() / 1000);
+      if (now >= payload.exp) {
+        localStorage.removeItem('accessToken');
+        return '';
+      }
+    }
+    return t;
+  } catch {
+    return '';
+  }
+}
+
+function setAccessToken(t: string) {
+  try { localStorage.setItem('accessToken', t); } catch {}
+}
+
+function authHeaders(extra: HeadersInit = {}) {
+  const token = getAccessToken();
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+}
+
+// 401 → refresh 1회 후 재시도
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const r = await fetch(REFRESH_URL, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+    if (!r.ok) return null;
+    const j = await r.json().catch(() => ({}));
+    const t = j?.accessToken || j?.token;
+    if (!t) return null;
+    setAccessToken(t);
+    return t;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWithAuth(input: RequestInfo, init: RequestInit = {}) {
+  const first = await fetch(input, {
+    ...init,
+    headers: authHeaders(init.headers || {}),
+  });
+  if (first.status !== 401) return first;
+
+  const newTok = await refreshAccessToken();
+  if (!newTok) return first;
+
+  return fetch(input, {
+    ...init,
+    headers: { ...(init.headers || {}), Authorization: `Bearer ${newTok}` },
+  });
+}
+/** ===================================================== */
 
 type Status = 'loading' | 'ok' | 'notfound' | 'error';
 
@@ -34,7 +101,7 @@ type DocumentDto = {
   updatedAt: string;
 };
 
-// ✅ 카테고리 하드코딩(백 응답 사용 안 함)
+// ✅ 카테고리 하드코딩
 const CATEGORY_OPTIONS = [
   { id: 1, name: '학교' },
   { id: 2, name: '학과' },
@@ -50,15 +117,16 @@ const overLimit = (f: File) => f.size > MAX_IMAGE_MB * 1024 * 1024;
 
 /* ---------- S3 Presign 발급/업로드 ---------- */
 async function getPresignedUrl(): Promise<string> {
-  const r = await fetch(PRESIGN_API, {
+  const r = await fetchWithAuth(PRESIGN_API, {
     method: 'GET',
-    headers: authHeaders({ Accept: 'application/json' }),
+    headers: { Accept: 'application/json' },
     credentials: 'include',
   });
 
-  if (r.status === 401 || r.status === 403) {
+  if (r.status === 401) throw Object.assign(new Error('E401'), { code: 401 });
+  if (r.status === 403) {
     const msg = await r.text().catch(() => '');
-    throw new Error(msg || '인증 오류: 개발용 JWT가 없거나 만료/권한 문제입니다. (401/403)');
+    throw Object.assign(new Error(`E403:${msg || ''}`), { code: 403 });
   }
   if (!r.ok) throw new Error((await r.text().catch(() => '')) || 'presigned URL 발급 실패');
 
@@ -71,7 +139,6 @@ async function uploadToS3ViaPresign(file: File): Promise<string> {
   const presignedUrl = await getPresignedUrl();
   const fileUrl = presignedUrl.split('?')[0];
 
-  // PUT (Content-Type 지정 → 실패 시 무헤더 재시도)
   let put = await fetch(presignedUrl, {
     method: 'PUT',
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
@@ -102,6 +169,7 @@ async function getSavedTitleFromResponse(res: Response, fallbackTitle: string) {
 
 export default function DocumentEditPage() {
   const navigate = useNavigate();
+  const location = useLocation() as any;
   const { documentTitle = '문서 제목' } = useParams();
   const docTitleParam = encodeURIComponent(documentTitle);
 
@@ -175,14 +243,24 @@ export default function DocumentEditPage() {
         setApiError(null);
 
         const encoded = encodeURIComponent(documentTitle);
-        const r = await fetch(`${API_BASE}/v1/documents/${encoded}`, {
+        const r = await fetchWithAuth(`${API_BASE}/v1/documents/${encoded}`, {
           method: 'GET',
-          headers: authHeaders({ Accept: 'application/json' }),
+          headers: { Accept: 'application/json' },
           cache: 'no-store',
           signal: controller.signal,
           credentials: 'include',
         });
 
+        if (r.status === 401) {
+          navigate('/login', { replace: true, state: { from: location.pathname } });
+          return;
+        }
+        if (r.status === 403) {
+          const msg = await r.text().catch(() => '');
+          setStatus('error');
+          setApiError(msg || '편집 권한이 없습니다.');
+          return;
+        }
         if (r.status === 404) {
           setStatus('notfound');
           setValue('');
@@ -198,7 +276,6 @@ export default function DocumentEditPage() {
         setCategoryId(data.categoryId);
         setCategoryName(data.categoryName || '');
 
-        // 초기 스냅샷
         initialRef.current = {
           value: data.documentContent || '',
           summary: '',
@@ -232,6 +309,15 @@ export default function DocumentEditPage() {
       const md = urls.map((u, i) => `![image${i + 1}](${u})`).join('\n');
       setValue((prev) => (appendAtEnd ? `${prev.trimEnd()}\n\n${md}\n` : `${md}\n${prev}`));
     } catch (e: any) {
+      const msg = String(e?.message || '');
+      if (msg.startsWith('E401')) {
+        navigate('/login', { replace: true, state: { from: location.pathname } });
+        return;
+      }
+      if (msg.startsWith('E403')) {
+        alert(msg.replace(/^E403:/, '') || '이미지 업로드 권한이 없습니다.');
+        return;
+      }
       alert(e?.message || '이미지 업로드 실패');
     } finally {
       setBusy(false);
@@ -260,6 +346,15 @@ export default function DocumentEditPage() {
           const url = await uploadToS3ViaPresign(file!);
           api.replaceSelection(`![${file!.name}](${url} "${file!.name}")`);
         } catch (e: any) {
+          const msg = String(e?.message || '');
+          if (msg.startsWith('E401')) {
+            navigate('/login', { replace: true, state: { from: location.pathname } });
+            return;
+          }
+          if (msg.startsWith('E403')) {
+            alert(msg.replace(/^E403:/, '') || '이미지 업로드 권한이 없습니다.');
+            return;
+          }
           alert(e?.message || '이미지 업로드 실패');
         } finally {
           setBusy(false);
@@ -272,6 +367,14 @@ export default function DocumentEditPage() {
   /* ---------- 저장: POST /v1/documents/{document_id} ---------- */
   const onSave = async () => {
     if (!canSave) return;
+
+    const token = getAccessToken();
+    if (!token) {
+      alert('세션이 만료되었습니다. 다시 로그인해 주세요.');
+      navigate('/login', { replace: true, state: { from: location.pathname } });
+      return;
+    }
+
     try {
       setSaving(true);
       const id = docId!;
@@ -282,16 +385,25 @@ export default function DocumentEditPage() {
         editMemo: summary,                     // 편집 요약
       };
 
-      const res = await fetch(`${API_BASE}/v1/documents/${id}`, {
+      const res = await fetchWithAuth(`${API_BASE}/v1/documents/${id}`, {
         method: 'POST',
-        headers: authHeaders({
+        headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json, text/plain, */*',
-        }),
+        },
         credentials: 'include',
         body: JSON.stringify(body),
       });
 
+      if (res.status === 401) {
+        navigate('/login', { replace: true, state: { from: location.pathname } });
+        return;
+      }
+      if (res.status === 403) {
+        const msg = await res.text().catch(() => '');
+        alert(msg || '편집 권한이 없습니다.');
+        return;
+      }
       if (!res.ok) {
         const t = await res.text().catch(() => '');
         throw new Error(t || '문서 저장 실패');

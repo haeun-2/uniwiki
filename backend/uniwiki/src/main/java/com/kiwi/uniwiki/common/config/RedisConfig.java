@@ -16,6 +16,8 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Configuration
@@ -54,15 +56,23 @@ public class RedisConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+        // 기본 캐시 설정 (TTL 10분)
+        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(10))
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()));
 
+        // 별도 개별 캐시 설정용
+        Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
+
+        // documents:popular (TTL 1시간)
+        cacheConfigs.put("documents:popular", defaultConfig.entryTtl(Duration.ofHours(1)));
+
         return RedisCacheManager.builder(redisConnectionFactory())
-                .cacheDefaults(config)
+                .cacheDefaults(defaultConfig)
+                .withInitialCacheConfigurations(cacheConfigs)
                 .build();
     }
 }

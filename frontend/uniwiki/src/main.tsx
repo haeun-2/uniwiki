@@ -92,8 +92,6 @@ const router = createBrowserRouter([
     children: [
       // 대학교 메인 페이지
       { index: true, element: <UnivMainPage /> },
-
-      //대학별 카테고리 페이지 추가
       { path: 'category/:categoryName', element: <CategoryPage /> },
     ]
   },
