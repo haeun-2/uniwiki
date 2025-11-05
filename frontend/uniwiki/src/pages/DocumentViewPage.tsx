@@ -26,12 +26,41 @@ type Status = 'loading' | 'ok' | 'notfound' | 'error';
 
 const API_BASE = 'http://k13d104.p.ssafy.io/api';
 
-// ✅ 임시 개발용 하드코딩 JWT (로그인 연동 전까지 사용)
-const DEV_JWT =
-  'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NjIyMTg1MTEsImV4cCI6MTc2MjMwNDkxMX0.my5-P2Kpoangdqt1qohAFyucIU8YDKfvOeMlnDmKwt6_zCK1Q-rZ2Gx6JyedWmBUT9vUTnwLfaisuW95BA7zVA';
-
+/** ===== Auth utils ===== */
+function decodeJwtPayload(token: string): any | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch { return null; }
+}
+function getAccessToken() {
+  try {
+    const t = localStorage.getItem('accessToken') || '';
+    if (!t) return '';
+    const p = decodeJwtPayload(t);
+    if (p?.exp && Math.floor(Date.now()/1000) >= p.exp) {
+      localStorage.removeItem('accessToken');
+      return '';
+    }
+    return t;
+  } catch { return ''; }
+}
 function authHeaders(extra: HeadersInit = {}) {
-  return DEV_JWT ? { ...extra, Authorization: `Bearer ${DEV_JWT}` } : extra;
+  const token = getAccessToken();
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+}
+/** ====================== */
+
+/** 로컬에 저장된 내 대학 ID 읽기(키 다양성 허용) */
+function getStoredUniId(): number | null {
+  const v =
+    localStorage.getItem('myUniversityId') ??
+    localStorage.getItem('universityId') ??
+    localStorage.getItem('universityID');
+  const n = v == null ? NaN : Number(v);
+  return Number.isNaN(n) ? null : n;
 }
 
 export default function DocumentViewPage() {
@@ -59,13 +88,14 @@ export default function DocumentViewPage() {
   const [meta, setMeta] = useState<Pick<DocumentDto, 'universityName' | 'categoryName'> | null>(null);
 
   const [docId, setDocId] = useState<number | null>(null);
+  const [docUniId, setDocUniId] = useState<number | null>(null);
 
   const [favOn, setFavOn] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
 
-  const [hasTalk, setHasTalk] = useState(false); // 열린 토론 여부
+  const [hasTalk, setHasTalk] = useState(false);
 
-  // 플래시 배너
+  // 플래시 배너 (닫기만 표시)
   const [flashMsg, setFlashMsg] = useState<string | null>(() => location.state?.flash?.msg || null);
   useEffect(() => {
     if (location.state?.flash) {
@@ -84,7 +114,7 @@ export default function DocumentViewPage() {
   }, []);
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // ✅ 문서 + 열린 토론 여부 + 즐겨찾기 여부 로드
+  // 문서 + 열린 토론 여부 + 즐겨찾기 여부 로드
   useEffect(() => {
     const controller = new AbortController();
     (async () => {
@@ -94,6 +124,7 @@ export default function DocumentViewPage() {
         setHasTalk(false);
         setFavOn(false);
         setDocId(null);
+        setDocUniId(null);
 
         const encoded = encodeURIComponent(documentTitle);
         const res = await fetch(`${API_BASE}/v1/documents/${encoded}`, {
@@ -107,6 +138,7 @@ export default function DocumentViewPage() {
           setContent('');
           setMeta(null);
           setLastUpdated('');
+          setApiError('해당 제목의 문서가 존재하지 않습니다.');
           return;
         }
         if (!res.ok) throw new Error('문서를 불러오는 중 오류가 발생했습니다.');
@@ -116,52 +148,40 @@ export default function DocumentViewPage() {
         setMeta({ universityName: data.universityName, categoryName: data.categoryName });
         setLastUpdated(data.updatedAt ? formatKST(new Date(data.updatedAt)) : '');
         setDocId(data.documentId);
+        setDocUniId(data.universityId);
         setStatus('ok');
 
-        // 🔎 열린 토론 여부 체크
+        // 열린 토론 여부
         try {
-          const qs = new URLSearchParams({
-            document: String(data.documentId),
-            page: '0',
-            size: '1',
-          }).toString();
-
+          const qs = new URLSearchParams({ document: String(data.documentId), page: '0', size: '1' }).toString();
           const talkRes = await fetch(`${API_BASE}/v1/discussions?${qs}`, {
             headers: { Accept: 'application/json' },
             signal: controller.signal,
           });
           if (talkRes.ok) {
             const j = await talkRes.json();
-            const hasOpen = Array.isArray(j?.content) && j.content.length > 0;
-            setHasTalk(hasOpen);
-          } else {
-            setHasTalk(false);
-          }
-        } catch {
-          setHasTalk(false);
-        }
+            setHasTalk(Array.isArray(j?.content) && j.content.length > 0);
+          } else setHasTalk(false);
+        } catch { setHasTalk(false); }
 
-        // ⭐ 즐겨찾기 여부 초기화 (로그인 전까지 DEV_JWT 사용)
+        // 즐겨찾기 여부
         try {
-          if (!DEV_JWT) {
-            setFavOn(false);
-          } else {
+          const token = getAccessToken();
+          if (!token) setFavOn(false);
+          else {
             const favRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents`, {
               method: 'GET',
               headers: authHeaders({ Accept: 'application/json' }),
               credentials: 'include',
               signal: controller.signal,
             });
+            if (favRes.status === 401) return; // 로그인 필요
             if (favRes.ok) {
               const list: Array<{ documentId: number }> = await favRes.json();
               setFavOn(Array.isArray(list) && list.some((it) => Number(it.documentId) === data.documentId));
-            } else {
-              setFavOn(false);
-            }
+            } else setFavOn(false);
           }
-        } catch {
-          setFavOn(false);
-        }
+        } catch { setFavOn(false); }
       } catch (e: any) {
         if (controller.signal.aborted) return;
         setApiError(e?.message || '문서를 불러오는 중 오류가 발생했습니다.');
@@ -171,13 +191,14 @@ export default function DocumentViewPage() {
     return () => controller.abort();
   }, [documentTitle]);
 
-  // ⭐ 즐겨찾기 토글 (POST 추가 / DELETE 제거)
+  // 즐겨찾기 토글
   const toggleFavorite = async () => {
     if (!docId || favBusy) return;
 
-    // 로그인 미연결 시: DEV_JWT 없으면 동작하지 않음
-    if (!DEV_JWT) {
+    const token = getAccessToken();
+    if (!token) {
       alert('로그인이 필요합니다.');
+      navigate('/login', { replace: true, state: { from: location.pathname } });
       return;
     }
 
@@ -185,25 +206,31 @@ export default function DocumentViewPage() {
       setFavBusy(true);
 
       if (favOn) {
-        // 삭제
         const delRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents/${docId}`, {
           method: 'DELETE',
           headers: authHeaders({ Accept: '*/*' }),
           credentials: 'include',
         });
+        if (delRes.status === 401) {
+          navigate('/login', { replace: true, state: { from: location.pathname } });
+          return;
+        }
         if (!delRes.ok && delRes.status !== 204) {
           const t = await delRes.text().catch(() => '');
           throw new Error(t || '즐겨찾기 해제 실패');
         }
         setFavOn(false);
       } else {
-        // 추가
         const addRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents/${docId}`, {
           method: 'POST',
           headers: authHeaders({ Accept: '*/*' }),
           credentials: 'include',
-          body: '', // swagger 상 content-length: 0
+          body: '',
         });
+        if (addRes.status === 401) {
+          navigate('/login', { replace: true, state: { from: location.pathname } });
+          return;
+        }
         if (!addRes.ok && addRes.status !== 201) {
           const t = await addRes.text().catch(() => '');
           throw new Error(t || '즐겨찾기 추가 실패');
@@ -216,6 +243,28 @@ export default function DocumentViewPage() {
       setFavBusy(false);
     }
   };
+
+  // === 편집 사전 권한 체크: 로컬 universityId로만 비교 ===
+  function handleEditClick() {
+    const token = getAccessToken();
+    if (!token) {
+      navigate('/login', { replace: true, state: { from: location.pathname } });
+      return;
+    }
+    if (!docUniId) {
+      // 문서 메타가 없으면 서버에 맡김
+      navigate(`/docs/${docTitleParam}/edit`);
+      return;
+    }
+
+    const myUniId = getStoredUniId();
+    if (myUniId != null && Number(myUniId) === Number(docUniId)) {
+      navigate(`/docs/${docTitleParam}/edit`);
+    } else {
+      setFlashMsg('소속 대학생만 문서 작업을 할 수 있습니다.');
+      setTimeout(() => setFlashMsg(null), 3000);
+    }
+  }
 
   // sanitize 확장
   const sanitizeSchema: any = useMemo(
@@ -250,9 +299,6 @@ export default function DocumentViewPage() {
             >
               <span className="text-[15px]">{flashMsg}</span>
               <div className="flex items-center gap-4">
-                <Link to={`/docs/${docTitleParam}/edit`} className="underline hover:opacity-80">
-                  다시 편집
-                </Link>
                 <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
                   닫기
                 </button>
@@ -290,7 +336,7 @@ export default function DocumentViewPage() {
 
               {/* 날짜 + 액션바 */}
               <div className="mb-5 flex items-center gap-4">
-                {lastUpdated && (
+                {lastUpdated && status === 'ok' && (
                   <p className="text-[18px] text-gray-800 whitespace-nowrap">
                     최근 수정 시각 : {lastUpdated}
                   </p>
@@ -303,7 +349,7 @@ export default function DocumentViewPage() {
                 >
                   <button
                     onClick={toggleFavorite}
-                    disabled={favBusy || !docId}
+                    disabled={favBusy || !docId || status !== 'ok'}
                     aria-pressed={favOn}
                     title={favOn ? '즐겨찾기 해제' : '즐겨찾기 추가'}
                     className={`h-10 px-4 text-[18px] leading-tight flex items-center justify-center
@@ -313,13 +359,14 @@ export default function DocumentViewPage() {
                     ★
                   </button>
 
-                  <Link
+                  {/* 편집: 링크 대신 권한 체크 버튼 */}
+                  <button
                     role="tab"
-                    to={`/docs/${docTitleParam}/edit`}
+                    onClick={handleEditClick}
                     className="h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
                   >
                     편집
-                  </Link>
+                  </button>
 
                   <Link
                     role="tab"
