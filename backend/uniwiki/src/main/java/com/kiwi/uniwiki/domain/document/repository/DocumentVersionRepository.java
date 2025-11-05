@@ -21,7 +21,7 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
     @Query("SELECT dv FROM DocumentVersion dv " +
             "JOIN FETCH dv.document d " +
             "JOIN FETCH d.university " +
-            "WHERE d.id IN :ids")
+            "WHERE dv.id IN :ids")
     List<DocumentVersion> findByIdsWithDocument(@Param("ids") List<Integer> ids);
 
 }

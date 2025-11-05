@@ -42,38 +42,44 @@ public class UserActivityService {
             Integer page,
             Integer size) {
 
+
+
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt")));
 
-
         Page<Integer> documentIds = userActivityRepository.findDocumentsTargetIdsByUserId(userId, pageable);
+
+
 
         if (documentIds.isEmpty()) {
             return PageResponse.from(Page.empty(pageable));
         }
 
 
-        Map<Integer, DocumentVersion> documentVersionMap = documentVersionRepository
-                .findByIdsWithDocument(documentIds.getContent())
-                .stream()
-                .collect(Collectors.toMap(dv -> dv.getDocument().getId(), Function.identity()));
+        List<DocumentVersion> documentVersions = documentVersionRepository
+                .findByIdsWithDocument(documentIds.getContent());
 
 
-        return PageResponse.from(documentIds, documentId -> {
-            DocumentVersion documentVersion = documentVersionMap.get(documentId);
-            if (documentVersion == null) return null;
+        List<UserActivityResponseDTO.UserDocumentActivityResponse> responses = documentVersions.stream()
+                .map(documentVersion -> {
+                    Document document = documentVersion.getDocument();
 
-            Document document = documentVersion.getDocument();
+                    return new UserActivityResponseDTO.UserDocumentActivityResponse(
+                            document.getId(),
+                            document.getTitle(),
+                            document.getUniversity().getName(),
+                            documentVersion.getEditMemo(),
+                            documentVersion.getPlusCount(),
+                            documentVersion.getMinusCount(),
+                            document.getUpdatedAt()
+                    );
+                })
+                .collect(Collectors.toList());
 
-            return new UserActivityResponseDTO.UserDocumentActivityResponse(
-                    document.getId(),
-                    document.getTitle(),
-                    document.getUniversity().getName(),
-                    documentVersion.getEditMemo(),
-                    documentVersion.getPlusCount(),
-                    documentVersion.getMinusCount(),
-                    document.getUpdatedAt()
-            );
-        });
+        // Page 객체 생성 (원래의 페이징 정보 유지)
+        Page<UserActivityResponseDTO.UserDocumentActivityResponse> responsePage =
+                new PageImpl<>(responses, pageable, documentIds.getTotalElements());
+
+        return PageResponse.from(responsePage);
     }
 
     /**
@@ -86,31 +92,40 @@ public class UserActivityService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt")));
 
-        // Discussion의 targetId 조회
+
+
         Page<Integer> discussionIds = userActivityRepository.findDiscussionActivitiesByUserId(userId, pageable);
+
+
 
         if (discussionIds.isEmpty()) {
             return PageResponse.from(Page.empty(pageable));
         }
 
-        // DiscussionContent 일괄 조회 후 Discussion ID로 매핑
-        Map<Integer, DiscussionContent> discussionContentMap = discussionContentRepository
-                .findByIdsWithDocument(discussionIds.getContent())
-                .stream()
-                .collect(Collectors.toMap(dc -> dc.getDiscussion().getId(), Function.identity()));
 
-        return PageResponse.from(discussionIds, discussionId -> {
-            DiscussionContent discussionContent = discussionContentMap.get(discussionId);
-            if (discussionContent == null) return null;
+        List<DiscussionContent> discussionContents = discussionContentRepository
+                .findByIdsWithDocument(discussionIds.getContent());
 
-            Discussion discussion = discussionContent.getDiscussion();
 
-            return new UserActivityResponseDTO.UserDiscussionActivityResponse(
-                    discussion.getId(),
-                    discussion.getTitle(),
-                    discussion.getDocument().getTitle(),
-                    discussion.getUpdatedAt()
-            );
-        });
+
+
+        List<UserActivityResponseDTO.UserDiscussionActivityResponse> responses = discussionContents.stream()
+                .map(discussionContent -> {
+                    Discussion discussion = discussionContent.getDiscussion();
+
+                    return new UserActivityResponseDTO.UserDiscussionActivityResponse(
+                            discussion.getId(),
+                            discussion.getTitle(),
+                            discussionContent.getDiscussion().getTitle(),
+                            discussion.getUpdatedAt()
+                    );
+                })
+                .collect(Collectors.toList());
+
+
+        Page<UserActivityResponseDTO.UserDiscussionActivityResponse> responsePage =
+                new PageImpl<>(responses, pageable, discussionIds.getTotalElements());
+
+        return PageResponse.from(responsePage);
     }
 }
