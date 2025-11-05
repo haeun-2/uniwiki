@@ -33,25 +33,57 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/user-reports/{reportedId}/reject")
+    @PatchMapping("/user-reports/{reportedUserId}/reject")
     @Operation(summary = "유저 신고 거부", description = "유저 신고를 거부합니다.")
     public ResponseEntity<Void> rejectUserReport(
                                                    @AuthenticationPrincipal CustomUserDetails userDetails,
-                                                   @PathVariable Integer reportedId,
+                                                   @PathVariable Integer reportedUserId,
                                                    @RequestBody AdminRequestDTO.ReportRejectedRequest request
     ) {
-        adminWriteService.rejectUserReport(userDetails.getUser(), reportedId, request);
+        adminWriteService.rejectUserReport(userDetails.getUser(), reportedUserId, request);
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/user-reports/{reportedId}/resolve")
+    @PatchMapping("/user-reports/{reportedUserId}/resolve")
     @Operation(summary = "유저 신고 수락", description = "유저 신고를 수락합니다")
     public ResponseEntity<Void> resolvedUserReport(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer reportedId,
+            @PathVariable Integer reportedUserId,
             @RequestBody AdminRequestDTO.ReportSolvedRequest request
     ) {
-        adminWriteService.resolvedReport(userDetails.getUser(), reportedId, request);
+        adminWriteService.resolvedReport(userDetails.getUser(), reportedUserId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/discussion-reports")
+    @Operation(summary = "토론 신고 목록 조회", description = "토론 신고 목록을 조회합니다")
+    public ResponseEntity<PageResponse<AdminResponseDTO.DiscussionReportResponse>> reportedDiscussion(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<AdminResponseDTO.DiscussionReportResponse> response = adminReadService.getDiscussionReports(page,size);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/discussion-reports/{reportedDiscussionId}/reject")
+    @Operation(summary = "토론 신고 거부", description = "토론 신고를 거부합니다.")
+    public ResponseEntity<Void> rejectedDiscussionReport(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Integer reportedDiscussionId,
+            @RequestBody AdminRequestDTO.ReportRejectedRequest request
+    ) {
+        adminWriteService.rejectDiscussionReport(userDetails.getUser(), reportedDiscussionId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/discussion-reports/{reportedDiscussionId}/resolve")
+    @Operation(summary = "토론 신고 수락", description = "토론 신고를 수락합니다")
+    public ResponseEntity<Void> resolvedDiscussionReport(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Integer reportedDiscussionId,
+            @RequestBody AdminRequestDTO.DiscussionReportSolvedRequest request
+    ) {
+        adminWriteService.resolvedDiscussionReport(userDetails.getUser(), reportedDiscussionId, request);
         return ResponseEntity.ok().build();
     }
 }

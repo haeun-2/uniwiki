@@ -24,4 +24,14 @@ public class AdminRequestDTO {
         private String reason;
         private LocalDateTime banUntil;
     }
+
+
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class DiscussionReportSolvedRequest {
+
+        private String reason;
+    }
+
 }
