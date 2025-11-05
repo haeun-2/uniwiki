@@ -12,6 +12,7 @@ import com.kiwi.uniwiki.domain.user.entity.User;
 import com.kiwi.uniwiki.domain.user.repository.UserBanRepository;
 import com.kiwi.uniwiki.domain.user.repository.UserRepository;
 import com.kiwi.uniwiki.security.dto.request.AuthRequestDTO;
+import com.kiwi.uniwiki.security.dto.request.EmailVerificationRequestDTO;
 import com.kiwi.uniwiki.security.dto.response.AuthResponseDTO;
 import com.kiwi.uniwiki.security.util.JwtTokenProvider;
 import com.kiwi.uniwiki.security.util.PasswordEncoder;
@@ -30,6 +31,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final UniversityService universityService;
+    private final EmailVerificationService emailVerificationService;
 
     /**
      * 회원가입
@@ -113,6 +115,32 @@ public class AuthService {
         return AuthResponseDTO.DuplicateCheck.builder()
                 .available(!available).build();
     }
+
+    //로그인 하지 않은 사용자가 비밀번호 찾기 (변경)
+    @Transactional
+    public void requestChangePassword(AuthRequestDTO.FindPasswordRequest request){
+        emailVerificationService.sendVerificationCode(request.getEmail());
+    }
+
+    //로그인 하지 않은 사용자가 비밀번호 변경하기
+    @Transactional
+    public void ChangePassword(AuthRequestDTO.ChangePasswordRequest request){
+        EmailVerificationRequestDTO.VerificationEmailCodeRequest emailRequest = EmailVerificationRequestDTO.VerificationEmailCodeRequest.builder()
+                        .email(request.getEmail())
+                        .code(request.getCode()).
+        build();
+        if(emailVerificationService.changePassVerifyCode(emailRequest)){
+            Optional<User> user = userRepository.findByEmail(request.getEmail());
+            if(!user.isEmpty()){
+                String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+               user.get().updatePassword(encodedNewPassword);
+            }
+
+        }
+
+    }
+
+
 
 
 }
