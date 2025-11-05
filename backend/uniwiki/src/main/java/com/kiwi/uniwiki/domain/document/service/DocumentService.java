@@ -8,6 +8,7 @@ import com.kiwi.uniwiki.domain.document.dto.request.DocumentCreateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentUpdateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.response.DocumentDetailResponseDTO;
 import com.kiwi.uniwiki.domain.document.dto.response.DocumentResponseDTO;
+import com.kiwi.uniwiki.domain.document.dto.response.DocumentSimpleResponseDTO;
 import com.kiwi.uniwiki.domain.document.entity.Category;
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
@@ -38,6 +39,7 @@ public class DocumentService {
     private final DocumentVersionUpdateService documentVersionUpdateService;
 
     private final AsyncUserActivityService asyncUserActivityService;
+    private final PopularDocumentService popularDocumentService;
 
     /**
      * 새 문서 생성
@@ -91,6 +93,9 @@ public class DocumentService {
         DocumentVersion latestVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
+        // 조회수 증가
+        popularDocumentService.incrementDocumentView(document.getUniversity().getId(), document.getTitle());
+
         return DocumentDetailResponseDTO.from(document, latestVersion.getContent());
     }
 
@@ -142,6 +147,13 @@ public class DocumentService {
 
         // PageResponse에서 content만 반환
         return pageResponse.getContent();
+    }
+
+    /**
+     * 대학 인기 문서 조회
+     */
+    public List<DocumentSimpleResponseDTO> getPopularByUniversity(Short universityId) {
+        return popularDocumentService.getPopularDocuments(universityId);
     }
 
     /**

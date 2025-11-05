@@ -5,6 +5,7 @@ import com.kiwi.uniwiki.domain.document.dto.request.DocumentCreateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentUpdateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.response.DocumentDetailResponseDTO;
 import com.kiwi.uniwiki.domain.document.dto.response.DocumentResponseDTO;
+import com.kiwi.uniwiki.domain.document.dto.response.DocumentSimpleResponseDTO;
 import com.kiwi.uniwiki.domain.document.service.DocumentService;
 import com.kiwi.uniwiki.security.dto.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
@@ -71,6 +72,15 @@ public class DocumentController {
             @RequestParam(defaultValue = "10") Integer size
     ) {
         PageResponse<DocumentResponseDTO> responses = documentService.getAllByUniversity(universityId, page, size);
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/popular")
+    @Operation(summary = "대학별 인기 문서 조회", description = "대학별 top10 인기 문서 목록을 조회합니다.")
+    public ResponseEntity<List<DocumentSimpleResponseDTO>> getPopularByUniversity(
+            @RequestParam Short universityId
+    ) {
+        List<DocumentSimpleResponseDTO> responses = documentService.getPopularByUniversity(universityId);
         return ResponseEntity.ok(responses);
     }
 }
