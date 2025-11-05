@@ -105,29 +105,82 @@ export default function MainPage() {
     return () => { mounted = false; };
   }, [selectedRegionId]);
 
+
+
+  // ---------------- Popular Universities ----------------
+  const [popularUnivs, setPopularUnivs] = useState<University[]>([]);
+  const [loadingPopular, setLoadingPopular] = useState(false);
+  const [popularError, setPopularError] = useState<string | null>(null);
   
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingPopular(true);
+        setPopularError(null);
+        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/universities/popular", {
+          headers: { accept: "*/*" },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: University[] = await res.json();
+        if (mounted) setPopularUnivs(data);
+      } catch (e: any) {
+        if (mounted) setPopularError(e?.message ?? "인기 대학교를 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setLoadingPopular(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-8">
       {/* 인기 많은 학교 */}
       <section className="mb-12">
         <h2 className="mb-6 text-xl font-semibold">인기 많은 학교</h2>
+
+      {/* 로딩 스켈레톤 */}
+      {loadingPopular && (
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-6">
-          {popularSchools.map((s, idx) => (
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="h-10 w-10 rounded-full bg-gray-100 animate-pulse" />
+              <div className="mt-3 h-3 w-16 bg-gray-100 animate-pulse" />
+              <div className="mt-2 h-3 w-24 bg-gray-100 animate-pulse" />
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* 에러 */}
+      {popularError && (
+        <p className="text-xs text-red-500">인기 대학교를 불러오지 못했습니다. 새로고침 해주세요.</p>
+      )}
+
+      {/* 데이터 */}
+      {!loadingPopular && !popularError && (
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-6">
+          {popularUnivs.slice(0, 6).map((u) => (
             <Link
-              key={idx}
-              to={`/univ/${s.slug}`}
+              key={u.universityId}
+              to={`/univ/${encodeURIComponent(u.universityName)}`}
+              state={{ universityId: u.universityId }}
               className="group rounded-2xl border border-gray-200 bg-white p-4 text-center shadow-sm transition hover:shadow"
+              title={u.universityName}
             >
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm">
+                {/* TODO: 로고가 오면 <img src={u.logoUrl!} .../> 로 교체 가능 */}
                 🏛️
               </div>
-              <div className="mb-1 text-[11px] text-gray-500">{s.city}</div>
-              <div className="text-sm font-medium text-gray-900 group-hover:underline">{s.name}</div>
+              <div className="text-sm font-medium text-gray-900 group-hover:underline truncate">
+                {u.universityName}
+              </div>
             </Link>
           ))}
         </div>
-      </section>
+      )}
+    </section>
 
       {/* 내 학교 & 즐겨찾기 문서 */}
       <section className="mb-12 grid gap-8 md:grid-cols-2">
@@ -203,7 +256,8 @@ export default function MainPage() {
                 {universities.map((u) => (
                   <div key={u.universityId} className="truncate">
                     <Link
-                      to={`/univ/${u.universityId}`}
+                      to={`/univ/${encodeURIComponent(u.universityName)}`}
+                      state={{ universityId: u.universityId }}
                       className="cursor-pointer hover:underline"
                       title={u.universityName}
                     >
