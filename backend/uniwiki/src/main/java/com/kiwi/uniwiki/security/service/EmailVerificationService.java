@@ -68,15 +68,40 @@ public class EmailVerificationService {
             // 인증 성공 시 Redis에서 삭제
             redisTemplate.delete(redisKey);
             log.info("인증 성공 - Email: {}", request.getEmail());
+
         } else {
             log.warn("인증번호 불일치 - Email: {}", request.getEmail());
             throw new  CustomException(ErrorCode.INVALID_EMAIL_CODE);
 
         }
 
-
     }
 
+    /**
+     * 비밀번호 변경시 인증번호 검증
+     */
+    public boolean changePassVerifyCode(EmailVerificationRequestDTO.VerificationEmailCodeRequest request) {
+        String redisKey = EMAIL_VERIFICATION_PREFIX + request.getEmail();
+        String savedCode = redisTemplate.opsForValue().get(redisKey);
+
+        if (savedCode == null) {
+            log.warn("인증번호 만료 또는 존재하지 않음 - Email: {}", request.getEmail());
+            throw new CustomException(ErrorCode.INVALID_EMAIL_CODE);
+        }
+
+        boolean isValid = savedCode.equals(request.getCode());
+
+        if (isValid) {
+            // 인증 성공 시 Redis에서 삭제
+            redisTemplate.delete(redisKey);
+            log.info("인증 성공 - Email: {}", request.getEmail());
+            return true;
+        } else {
+            log.warn("인증번호 불일치 - Email: {}", request.getEmail());
+            return false;
+        }
+
+    }
     /**
      * 인증번호 재발송 (기존 코드 삭제 후 새로 발송)
      */
