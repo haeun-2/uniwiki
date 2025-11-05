@@ -2,7 +2,10 @@ package com.kiwi.uniwiki.domain.admin.service;
 
 import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.admin.dto.response.AdminResponseDTO;
+import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
+import com.kiwi.uniwiki.domain.report.entity.DiscussionReport;
 import com.kiwi.uniwiki.domain.report.entity.UserReport;
+import com.kiwi.uniwiki.domain.report.repository.DiscussionReportRepository;
 import com.kiwi.uniwiki.domain.report.repository.UserReportRepository;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -24,15 +27,14 @@ import java.util.stream.Collectors;
 public class AdminReadService {
 
     private final UserReportRepository userReportRepository;
+    private final DiscussionReportRepository discussionReportRepository;
 
     public PageResponse<AdminResponseDTO.UserReportResponse> getUserReports(Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page, size);
 
 
         Page<Integer> reportedUserIdsPage = userReportRepository.findDistinctReportedUserIds(pageable);
-
         List<Integer> reportedUserIds = reportedUserIdsPage.getContent();
-
 
         if (reportedUserIds.isEmpty()) {
             return PageResponse.from(Page.empty(pageable));
@@ -58,9 +60,7 @@ public class AdminReadService {
                         return null;
                     }
 
-
                     User reportedUser = userReports.get(0).getReportedUser();
-
 
                     List<AdminResponseDTO.UserReportValue> reportValueList = userReports.stream()
                             .map(report -> new AdminResponseDTO.UserReportValue(
@@ -80,9 +80,71 @@ public class AdminReadService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-
+        // 5. Page 객체 생성 및 반환
         Page<AdminResponseDTO.UserReportResponse> resultPage =
                 new PageImpl<>(content, pageable, reportedUserIdsPage.getTotalElements());
+
+        return PageResponse.from(resultPage);
+    }
+
+    public PageResponse<AdminResponseDTO.DiscussionReportResponse> getDiscussionReports(Integer page, Integer size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+
+        Page<Integer> reportedDiscussionContentIdsPage =
+                discussionReportRepository.findDistinctDiscussionContentIds(pageable);
+
+        List<Integer> reportedDiscussionIds = reportedDiscussionContentIdsPage.getContent();
+
+        if (reportedDiscussionIds.isEmpty()) {
+            return PageResponse.from(Page.empty(pageable));
+        }
+
+
+        List<DiscussionReport> reports =
+                discussionReportRepository.findByDiscussionContentIdIn(reportedDiscussionIds);
+
+
+        Map<Integer, List<DiscussionReport>> groupedReports = reports.stream()
+                .collect(Collectors.groupingBy(
+                        report -> report.getDiscussionContent().getId(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+
+        List<AdminResponseDTO.DiscussionReportResponse> content = reportedDiscussionIds.stream()
+                .map(reportedDiscussionId -> {
+                    List<DiscussionReport> discussionReports = groupedReports.get(reportedDiscussionId);
+
+                    if (discussionReports == null || discussionReports.isEmpty()) {
+                        return null;
+                    }
+
+                    DiscussionContent discussionContent = discussionReports.get(0).getDiscussionContent();
+
+                    List<AdminResponseDTO.DiscussionReportValue> reportValueList = discussionReports.stream()
+                            .map(discussion -> new AdminResponseDTO.DiscussionReportValue(
+                                    discussion.getId(),
+                                    discussion.getReporter().getNickname(),
+                                    discussion.getReason(),
+                                    discussion.getCode().getName(),
+                                    discussion.getCreatedAt()
+                            ))
+                            .collect(Collectors.toList());
+
+                    return new AdminResponseDTO.DiscussionReportResponse(
+                            reportedDiscussionId,
+                            reportValueList
+                    );
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+
+        Page<AdminResponseDTO.DiscussionReportResponse> resultPage =
+                new PageImpl<>(content, pageable, reportedDiscussionContentIdsPage.getTotalElements());
 
         return PageResponse.from(resultPage);
     }

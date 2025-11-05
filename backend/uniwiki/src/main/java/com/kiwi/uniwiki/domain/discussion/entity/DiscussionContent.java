@@ -50,4 +50,8 @@ public class DiscussionContent {
         return Objects.equals(discussion.getCreator().getId(), creator.getId());
     }
 
+    public void maskContent() {
+        this.content = "#";
+    }
+
 }

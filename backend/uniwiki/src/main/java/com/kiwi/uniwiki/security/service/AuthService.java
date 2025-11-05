@@ -77,7 +77,7 @@ public class AuthService {
 
         // 비밀번호 확인
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            new CustomException(ErrorCode.INVALID_CREDENTIALS);
+            throw  new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
 
 

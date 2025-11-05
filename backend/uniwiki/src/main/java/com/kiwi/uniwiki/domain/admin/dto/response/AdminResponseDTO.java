@@ -32,4 +32,24 @@ public class AdminResponseDTO {
         private LocalDateTime createdAt;
     }
 
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class DiscussionReportResponse {
+
+        private Integer discussionId;
+
+        List<DiscussionReportValue> discussionValueList;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class DiscussionReportValue{
+        private Integer reportId;
+        private String reporterName;
+        private String reason;
+        private String code;
+        private LocalDateTime createdAt;
+    }
 }
