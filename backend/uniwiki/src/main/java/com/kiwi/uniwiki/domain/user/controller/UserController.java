@@ -8,6 +8,7 @@ import com.kiwi.uniwiki.domain.activity.service.UserActivityService;
 import com.kiwi.uniwiki.domain.document.service.DocumentBookmarkService;
 
 import com.kiwi.uniwiki.domain.university.service.UniversityBookmarkService;
+import com.kiwi.uniwiki.domain.user.dto.request.UserRequestDTO;
 import com.kiwi.uniwiki.domain.user.dto.response.UserResponseDTO;
 import com.kiwi.uniwiki.domain.user.service.UserService;
 import com.kiwi.uniwiki.security.dto.CustomUserDetails;
@@ -136,6 +137,21 @@ public class UserController {
         PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse> response = userActivityService.getUserDiscussionActivities(user.getUser().getId(),page,size);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/password/reset")
+    @Operation(summary = "비밀번호 변경" , description = "로그인한 사용자가 비밀번호를 변경합니다.")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestBody UserRequestDTO.ChangePasswordRequest request
+
+            ) {
+
+       userService.changePassword(user.getUser(),request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .build();
     }
 }
 
