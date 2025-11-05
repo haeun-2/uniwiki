@@ -139,7 +139,7 @@ export default function Header({
               aria-haspopup="menu"
               aria-expanded={open}
               onClick={() => setOpen((v) => !v)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white hover:bg-gray-50 hover:text-gray-600 focus:bg-gray-50 focus:text-gray-600"
             >
               <UserRound size={18} />
             </button>
@@ -162,6 +162,9 @@ export default function Header({
                     >
                       내 정보
                     </Link>
+
+                    <div className="my-1 h-px bg-gray-100" />
+                    
                     <Link
                       to="/me/contributions"
                       role="menuitem"
