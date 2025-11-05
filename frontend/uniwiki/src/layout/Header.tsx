@@ -19,7 +19,7 @@ export default function Header({
           <img
             src="/logo.png"
             alt="유니위키"
-            className="h-6 w-auto"
+            className="h-12 w-auto"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
