@@ -1,58 +1,125 @@
 // src/pages/FavoritePage.tsx
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 
 interface Favorite {
-  id: number
-  documentName: string
-  schoolName: string
-  updatedAt: string
+  documentId: number
+  documentTitle: string
+  universityName: string
+  documentUpdateAt: string
 }
 
 export default function FavoritePage() {
-  const [favorites, setFavorites] = useState<Favorite[]>([
-    {
-      id: 1,
-      documentName: "한국사 개론",
-      schoolName: "명지대학교",
-      updatedAt: "2025-01-15 14:30",
-    },
-    {
-      id: 2,
-      documentName: "컴퓨터과학 기초",
-      schoolName: "한국관광대학교",
-      updatedAt: "2025-01-14 16:45",
-    },
-    {
-      id: 3,
-      documentName: "일산캠퍼",
-      schoolName: "무한대학교",
-      updatedAt: "2025-01-13 11:20",
-    },
-    {
-      id: 4,
-      documentName: "구미대학교 주문 맛집",
-      schoolName: "구미대학교",
-      updatedAt: "2025-01-12 09:15",
-    },
-    {
-      id: 5,
-      documentName: "미적분학 I",
-      schoolName: "부산대학교",
-      updatedAt: "2025-01-11 13:50",
-    },
-    {
-      id: 6,
-      documentName: "건국대 축제 사건/논란",
-      schoolName: "건국대학교",
-      updatedAt: "2025-01-11 13:50",
-    },
-  ])
+  const navigate = useNavigate()
+  const [favorites, setFavorites] = useState<Favorite[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleDelete = (id: number) => {
-    if (window.confirm("즐겨찾기를 삭제하시겠습니까?")) {
-      setFavorites(favorites.filter((fav) => fav.id !== id))
+  // 즐겨찾기 목록 조회
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      const accessToken = localStorage.getItem("accessToken")
+      
+      if (!accessToken) {
+        alert("로그인이 필요합니다.")
+        navigate("/login")
+        return
+      }
+
+      try {
+        const response = await fetch("http://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept": "application/json",
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setFavorites(data)
+        } else if (response.status === 401) {
+          alert("로그인이 만료되었습니다. 다시 로그인해주세요.")
+          localStorage.removeItem("accessToken")
+          navigate("/login")
+        } else {
+          alert("즐겨찾기 목록을 불러오는데 실패했습니다.")
+        }
+      } catch (error) {
+        console.error("Fetch favorites error:", error)
+        alert("서버와의 연결에 실패했습니다.")
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    fetchFavorites()
+  }, [navigate])
+
+  // 즐겨찾기 삭제
+  const handleDelete = async (documentId: number) => {
+    if (!window.confirm("즐겨찾기를 삭제하시겠습니까?")) return
+
+    const accessToken = localStorage.getItem("accessToken")
+    
+    if (!accessToken) {
+      alert("로그인이 필요합니다.")
+      navigate("/login")
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `http://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents/${documentId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+          },
+        }
+      )
+      
+      if (response.ok) {
+        // 삭제 성공 시 로컬 상태 업데이트
+        setFavorites(favorites.filter((fav) => fav.documentId !== documentId))
+        alert("즐겨찾기가 삭제되었습니다.")
+      } else if (response.status === 401) {
+        alert("로그인이 만료되었습니다. 다시 로그인해주세요.")
+        localStorage.removeItem("accessToken")
+        navigate("/login")
+      } else {
+        alert("즐겨찾기 삭제에 실패했습니다.")
+      }
+    } catch (error) {
+      console.error("Delete favorite error:", error)
+      alert("서버와의 연결에 실패했습니다.")
+    }
+  }
+
+  // 문서로 이동
+  const handleDocumentClick = (documentTitle: string) => {
+    navigate(`/docs/${encodeURIComponent(documentTitle)}`)
+  }
+
+  // 날짜 포맷 변환 (2025-11-04T06:26:38.850Z → 2025-01-15 14:30)
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).replace(/\. /g, '-').replace('.', '')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    )
   }
 
   return (
@@ -68,19 +135,24 @@ export default function FavoritePage() {
 
       <div className="space-y-0">
         {favorites.map((favorite) => (
-          <div key={favorite.id} className="grid grid-cols-12 gap-6 border-b border-gray-200 py-4">
+          <div key={favorite.documentId} className="grid grid-cols-12 gap-6 border-b border-gray-200 py-4">
             <div className="col-span-3">
-              <button className="text-left text-sm text-yellow-600 hover:underline">{favorite.documentName}</button>
+              <button 
+                onClick={() => handleDocumentClick(favorite.documentTitle)}
+                className="text-left text-sm text-yellow-600 hover:underline"
+              >
+                {favorite.documentTitle}
+              </button>
             </div>
             <div className="col-span-3">
-              <span className="text-sm text-yellow-600">{favorite.schoolName}</span>
+              <span className="text-sm text-yellow-600">{favorite.universityName}</span>
             </div>
             <div className="col-span-4">
-              <span className="text-sm text-gray-600">{favorite.updatedAt}</span>
+              <span className="text-sm text-gray-600">{formatDate(favorite.documentUpdateAt)}</span>
             </div>
             <div className="col-span-2 flex justify-end">
               <button
-                onClick={() => handleDelete(favorite.id)}
+                onClick={() => handleDelete(favorite.documentId)}
                 className="rounded bg-red-500 px-4 py-1 text-sm font-medium text-white hover:bg-red-600"
               >
                 삭제
@@ -90,7 +162,9 @@ export default function FavoritePage() {
         ))}
       </div>
 
-      {favorites.length === 0 && <div className="py-12 text-center text-gray-500">즐겨찾기한 문서가 없습니다.</div>}
+      {favorites.length === 0 && (
+        <div className="py-12 text-center text-gray-500">즐겨찾기한 문서가 없습니다.</div>
+      )}
     </div>
   )
 }
