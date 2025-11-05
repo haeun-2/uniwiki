@@ -59,7 +59,7 @@ public class PopularDocumentService {
             }
 
             return result.stream()
-                    .map(tuple -> new DocumentSimpleResponseDTO(tuple.getValue()))
+                    .map(tuple -> new DocumentSimpleResponseDTO(tuple.getValue(), tuple.getScore().intValue()))
                     .collect(Collectors.toList());
 
         } finally {

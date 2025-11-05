@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class DocumentSimpleResponseDTO {
 
     private String documentTitle;
+    private Integer viewCount;
 }

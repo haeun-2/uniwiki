@@ -92,8 +92,4 @@ public class UniversityService {
                 .map(UniversityResponseDTO::from)
                 .toList();
     }
-
-    /**
-     * 대학 인기순 조회 (TOP10)
-     */
 }
