@@ -33,25 +33,25 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/user-reports/{userReportId}/reject")
+    @PatchMapping("/user-reports/{reportedId}/reject")
     @Operation(summary = "유저 신고 거부", description = "유저 신고를 거부합니다.")
     public ResponseEntity<Void> rejectUserReport(
                                                    @AuthenticationPrincipal CustomUserDetails userDetails,
-                                                   @PathVariable Integer userReportId,
+                                                   @PathVariable Integer reportedId,
                                                    @RequestBody AdminRequestDTO.ReportRejectedRequest request
     ) {
-        adminWriteService.rejectUserReport(userDetails.getUser(), userReportId, request);
+        adminWriteService.rejectUserReport(userDetails.getUser(), reportedId, request);
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/user-reports/{userReportId}/resolve")
+    @PatchMapping("/user-reports/{reportedId}/resolve")
     @Operation(summary = "유저 신고 수락", description = "유저 신고를 수락합니다")
     public ResponseEntity<Void> resolvedUserReport(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Integer userReportId,
+            @PathVariable Integer reportedId,
             @RequestBody AdminRequestDTO.ReportSolvedRequest request
     ) {
-        adminWriteService.resolvedReport(userDetails.getUser(), userReportId, request);
+        adminWriteService.resolvedReport(userDetails.getUser(), reportedId, request);
         return ResponseEntity.ok().build();
     }
 }
