@@ -1,268 +1,382 @@
-import React, { useMemo, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
-type Report = {
-  id: number;
-  processed: boolean;
-  reporter: string;
-  target: string;
-  createdAt: string;
-  content: string;
+// ====== 타입 (실제 API 스키마에 맞춰 정의) ======
+export type ReportCode = "PENDING" | "RESOLVED" | "REJECTED";
+
+export type ReportValue = {
+  reportId: number;
+  code: ReportCode;
+  reporterName: string;
+  reason: string;
+  createdAt: string; // ISO
 };
 
-const mockReports: Report[] = Array.from({ length: 73 }).map((_, i) => ({
-  id: i + 1,
-  processed: i % 7 > 3,
-  reporter: "김코드",
-  target: "김하은",
-  createdAt: "2025.10.22 13:21:15",
-  content: "허위 정보 기재 및 비하 발언",
-}));
+export type ReportedUser = {
+  reportedId: number;
+  reportedName: string;
+  banUntil?: string | null;
+  reportValueList: ReportValue[];
+};
 
-// ✅ 유저 신고 처리 모달
-function UserBlockModal({
-  onClose,
-  onConfirm,
-}: {
-  onClose: () => void;
-  onConfirm: (days: string, reason: string) => void;
-}) {
+export type AdminUserReportResponse = {
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  hasPre: boolean;
+  hasNext: boolean;
+  content: ReportedUser[];
+};
+
+// ====== 유틸 ======
+const fmt = (iso: string) => new Date(iso).toLocaleString();
+const fmtDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : "");
+
+const codeBadge: Record<ReportCode, string> = {
+  PENDING: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+  RESOLVED: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  REJECTED: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+};
+
+// 진행중 먼저, 그 뒤 최신순 정렬
+function sortReports(list: ReportValue[]) {
+  const order = { PENDING: 0, RESOLVED: 1, REJECTED: 2 } as const;
+  return [...list].sort((a, b) => {
+    const byStatus = order[a.code] - order[b.code];
+    if (byStatus !== 0) return byStatus;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+// ====== 차단 모달 ======
+function BlockModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (days: string, reason: string) => void }) {
   const [days, setDays] = useState("");
   const [reason, setReason] = useState("");
-
   return (
-    <div onClick={onClose} className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-8 w-[420px]">
-        <div className="flex justify-between items-start mb-6">
-          <h2 className="text-xl font-semibold">유저 신고 처리</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[420px]">
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-lg font-semibold">유저 차단</h3>
+          <button className="text-gray-400 text-xl" onClick={onClose}>×</button>
         </div>
-
-        <div className="mb-4">
-          <label className="block text-sm mb-1">차단 일자 선택</label>
-          <select
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm"
-          >
-            <option value="">차단 일자 선택</option>
-            <option value="1">1일</option>
-            <option value="3">3일</option>
-            <option value="7">7일</option>
-            <option value="30">30일</option>
-            <option value="1000">영구</option>
-          </select>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm block mb-1">차단 일자</label>
+            <select value={days} onChange={(e) => setDays(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="">선택</option>
+              <option value="1">1일</option>
+              <option value="3">3일</option>
+              <option value="7">7일</option>
+              <option value="30">30일</option>
+              <option value="1000">영구</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm block mb-1">사유</label>
+            <textarea
+              autoFocus
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full h-28 border rounded-lg px-3 py-2 text-sm resize-none"
+              placeholder="차단 사유 입력"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={onClose} className="px-3 py-2 border rounded-lg">취소</button>
+            <button onClick={() => { onConfirm(days, reason); onClose(); }} className="px-3 py-2 rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover">확인</button>
+          </div>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div className="mb-6">
-          <label className="block text-sm mb-1">차단 사유</label>
-          <input
+// ====== 기각 모달 ======
+function RejectModal({ onClose, onConfirm, defaultReason }: { onClose: () => void; onConfirm: (reason: string) => void; defaultReason?: string; }) {
+  const [reason, setReason] = useState(defaultReason ?? "");
+  const canSubmit = reason.trim().length > 0;
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[480px]">
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-lg font-semibold">신고 기각</h3>
+          <button className="text-gray-400 text-xl" onClick={onClose}>×</button>
+        </div>
+        <div className="space-y-3">
+          <label className="text-sm block">사유</label>
+          <textarea
+            autoFocus
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="차단 사유"
-            className="w-full border rounded-lg px-3 py-2 text-sm"
+            placeholder="기각 사유 입력"
+            className="w-full h-28 border rounded-lg px-3 py-2 text-sm resize-none"
           />
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border rounded-lg hover:bg-gray-50">
-            취소
-          </button>
-          <button
-            onClick={() => {
-              onConfirm(days, reason);
-              onClose();
-            }}
-            className="px-4 py-2 rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover"
-          >
-            확인
-          </button>
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={onClose} className="px-3 py-2 border rounded-lg">취소</button>
+            <button
+              disabled={!canSubmit}
+              onClick={() => { onConfirm(reason.trim()); onClose(); }}
+              className={`px-3 py-2 rounded-lg text-white ${canSubmit ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-300 cursor-not-allowed"}`}
+            >
+              기각하기
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ✅ 신고 처리 내역 모달
-function UserBlockCheckModal({
-  onClose,
-  data,
-}: {
-  onClose: () => void;
-  data: { days: string; reason: string; admin: string };
+
+
+// ====== 섹션 (신고당한 유저 1명) ======
+function ReportedUserSection({ user, defaultOpen = true, onOpenBlock, onOpenReject, }: {
+  user: ReportedUser;
+  defaultOpen?: boolean;
+  onOpenBlock: (reported: ReportedUser, report?: ReportValue) => void;
+  onOpenReject: (reported: ReportedUser, report?: ReportValue) => void;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const sorted = useMemo(() => sortReports(user.reportValueList), [user.reportValueList]);
+
+  const counts = useMemo(() => {
+    return user.reportValueList.reduce(
+      (acc, r) => {
+        acc.total += 1;
+        acc[r.code] += 1 as 1;
+        return acc;
+      },
+      { total: 0, PENDING: 0, RESOLVED: 0, REJECTED: 0 } as { total: number } & Record<ReportCode, number>
+    );
+  }, [user.reportValueList]);
+
   return (
-    <div onClick={onClose} className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-8 w-[420px]">
-        <div className="flex justify-between items-start mb-6">
-          <h2 className="text-xl font-semibold">신고 처리 내역</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+    <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      {/* 헤더 */}
+      <div
+        role="button"
+        aria-expanded={open}
+        tabIndex={0}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50"
+      >
+        <div className="flex items-center gap-3 text-left">
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center font-medium">{user.reportedName[0]?.toUpperCase() ?? "U"}</div>
+          <div>
+            <div className="font-semibold">{user.reportedName}</div>
+            <div className="text-xs text-gray-500">신고 총 {counts.total}건 · 진행 {counts.PENDING}건</div>
+          </div>
         </div>
-
-        <div className="mb-4">
-          <label className="block text-sm mb-1">차단 일자</label>
-          <input
-            readOnly
-            value={data.days}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm mb-1">차단 사유</label>
-          <input
-            readOnly
-            value={data.reason}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50"
-          />
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm mb-1">담당자</label>
-          <input
-            readOnly
-            value={data.admin}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50"
-          />
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover">
-            확인
-          </button>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="px-2 py-1 rounded-full ring-1 ring-amber-200 bg-amber-50 text-amber-700">대기 {counts.PENDING}</span>
+          <span className="px-2 py-1 rounded-full ring-1 ring-emerald-200 bg-emerald-50 text-emerald-700">처리 {counts.RESOLVED}</span>
+          <span className="px-2 py-1 me-5 rounded-full ring-1 ring-rose-200 bg-rose-50 text-rose-700">기각 {counts.REJECTED}</span>
+          {user.banUntil && (
+            <span
+              className="px-3 py-2 text-sm text-uniwikicolor"
+            >
+              {fmtDate(user.banUntil)} 까지 차단 중
+            </span>
+          )}
+          <button className="px-3 py-2 ms-5 text-sm rounded-lg text-uniwikicolor border hover:bg-gray-200" onClick={(e) => { onOpenReject(user); e.stopPropagation() }}>기각하기</button>
+          <button className="px-3 py-2 text-sm rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover" onClick={(e) => { onOpenBlock(user); e.stopPropagation() }}>차단하기</button>
+          <span className={`ml-3 text-gray-400 transition-transform ${open ? "rotate-180" : "rotate-0"}`}>▼</span>
         </div>
       </div>
-    </div>
+
+      {/* 바디 */}
+      {open && (
+        <div className="px-5 pb-5">
+
+          {/* 리스트 */}
+          <ul className="divide-y">
+            {sorted.map((r) => (
+              <li key={r.reportId} className="py-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] ${codeBadge[r.code]}`}>{r.code}</span>
+                      <span className="text-xs text-gray-400">{fmt(r.createdAt)}</span>
+                    </div>
+                    <div className="ms-2 mt-3 text-sm text-gray-800 leading-relaxed">
+                      <p className="whitespace-pre-wrap">{r.reason}</p>
+                      <p className="mt-2 text-gray-400">신고자 <Link to="#" className="hover:underline">{r.reporterName}</Link></p>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+        {/* 닫기 핸들 */}
+        <div className="pt-4">
+          <div className="relative">
+            <div className="h-px bg-gray-200" />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+                className="group absolute left-1/2 -translate-x-1/2 -top-3 focus:outline-none"
+              >
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white text-xs text-gray-500 shadow-sm group-hover:bg-gray-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M5.22 12.78a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L10 8.81l-3.97 3.97a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
+                  </svg>
+                  <span>접기</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
-export default function AdminUserReportPage() {
-  const [page, setPage] = useState(1);
-  const [showBlockModal, setShowBlockModal] = useState(false);
-  const [showCheckModal, setShowCheckModal] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const pageSize = 10;
-  const totalPages = Math.max(1, Math.ceil(mockReports.length / pageSize));
+// ====== 페이지 ======
+export default function AdminUserReportPageGrouped() {
+  const [page, setPage] = useState(0);
+  const size = 10;
+  
+  const [data, setData] = useState<AdminUserReportResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const pageSlice = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return mockReports.slice(start, start + pageSize);
+  // API 연동: 신고 목록 조회
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+        const res = await fetch(`http://k13d104.p.ssafy.io/api/v1/admin/user-reports?page=${page}&size=${size}`, {
+          headers: {
+            Accept: "*/*",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = (await res.json()) as AdminUserReportResponse;
+        setData(json);
+      } catch (e: any) {
+        if (e?.name !== "AbortError") setError(e?.message ?? "불러오기에 실패했습니다");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+    return () => controller.abort();
   }, [page]);
 
-  const handleProcess = (id: number) => {
-    setSelectedId(id);
-    setShowBlockModal(true);
-  };
+  const [openBlock, setOpenBlock] = useState<null | { user: ReportedUser; report?: ReportValue }>(null);
+  const [openReject, setOpenReject] = useState<null | { user: ReportedUser; report?: ReportValue }>(null);
 
-  const handleCheck = (id: number) => {
-    setSelectedId(id);
-    setShowCheckModal(true);
-  };
+  const content = data?.content ?? [];
+  
+  const [keyword, setKeyword] = useState("");
+  const filtered = useMemo(() => {
+    const kw = keyword.trim();
+    if (!kw) return content;
+    return content.filter((u) => u.reportedName.includes(kw));
+  }, [content, keyword]);
 
-  const paginationNumbers = useMemo(() => {
-    const visible = 10;
-    let start = Math.max(1, page - Math.floor(visible / 2));
-    let end = start + visible - 1;
-    if (end > totalPages) {
-      end = totalPages;
-      start = Math.max(1, end - visible + 1);
-    }
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-  }, [page, totalPages]);
+  // 진행 중이 하나라도 있는 유저가 상단으로
+  const sortedUsers = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const aPending = a.reportValueList.some((r) => r.code === "PENDING");
+      const bPending = b.reportValueList.some((r) => r.code === "PENDING");
+      if (aPending !== bPending) return aPending ? -1 : 1;
+      // 최신 신고 시점 desc
+      const aLatest = Math.max(...a.reportValueList.map((r) => new Date(r.createdAt).getTime()));
+      const bLatest = Math.max(...b.reportValueList.map((r) => new Date(r.createdAt).getTime()));
+      return bLatest - aLatest;
+    });
+  }, [filtered]);
 
   return (
-    <>
-      {/* 메인 영역 */}
-      <h1 className="text-xl font-semibold mb-6">유저 신고 내역</h1>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">유저 신고 내역</h1>
 
-      <div className="overflow-x-auto border-t border-gray-200">
-        <table className="min-w-[960px] w-full text-left border-collapse">
-          <thead className="bg-gray-50 text-gray-700 font-medium">
-            <tr className="border-b">
-              {/* <th className="py-2 w-24"></th> */}
-              <th className="py-2 w-24 text-center">처리 여부</th>
-              <th className="py-2 w-40">일시</th>
-              <th className="py-2 w-32">신고자</th>
-              <th className="py-2 w-32">대상</th>
-              <th className="py-2">내용</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageSlice.map((r) => (
-              <tr
-                key={r.id}
-                onClick={() => (r.processed ? handleCheck(r.id) : handleProcess(r.id))}
-                className={`border-b hover:bg-gray-50 transition-colors cursor-pointer ${
-                  r.processed ? "text-gray-400" : "text-gray-800"
-                }`}
-              >
-                <td className="py-3 text-center">{r.processed ? "Y" : "N"}</td>
-                <td className="py-3">{r.createdAt}</td>
-                <td className="py-3">
-                  <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                    {r.reporter}
-                  </Link>
-                </td>
-                <td className="py-3">
-                  <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                    {r.target}
-                  </Link>
-                </td>
-                <td className="py-3">{r.content}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* 상단 바: 페이지/검색 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-sm text-gray-500">페이지 {data ? data.page + 1 : page + 1} / {data ? data.totalPages : 1}</div>
+        <div className="relative ml-auto">
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="신고 대상자 검색"
+            className="w-64 border rounded-lg px-3 py-2 text-sm pr-8"
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+        </div>
       </div>
 
-        {/* 페이지네이션 */}
-        <div className="mt-5 flex items-center gap-1 text-xs">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
-          >
-            &lt; 이전
-          </button>
-
-          {paginationNumbers.map((n) => (
-            <button
-              key={n}
-              onClick={() => setPage(n)}
-              className={`px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer ${
-                n === page ? "bg-gray-100 font-semibold" : ""
-              }`}
-            >
-              {n}
-            </button>
+      {/* 리스트 */}
+      {loading && (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-gray-200 bg-white p-5 animate-pulse">
+              <div className="h-5 w-48 bg-gray-200 rounded" />
+              <div className="mt-3 h-4 w-full bg-gray-100 rounded" />
+            </div>
           ))}
-
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
-          >
-            다음 &gt;
-          </button>
         </div>
-
-      {/* ✅ 모달 렌더링 */}
-      {showBlockModal && (
-        <UserBlockModal
-          onClose={() => setShowBlockModal(false)}
-          onConfirm={(days, reason) =>
-            alert(`ID: ${selectedId}\n차단: ${days}일\n사유: ${reason}`)
-          }
-        />
       )}
-      {showCheckModal && (
-        <UserBlockCheckModal
-          onClose={() => setShowCheckModal(false)}
-          data={{
-            days: "3일",
-            reason: "무분별한 문서 내용 삭제",
-            admin: "이지오",
+
+      {!loading && error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 p-4 text-sm">불러오는 중 오류가 발생했습니다: {error}</div>
+      )}
+
+      {!loading && !error && (
+        <div className="space-y-3">
+          {sortedUsers.map((u, idx) => (
+            <ReportedUserSection
+              key={u.reportedId}
+              user={u}
+              defaultOpen={false}
+              onOpenBlock={(user, report) => setOpenBlock({ user, report })}
+              onOpenReject={(user, report) => setOpenReject({ user, report })}
+            />
+          ))}
+          {sortedUsers.length === 0 && (
+            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">신고 내역이 없습니다.</div>
+          )}
+        </div>
+      )}
+
+      {/* 페이지네이션 */}
+      <div className="pt-2 flex items-center gap-1 text-xs">
+        <button disabled={loading || !(data?.hasPre)} onClick={() => setPage((p) => Math.max(0, p - 1))} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">&lt; 이전</button>
+        <span className="px-2 py-1 rounded border bg-gray-100 font-semibold">{data ? data.page + 1 : page + 1}</span>
+        <button disabled={loading || !(data?.hasNext)} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">다음 &gt;</button>
+      </div>
+
+      {/* 모달 */}
+      {openBlock && (
+        <BlockModal
+          onClose={() => setOpenBlock(null)}
+          onConfirm={(days, reason) => {
+            alert(`대상: ${openBlock.user.reportedName}\n리포트ID: ${openBlock.report?.reportId ?? "(일괄)"}\n차단: ${days}일\n사유: ${reason}`);
           }}
         />
       )}
-    </>
+
+      {openReject && (
+        <RejectModal
+          onClose={() => setOpenReject(null)}
+          onConfirm={(reason) => {
+            alert(`기각 대상: ${openReject.user.reportedName}\n리포트ID: ${openReject.report?.reportId ?? "(일괄)"}\n기각 사유: ${reason}`);
+          }}
+        />
+      )}
+    </div>
   );
 }
