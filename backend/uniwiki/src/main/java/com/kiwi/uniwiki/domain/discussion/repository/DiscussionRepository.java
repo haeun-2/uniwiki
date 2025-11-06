@@ -16,8 +16,10 @@ import java.util.Optional;
 
 public interface DiscussionRepository extends JpaRepository<Discussion, Integer> {
 
+    @EntityGraph(attributePaths = "document")
     Page<Discussion> findAllByDocumentIdAndCode(Integer documentId, Code code, Pageable pageable);
 
+    @EntityGraph(attributePaths = "document")
     @Query("""
         SELECT d
         FROM Discussion d

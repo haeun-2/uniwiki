@@ -94,7 +94,7 @@ public class DiscussionController {
 
     @GetMapping("/{discussionId}")
     @Operation(summary = "토론 상세 조회", description = "토론 상세 조회합니다.")
-    public ResponseEntity<?> getDiscussion(
+    public ResponseEntity<DiscussionResponseDTO.DetailResponse> getDiscussion(
             @PathVariable Integer discussionId
     ) {
         DiscussionResponseDTO.DetailResponse response = discussionService.getDiscussionDetail(discussionId);
