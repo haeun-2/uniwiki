@@ -17,8 +17,9 @@ public class AdminResponseDTO {
 
         private Integer reportedId;
         private String reportedName;
+        private LocalDateTime banUntil;
 
-      List<UserReportValue> reportValueList;
+        private List<UserReportValue> reportValueList;
     }
 
 
