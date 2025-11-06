@@ -1,5 +1,3 @@
-// src/pages/UnivMainPage.tsx
-
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -86,6 +84,7 @@ export default function UnivMainPage() {
   // 5) 확정된 id로 "공식 이름 포함" 정보 확보
   useEffect(() => {
     if (!univId) return;
+
     let mounted = true;
     (async () => {
       try {
