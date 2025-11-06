@@ -65,4 +65,14 @@ public class AdminResponseDTO {
         private Integer plusCount;
         private Integer minusCount;
     }
+
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class DiscussionList{
+        private Integer discussionId;
+        private String discussionTitle;
+        private String code;
+        private LocalDateTime createdAt;
+    }
 }

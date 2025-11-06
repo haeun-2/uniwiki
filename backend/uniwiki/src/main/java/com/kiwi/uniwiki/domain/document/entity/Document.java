@@ -65,4 +65,10 @@ public class Document {
         this.latestVersionNumber = latestVersionNumber;
         this.updatedAt = updatedAt;
     }
+
+    public void deleteDocument(String reason){
+        this.isDeleted = true;
+        this.deleteReason = reason;
+        this.deletedAt = LocalDateTime.now();
+    }
 }
