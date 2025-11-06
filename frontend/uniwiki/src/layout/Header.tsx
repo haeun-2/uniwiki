@@ -154,6 +154,26 @@ export default function Header({
               >
                 {isLoggedIn ? (
                   <div className="py-1">
+                    {(() => {
+                      const role =
+                        localStorage.getItem("role") || sessionStorage.getItem("role");
+                      if (role === "ADMIN") {
+                        return (
+                          <Link
+                            to="/admin"
+                            role="menuitem"
+                            className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            onClick={() => setOpen(false)}
+                          >
+                            관리자 페이지로
+                          </Link>
+                        );
+                      }
+                      return null;
+
+                      <div className="my-1 h-px bg-gray-100" />
+                    })()}
+
                     <Link
                       to="/me"
                       role="menuitem"
