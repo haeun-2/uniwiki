@@ -43,31 +43,55 @@ type AuthPayload = {
   universityId?: number | null;
 };
 function getStoredAuth(): AuthPayload {
-  // 로그인 저장 위치가 세션/로컬 중 어디든 대응
+  // 1) 세션/로컬의 'auth' JSON을 최우선으로 신뢰
   const fromSession = sessionStorage.getItem("auth");
-  const fromLocal   = localStorage.getItem("auth");
+  const fromLocal = localStorage.getItem("auth");
 
-  // 이미 개별 키로 저장했다면 각각 읽어도 됨
-  const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
-  const uniIdRaw = sessionStorage.getItem("universityId") || localStorage.getItem("universityId");
-
-  // 통째로 JSON 저장한 경우(auth) 우선 사용
-  try {
-    if (fromSession) {
-      const a = JSON.parse(fromSession);
-      return { accessToken: a.accessToken, universityId: a.universityId };
+  const parseAuth = (raw: string | null) => {
+    if (!raw) return null;
+    try {
+      const a = JSON.parse(raw);
+      // universityId 숫자 보정
+      const uid =
+        typeof a?.universityId === "number"
+          ? a.universityId
+          : a?.universityId != null
+          ? Number(a.universityId)
+          : null;
+      return {
+        accessToken: typeof a?.accessToken === "string" ? a.accessToken : undefined,
+        universityId: Number.isFinite(uid as number) ? (uid as number) : null,
+      } as AuthPayload;
+    } catch {
+      return null;
     }
-    if (fromLocal) {
-      const a = JSON.parse(fromLocal);
-      return { accessToken: a.accessToken, universityId: a.universityId };
-    }
-  } catch {}
-
-  // 개별 키로만 있는 경우
-  return {
-    accessToken: token || undefined,
-    universityId: uniIdRaw !== null ? (uniIdRaw === "null" ? null : Number(uniIdRaw)) : undefined,
   };
+
+  const authFromSession = parseAuth(fromSession);
+  const authFromLocal = parseAuth(fromLocal);
+
+  // 세션 auth가 있으면 우선 사용, 아니면 로컬 auth 사용
+  const base: AuthPayload =
+    authFromSession ??
+    authFromLocal ?? {
+      accessToken:
+        sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken") || undefined,
+      universityId: null,
+    };
+
+  // 2) universityId가 비어있다면, ✅ localStorage의 개별 키를 후순위로 보완
+  if (base.universityId == null) {
+    const rawUid = localStorage.getItem("universityId"); // ← 요구사항: MainPage에서는 이 값을 사용
+    if (rawUid != null) {
+      const coerced = Number(rawUid);
+      if (Number.isFinite(coerced)) {
+        base.universityId = coerced;
+      }
+    }
+  }
+
+  // 3) ⚠️ sessionStorage에 남아있던 universityId는 사용하지 않음 (오염 방지)
+  return base;
 }
 
 
@@ -335,8 +359,14 @@ export default function MainPage() {
               title={u.universityName}
             >
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm">
-                {/* TODO: 로고가 오면 <img src={u.logoUrl!} .../> 로 교체 가능 */}
-                🏛️
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xl">
+                  {/* 로고가 있으면 표시 */}
+                  {u.logoUrl ? (
+                    <img src={u.logoUrl} alt={u.universityName}/>
+                  ) : (
+                    <span role="img" aria-label="school">🏛️</span>
+                  )}
+                </div>
               </div>
               <div className="text-sm font-medium text-gray-900 group-hover:underline truncate">
                 {u.universityName}
@@ -381,7 +411,14 @@ export default function MainPage() {
               className="block"
             >
               <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow transition">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">IMG</div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xl">
+                  {/* 로고가 있으면 표시 */}
+                  {myUniv?.logoUrl ? (
+                    <img src={myUniv.logoUrl} alt={myUniv.universityName} className="h-12 w-12 rounded-xl object-cover" />
+                  ) : (
+                    <span role="img" aria-label="school">🏛️</span>
+                  )}
+                </div>
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 text-sm font-medium text-gray-900">
                     {loadingMyUniv ? "불러오는 중..." : (myUniv?.universityName ?? (myUnivError ? "내 학교 정보 오류" : "학교 정보 준비 중"))}
@@ -455,7 +492,7 @@ export default function MainPage() {
                       title={u.universityName}
                     >
                       <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow transition">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xl">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xl">
                           {/* 로고가 있으면 표시 */}
                           {u.logoUrl ? (
                             <img src={u.logoUrl} alt={u.universityName} className="h-12 w-12 rounded-xl object-cover" />

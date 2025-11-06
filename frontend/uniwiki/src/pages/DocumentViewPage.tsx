@@ -7,9 +7,6 @@ import MDEditor from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
-import RecentEdit from '@/layout/RecentEdit';
-import RecentDiscuss from '@/layout/RecentDiscuss';
-
 type DocumentDto = {
   universityId: number;
   universityName: string;
@@ -63,11 +60,13 @@ function getStoredUniId(): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+const enc = (s: string) => encodeURIComponent(s || '');
+
 export default function DocumentViewPage() {
   const navigate = useNavigate();
   const location = useLocation() as any;
   const { documentTitle = '문서 제목' } = useParams();
-  const docTitleParam = encodeURIComponent(documentTitle);
+  const docTitleParam = enc(documentTitle);
 
   const formatKST = (d: Date) =>
     new Intl.DateTimeFormat('ko-KR', {
@@ -191,7 +190,7 @@ export default function DocumentViewPage() {
     return () => controller.abort();
   }, [documentTitle]);
 
-  // 즐겨찾기 토글
+  // ✅ 즐겨찾기 토글 (누락 복구)
   const toggleFavorite = async () => {
     if (!docId || favBusy) return;
 
@@ -251,15 +250,18 @@ export default function DocumentViewPage() {
       navigate('/login', { replace: true, state: { from: location.pathname } });
       return;
     }
+    const univName = meta?.universityName || '대학교';
+    const base = `/univ/${enc(univName)}/docs/${docTitleParam}`;
+
     if (!docUniId) {
       // 문서 메타가 없으면 서버에 맡김
-      navigate(`/docs/${docTitleParam}/edit`);
+      navigate(`${base}/edit`);
       return;
     }
 
     const myUniId = getStoredUniId();
     if (myUniId != null && Number(myUniId) === Number(docUniId)) {
-      navigate(`/docs/${docTitleParam}/edit`);
+      navigate(`${base}/edit`);
     } else {
       setFlashMsg('소속 대학생만 문서 작업을 할 수 있습니다.');
       setTimeout(() => setFlashMsg(null), 3000);
@@ -280,17 +282,18 @@ export default function DocumentViewPage() {
     []
   );
 
-  const uniLabel = meta?.universityName ?? '학교이름';
-  const catLabel = meta?.categoryName ?? '카테고리';
-  const uniHref = meta ? `/univ/${encodeURIComponent(meta.universityName)}` : '/';
-  const catHref = meta ? `/category/${encodeURIComponent(meta.categoryName)}` : '#';
+  // ✅ 링크 전부 univ 하위로 정규화
+  const univNameSafe = meta?.universityName || '대학교';
+  const cateNameSafe = meta?.categoryName || '카테고리';
+  const univHref = `/univ/${enc(univNameSafe)}`;
+  const catHref  = `/univ/${enc(univNameSafe)}/category/${enc(cateNameSafe)}`;
+  const docBase  = `${univHref}/docs/${docTitleParam}`;
 
   const showCard = status === 'ok' || status === 'loading';
 
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 좌측 */}
+      <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         <div className="lg:col-span-8">
           {flashMsg && (
             <div
@@ -316,14 +319,14 @@ export default function DocumentViewPage() {
               <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
                 <ol className="flex items-center gap-1">
                   <li>
-                    <Link to={uniHref} className="text-[#2C80A0] hover:underline">
-                      {uniLabel}
+                    <Link to={univHref} className="text-[#2C80A0] hover:underline">
+                      {univNameSafe}
                     </Link>
                   </li>
                   <li className="mx-1 text-gray-500">›</li>
                   <li>
                     <Link to={catHref} className="text-[#2C80A0] hover:underline">
-                      {catLabel}
+                      {cateNameSafe}
                     </Link>
                   </li>
                 </ol>
@@ -370,7 +373,7 @@ export default function DocumentViewPage() {
 
                   <Link
                     role="tab"
-                    to={`/docs/${docTitleParam}/discussions`}
+                    to={`${docBase}/discussions`}
                     className={`h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3]
                       ${hasTalk ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg-white/60'}`}
                   >
@@ -379,7 +382,7 @@ export default function DocumentViewPage() {
 
                   <Link
                     role="tab"
-                    to={`/docs/${docTitleParam}/history`}
+                    to={`${docBase}/history`}
                     className="h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
                   >
                     역사
@@ -412,12 +415,6 @@ export default function DocumentViewPage() {
             </section>
           )}
         </div>
-
-        {/* 우측 */}
-        <aside className="lg:col-span-4 space-y-6">
-          <RecentEdit />
-          <RecentDiscuss />
-        </aside>
       </div>
 
       {showTop && (

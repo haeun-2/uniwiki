@@ -1,11 +1,14 @@
 import React from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 import Header from "@/layout/Header";
 import Footer from "@/layout/Footer";
 import RecentEdit from "@/layout/RecentEdit"
 import RecentDiscuss from "@/layout/RecentDiscuss";
 
 export default function UnivLayout() {
+  const { univName } = useParams();
+  const decodedName = univName ? decodeURIComponent(univName) : "";
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
@@ -18,8 +21,8 @@ export default function UnivLayout() {
 
           {/* 오른쪽 : 최근 수정/토론 */}
           <aside className="space-y-6">
-            <RecentEdit />
-            <RecentDiscuss />
+            <RecentEdit univName={decodedName} />
+            <RecentDiscuss univName={decodedName} />
           </aside>
         </div>
       </main>

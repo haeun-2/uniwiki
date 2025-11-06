@@ -38,8 +38,11 @@ import AdminManualPage from './pages/admin/AdminManualPage'
 import DocumentViewPage from './pages/DocumentViewPage'
 import DiscussionListPage from './pages/DiscussionListPage'
 import DiscussionDetailPage from './pages/DiscussionDetailPage'
-import DocumentEditPage from './pages/DocumentEditPage'         // ✅ 편집 화면
-import DocumentHistoryPage from './pages/DocumentHistoryPage'   // ✅ 역사 화면 추가
+import DocumentEditPage from './pages/DocumentEditPage'
+import DocumentHistoryPage from './pages/DocumentHistoryPage'
+
+// ✅ 특정 버전 문서 조회(신규)
+import DocumentVersionViewPage from './pages/DocumentVersionViewPage'
 
 // 즐겨찾기, 참여 토론, 기여 문서
 import FavoritePage from './pages/FavoritePage'
@@ -72,27 +75,27 @@ const router = createBrowserRouter([
       { path: 'signup', element: <SignupPage /> },
       { path: 'signup/complete', element: <SignupCompletePage /> },
       { path: 'profile', element: <ProfilePage /> },
-
-      // 문서, 토론
-      { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
-      { path: '/docs/:documentTitle/history', element: <DocumentHistoryPage /> },   // ✅ 역사 라우트
-      { path: '/docs/:documentTitle/edit', element: <DocumentEditPage /> },         // ✅ 편집 라우트
-      { path: '/docs/:documentTitle/discussions', element: <DiscussionListPage /> },
-      { path: '/docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
     ],
   },
-
+  
   /** ✅ 레거시 경로 리다이렉트(404 방지) */
-  { path: '/univ/:univName/docs/:documentTitle', element: <LegacyUnivDocRedirect /> },
+  // { path: '/univ/:univName/docs/:documentTitle', element: <LegacyUnivDocRedirect /> },
 
   // 대학교 메인 페이지
   {
     path: '/univ/:univName',
     element: <UnivLayout />,
     children: [
-      // 대학교 메인 페이지
       { index: true, element: <UnivMainPage /> },
       { path: 'category/:categoryName', element: <CategoryPage /> },
+
+      // 문서, 토론
+      { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
+      { path: 'docs/:documentTitle/history', element: <DocumentHistoryPage /> },   // ✅ 역사 라우트
+      { path: 'docs/:documentTitle/edit', element: <DocumentEditPage /> },         // ✅ 편집 라우트
+      { path: 'docs/:documentTitle/discussions', element: <DiscussionListPage /> },
+      { path: 'docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
+      { path: 'docs/:documentTitle/versions/:versionId', element: <DocumentVersionViewPage /> },
     ]
   },
 
@@ -100,9 +103,7 @@ const router = createBrowserRouter([
   {
     path: '/category/:categoryName',
     element: <CategoryLayout />,
-    children: [
-      { index: true, element: <CategoryPage /> },
-    ]
+    children: [{ index: true, element: <CategoryPage /> }]
   },
   
   // 사용자 페이지(즐겨찾기, 참여토론)
@@ -118,26 +119,19 @@ const router = createBrowserRouter([
 
   // 관리자 페이지
   {
-    path: "/admin",
+    path: '/admin',
     element: <AdminLayout />,
     children: [
-      // 관리자
-
-      // admin 으로 들어오면 역할에 따라 분기
-      { index: true, element: <AdminIndexGate /> }, 
-
-      // login 페이지는 접근 가능
+      { index: true, element: <AdminIndexGate /> },
       { path: 'login', element: <AdminLoginPage /> },
-      
-      // 아래 페이지는 관리자만 접근 가능
       { 
-        element: <RequireAdmin />, 
+        element: <RequireAdmin />,
         children: [
           { path: 'user_report', element: <AdminUserReportPage /> },
           { path: 'discussion_report', element: <AdminDiscussionReportPage /> },
           { path: 'document', element: <AdminDocumentPage /> },
           { path: 'discussion', element: <AdminDiscussionPage /> },
-          { path: 'manual', element: <AdminManualPage /> }
+          { path: 'manual', element: <AdminManualPage /> },
         ]
       }
     ]

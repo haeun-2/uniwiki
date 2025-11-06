@@ -3,9 +3,6 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
-import RecentEdit from "@/layout/RecentEdit";
-import RecentDiscuss from "@/layout/RecentDiscuss";
-
 type Discussion = {
   id: string;
   title: string;
@@ -44,9 +41,10 @@ function authHeaders() {
 
 export default function DiscussionListPage() {
   const { documentTitle = "문서 제목" } = useParams();
-  const docTitleParam = encodeURIComponent(documentTitle);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const enc = (s: string) => encodeURIComponent(s || "");
 
   const [docMeta, setDocMeta] = useState<DocumentDto | null>(null);
   const [list, setList] = useState<Discussion[]>([]);
@@ -73,13 +71,10 @@ export default function DiscussionListPage() {
 
   // ----- 데이터 로딩 -----
   async function fetchDocMeta(title: string) {
-    const res = await fetch(
-      `${API_BASE}/v1/documents/${encodeURIComponent(title)}`,
-      {
-        headers: { Accept: "application/json", ...authHeaders() },
-        credentials: "include",
-      }
-    );
+    const res = await fetch(`${API_BASE}/v1/documents/${encodeURIComponent(title)}`, {
+      headers: { Accept: "application/json", ...authHeaders() },
+      credentials: "include",
+    });
     if (res.status === 401) {
       navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
       return null;
@@ -162,9 +157,7 @@ export default function DiscussionListPage() {
         body: JSON.stringify({
           documentId: docMeta.documentId,
           discussionTitle:
-            subject.trim() ||
-            content.trim().split("\n")[0].slice(0, 80) ||
-            "제목 없음",
+            subject.trim() || content.trim().split("\n")[0].slice(0, 80) || "제목 없음",
           discussionContent: content.trim(),
         }),
       });
@@ -197,9 +190,16 @@ export default function DiscussionListPage() {
 
   const isEmpty = !loading && list.length === 0;
 
+  // ----- 경로 구성 (univ/아래로) -----
+  const univName = docMeta?.universityName ?? "대학교";
+  const cateName = docMeta?.categoryName ?? "카테고리";
+  const univHref = `/univ/${enc(univName)}`;
+  const cateHref = `/univ/${enc(univName)}/category/${enc(cateName)}`;
+  const docHref = `/univ/${enc(univName)}/docs/${enc(documentTitle)}`;
+
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         {/* 좌측 */}
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 문서정보 + 토론 목록 */}
@@ -214,19 +214,14 @@ export default function DiscussionListPage() {
             <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
               <ol className="flex items-center gap-1">
                 <li>
-                  <Link to="/" className="text-[#2C80A0] hover:underline">
-                    {docMeta?.universityName ?? "학교이름"}
+                  <Link to={univHref} className="text-[#2C80A0] hover:underline">
+                    {univName}
                   </Link>
                 </li>
                 <li className="mx-1 text-gray-500">›</li>
                 <li>
-                  <Link
-                    to={`/category/${encodeURIComponent(
-                      docMeta?.categoryName ?? "카테고리"
-                    )}`}
-                    className="text-[#2C80A0] hover:underline"
-                  >
-                    {docMeta?.categoryName ?? "카테고리"}
+                  <Link to={cateHref} className="text-[#2C80A0] hover:underline">
+                    {cateName}
                   </Link>
                 </li>
               </ol>
@@ -247,7 +242,7 @@ export default function DiscussionListPage() {
                 <Link
                   role="tab"
                   aria-selected={false}
-                  to={`/docs/${docTitleParam}`}
+                  to={docHref}
                   className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
                 >
                   문서로
@@ -269,7 +264,7 @@ export default function DiscussionListPage() {
                   {list.map((d) => (
                     <li key={d.id} className="py-1 text-[20px] leading-snug">
                       <Link
-                        to={`/docs/${docTitleParam}/discussions/${d.id}`}
+                        to={`${docHref}/discussions/${d.id}`}
                         className="font-semibold text-[#2C80A0] hover:underline"
                       >
                         {d.title}
@@ -284,9 +279,7 @@ export default function DiscussionListPage() {
           {/* 상자 #2 : 새 토론 생성 */}
           <section className="rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
             <header className="mb-4">
-              <h2 className="text-[28px] leading-tight font-semibold text-gray-900">
-                새 토론 생성
-              </h2>
+              <h2 className="text-[28px] leading-tight font-semibold text-gray-900">새 토론 생성</h2>
             </header>
 
             <div className="space-y-5 px-2 sm:px-3 md:px-4">
@@ -326,12 +319,6 @@ export default function DiscussionListPage() {
             </div>
           </section>
         </div>
-
-        {/* 우측 */}
-        <aside className="lg:col-span-4 space-y-6">
-          <RecentEdit />
-          <RecentDiscuss />
-        </aside>
       </div>
 
       {showTop && (
