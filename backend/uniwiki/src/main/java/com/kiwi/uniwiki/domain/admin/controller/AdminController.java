@@ -86,4 +86,14 @@ public class AdminController {
         adminWriteService.resolvedDiscussionReport(userDetails.getUser(), reportedDiscussionId, request);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/document-revisions")
+    @Operation(summary = "문서 변경 이력 조회", description = "관리자가 쿤서 버전의 전체 이력을 조회합니다")
+    public ResponseEntity<PageResponse<AdminResponseDTO.DocumentVersionList>> getDocumentAllVersions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<AdminResponseDTO.DocumentVersionList> response=  adminReadService.getDocumentAllVersions(page,size);
+        return ResponseEntity.ok(response);
+    }
 }

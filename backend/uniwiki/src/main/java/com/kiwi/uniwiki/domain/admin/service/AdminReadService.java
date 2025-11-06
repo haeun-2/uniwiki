@@ -3,6 +3,8 @@ package com.kiwi.uniwiki.domain.admin.service;
 import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.admin.dto.response.AdminResponseDTO;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
+import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
+import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
 import com.kiwi.uniwiki.domain.report.entity.DiscussionReport;
 import com.kiwi.uniwiki.domain.report.entity.UserReport;
 import com.kiwi.uniwiki.domain.report.repository.DiscussionReportRepository;
@@ -28,6 +30,7 @@ public class AdminReadService {
 
     private final UserReportRepository userReportRepository;
     private final DiscussionReportRepository discussionReportRepository;
+    private final DocumentVersionRepository documentVersionRepository;
 
     public PageResponse<AdminResponseDTO.UserReportResponse> getUserReports(Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -67,7 +70,9 @@ public class AdminReadService {
                                     report.getId(),
                                     report.getCode().getName(),
                                     report.getReporter().getNickname(),
+                                    report.getReason(),
                                     report.getCreatedAt()
+
                             ))
                             .collect(Collectors.toList());
 
@@ -145,6 +150,24 @@ public class AdminReadService {
 
         Page<AdminResponseDTO.DiscussionReportResponse> resultPage =
                 new PageImpl<>(content, pageable, reportedDiscussionContentIdsPage.getTotalElements());
+
+        return PageResponse.from(resultPage);
+    }
+
+    public PageResponse<AdminResponseDTO.DocumentVersionList> getDocumentAllVersions(int page, int size){
+        Pageable pageable = PageRequest.of(page, size);
+        Page<DocumentVersion> documentVersions = documentVersionRepository.findAllDocumentVersion(pageable);
+
+        Page<AdminResponseDTO.DocumentVersionList> resultPage = documentVersions.map(dv ->
+                new AdminResponseDTO.DocumentVersionList(
+                        dv.getDocument().getUniversity().getName(),
+                        dv.getDocument().getCategory().getName(),
+                        dv.getDocument().getTitle(),
+                        dv.getCreatedAt(),
+                        dv.getPlusCount(),
+                        dv.getMinusCount()
+                )
+        );
 
         return PageResponse.from(resultPage);
     }
