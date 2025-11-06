@@ -153,10 +153,13 @@ public class AdminWriteService {
         );
     }
 
-//    @Transactional
-//    public void deleteDocument(Integer documentId){
-//        Document document = documentRepository
-//     }
+    @Transactional
+    public void deleteDocument(AdminRequestDTO.DocumentDeleteRequest request, Integer documentId){
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
+        document.deleteDocument(request.getReason());
+
+    }
 
 
 }

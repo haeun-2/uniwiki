@@ -96,4 +96,14 @@ public class AdminController {
         PageResponse<AdminResponseDTO.DocumentVersionList> response=  adminReadService.getDocumentAllVersions(page,size);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/documents/{documentId}")
+    @Operation(summary = "문서 삭제", description = "관리자가 문서를 삭제합니다.")
+    public ResponseEntity<Void> deleteDocument(
+            @PathVariable Integer documentId,
+            @RequestBody AdminRequestDTO.DocumentDeleteRequest request
+    ) {
+        adminWriteService.deleteDocument(request, documentId);
+        return ResponseEntity.noContent().build();
+    }
 }
