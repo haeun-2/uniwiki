@@ -13,12 +13,20 @@ public class DiscussionResponseDTO {
 
     @Getter
     @AllArgsConstructor
+    @Builder
     public static class SimpleResponse {
         private Integer discussionId;
         private String discussionTitle;
+        private Integer documentId;
+        private String documentTitle;
 
         public static SimpleResponse from(Discussion discussion) {
-            return new SimpleResponse(discussion.getId(), discussion.getTitle());
+            return SimpleResponse.builder()
+                    .discussionId(discussion.getId())
+                    .discussionTitle(discussion.getTitle())
+                    .documentId(discussion.getDocument().getId())
+                    .documentTitle(discussion.getDocument().getTitle())
+                    .build();
         }
 
         public static List<SimpleResponse> from(List<Discussion> discussions) {
