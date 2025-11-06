@@ -34,4 +34,12 @@ public class AdminRequestDTO {
         private String reason;
     }
 
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class DocumentDeleteRequest {
+
+        private String reason;
+    }
+
 }

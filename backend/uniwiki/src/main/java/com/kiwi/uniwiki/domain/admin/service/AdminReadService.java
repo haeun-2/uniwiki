@@ -2,7 +2,9 @@ package com.kiwi.uniwiki.domain.admin.service;
 
 import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.admin.dto.response.AdminResponseDTO;
+import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
+import com.kiwi.uniwiki.domain.discussion.repository.DiscussionRepository;
 import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
 import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
 import com.kiwi.uniwiki.domain.report.entity.DiscussionReport;
@@ -31,6 +33,7 @@ public class AdminReadService {
     private final UserReportRepository userReportRepository;
     private final DiscussionReportRepository discussionReportRepository;
     private final DocumentVersionRepository documentVersionRepository;
+    private final DiscussionRepository discussionRepository;
 
     public PageResponse<AdminResponseDTO.UserReportResponse> getUserReports(Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -166,6 +169,22 @@ public class AdminReadService {
                         dv.getCreatedAt(),
                         dv.getPlusCount(),
                         dv.getMinusCount()
+                )
+        );
+
+        return PageResponse.from(resultPage);
+    }
+
+    public PageResponse<AdminResponseDTO.DiscussionList> getAllDiscussion(int page, int size){
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Discussion> discussions = discussionRepository.findAllDiscussion(pageable);
+
+        Page<AdminResponseDTO.DiscussionList> resultPage = discussions.map(d ->
+                new AdminResponseDTO.DiscussionList(
+                        d.getId(),
+                        d.getTitle(),
+                        d.getCode().getName(),
+                        d.getUpdatedAt()
                 )
         );
 
