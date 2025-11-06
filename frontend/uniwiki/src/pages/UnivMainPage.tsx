@@ -1,7 +1,7 @@
 // src/pages/UnivMainPage.tsx
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 type University = {
   universityId: number;
@@ -11,6 +11,11 @@ type University = {
 
 type LocationState = { universityId?: number };
 
+type PopularDoc = {
+  documentTitle: string;
+  viewCount: number;
+};
+
 // 한글/영문 혼용, 공백, 정규화 대비
 const norm = (s: string) =>
   s
@@ -19,7 +24,6 @@ const norm = (s: string) =>
     .toLowerCase();
 
 export default function UnivMainPage() {
-
   const { univName } = useParams<{ univName: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,6 +44,10 @@ export default function UnivMainPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // 🔥 인기 문서 상태
+  const [popularDocs, setPopularDocs] = useState<PopularDoc[]>([]);
+  const [popularLoading, setPopularLoading] = useState(false);
+
   // 4) state가 없을 때: 이름으로 id 폴백 매핑
   useEffect(() => {
     if (univId || !inputName) return;
@@ -58,7 +66,7 @@ export default function UnivMainPage() {
           list.find(u => norm(u.universityName) === t) ??
           list.find(u => norm(u.universityName).replace(/\s+/g, "") === t.replace(/\s+/g, ""));
 
-        // 부분 포함까지 허용(원치 않으면 제거)
+        // 부분 포함 허용(원치 않으면 제거)
         const partial = exact ? null : list.find(u => norm(u.universityName).includes(t));
 
         const found = exact ?? partial ?? null;
@@ -70,7 +78,9 @@ export default function UnivMainPage() {
         if (mounted) setErr(e?.message ?? "대학교를 찾지 못했습니다.");
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [inputName, univId]);
 
   // 5) 확정된 id로 "공식 이름 포함" 정보 확보
@@ -95,7 +105,9 @@ export default function UnivMainPage() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [univId]);
 
   // 6) 정규 URL로 교체: 공식 이름 기준으로 경로 통일
@@ -109,6 +121,35 @@ export default function UnivMainPage() {
 
   // 7) 표시는 항상 "공식 이름"
   const displayName = univ?.universityName || inputName || "대학교";
+
+  // ⭐ 인기 문서 API 호출: /api/v1/documents/popular?universityId=...
+  useEffect(() => {
+    if (!univId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        setPopularLoading(true);
+        const resp = await fetch(
+          `http://k13d104.p.ssafy.io/api/v1/documents/popular?universityId=${univId}`,
+          {
+            method: "GET",
+            headers: { Accept: "*/*" },
+          }
+        );
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data: PopularDoc[] = await resp.json();
+        if (mounted) setPopularDocs(Array.isArray(data) ? data.slice(0, 10) : []);
+      } catch (e) {
+        console.error("popular fetch error:", e);
+        if (mounted) setPopularDocs([]);
+      } finally {
+        if (mounted) setPopularLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [univId]);
 
   if (err) return <div className="p-4 text-xs text-red-500">{err}</div>;
   if (loading && !univ) return <div className="p-4 text-sm text-gray-500">불러오는 중…</div>;
@@ -125,16 +166,21 @@ export default function UnivMainPage() {
   return (
     <section className="space-y-8">
       {/* 상단 - 학교 개요 카드 */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex items-center gap-6">
-        <div className="h-20 w-20 flex-shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">
-          🏫
-        </div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex items-center justify-between gap-6">
+        <div className="flex items-center gap-6">
+          <div className="h-20 w-20 flex-shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">
+            🏫
+          </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            (id: {univId ?? "미전달"}) {univ ? "매핑 완료" : ""}
-          </p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              (id: {univId ?? "미전달"}) {univ ? "매핑 완료" : ""}
+            </p>
+          </div>
         </div>
+        <button className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition flex-shrink-0">
+          새 문서 만들기
+        </button>
       </div>
 
       {/* 중단 - 주요 카테고리 */}
@@ -164,15 +210,32 @@ export default function UnivMainPage() {
         </div>
       </div>
 
-      {/* 하단 - 문서 활동 안내 */}
+      {/* 하단 - 인기 문서 (UI 동일, 데이터만 API 연동) */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">이 학교에 기여하기</h2>
-        <p className="text-sm text-gray-600 mb-4">
-          문서를 추가하거나 수정하여 더 나은 대학 위키를 만들어주세요.
-        </p>
-        <button className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition">
-          새 문서 만들기
-        </button>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">인기 문서</h2>
+
+        {popularLoading ? (
+          <div className="text-sm text-gray-500">불러오는 중…</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {popularDocs.length > 0 ? (
+              popularDocs.map((doc, idx) => (
+                <div
+                  key={`${doc.documentTitle}-${idx}`}
+                  className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition cursor-pointer"
+                  onClick={() => navigate(`/docs/${encodeURIComponent(doc.documentTitle)}`)}
+                >
+                  <h3 className="font-medium text-gray-900 mb-1">{doc.documentTitle}</h3>
+                  <p className="text-sm text-gray-500">
+                    {displayName} · 조회수 {doc.viewCount.toLocaleString()}회
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500">인기 문서가 없습니다.</div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );
