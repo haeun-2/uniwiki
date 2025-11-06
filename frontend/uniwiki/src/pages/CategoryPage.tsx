@@ -1,7 +1,7 @@
 // src/pages/CategoryPage.tsx
 
 import { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 
 interface CategoryItem {
   documentTitle: string;
@@ -25,6 +25,8 @@ interface PaginationResponse {
 
 export default function CategoryPage() {
   const { univName, categoryName } = useParams<{ univName?: string; categoryName: string }>();
+  const location = useLocation();
+  
   const [isEnglish, setIsEnglish] = useState<boolean>(false);
   const [selectedLetter, setSelectedLetter] = useState<string>("ㄱ");
   const [documents, setDocuments] = useState<CategoryItem[]>([]);
@@ -45,12 +47,14 @@ export default function CategoryPage() {
   const englishAlphabets = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
 
   const letters = isEnglish ? englishAlphabets : koreanConsonants;
-  const universityId = univName ? Number(univName) : undefined;
+  const universityId = location.state?.universityId ?? undefined;
 
   // 1. 카테고리 목록 조회
   useEffect(() => {
     const fetchCategories = async () => {
       try {
+           console.log("=== 카테고리 조회 시작 ===");
+      console.log("요청한 categoryName:", categoryName);
         const response = await fetch("http://k13d104.p.ssafy.io/api/v1/categories", {
           method: "GET",
           headers: {
@@ -60,9 +64,15 @@ export default function CategoryPage() {
 
         if (response.ok) {
           const data = await response.json();
+                  console.log("백엔드 전체 카테고리:", data);  // ← 여기서 확인!
+
           const matchedCategory = data.find((cat: Category) => cat.categoryName === categoryName);
+                 console.log("매칭된 카테고리:", matchedCategory);
+
           if (matchedCategory) {
             setCurrentCategoryId(matchedCategory.categoryId);
+          }else{
+            console.error("❌ 카테고리를 찾을 수 없음. 요청:", categoryName);
           }
         } else {
           alert("카테고리 목록을 불러오는데 실패했습니다.");
@@ -123,7 +133,7 @@ export default function CategoryPage() {
   // 페이지 변경 함수
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // 페이지 상단으로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // 한글 초성 추출 함수

@@ -1,26 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom"
 
-
-// 인기 학교 더미 데이터
-const popularSchools = [
-  { name: "서울대학교", city: "서울특별시", slug: "snu" },
-  { name: "연세대학교", city: "서울특별시", slug: "yonsei" },
-  { name: "고려대학교", city: "서울특별시", slug: "ku" },
-  { name: "경북대학교", city: "대구광역시", slug: "knu" },
-  { name: "부산대학교", city: "부산광역시", slug: "pnu" },
-  { name: "한양대학교", city: "서울특별시", slug: "hyu" },
-];
-
-
-
-// 지역별
-
+// 지역
 type Region = {
   regionId: number;
   regionName: string;
 };
-
 const shortenRegion = (name: string) => {
   if (name.endsWith("특별시")) return name.replace("특별시", "");
   if (name.endsWith("광역시")) return name.replace("광역시", "");
@@ -30,15 +15,61 @@ const shortenRegion = (name: string) => {
   return name;
 };
 
-
-
 // 대학교
-
 type University = {
   universityId: number;
   universityName: string;
   logoUrl: string | null;
 };
+
+// 즐겨찾기한 대학교
+type FavoriteUniversity = {
+universityId: number;
+universityName: string;
+logoUrl: string | null;
+};
+
+// 즐겨찾기 문서
+type FavoriteDocument = {
+  documentId: number;
+  documentTitle: string;
+  universityName: string;
+  documentUpdateAt: string;
+};
+
+// 로그인한 회원의 학교
+type AuthPayload = {
+  accessToken?: string;
+  universityId?: number | null;
+};
+function getStoredAuth(): AuthPayload {
+  // 로그인 저장 위치가 세션/로컬 중 어디든 대응
+  const fromSession = sessionStorage.getItem("auth");
+  const fromLocal   = localStorage.getItem("auth");
+
+  // 이미 개별 키로 저장했다면 각각 읽어도 됨
+  const token = sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken");
+  const uniIdRaw = sessionStorage.getItem("universityId") || localStorage.getItem("universityId");
+
+  // 통째로 JSON 저장한 경우(auth) 우선 사용
+  try {
+    if (fromSession) {
+      const a = JSON.parse(fromSession);
+      return { accessToken: a.accessToken, universityId: a.universityId };
+    }
+    if (fromLocal) {
+      const a = JSON.parse(fromLocal);
+      return { accessToken: a.accessToken, universityId: a.universityId };
+    }
+  } catch {}
+
+  // 개별 키로만 있는 경우
+  return {
+    accessToken: token || undefined,
+    universityId: uniIdRaw !== null ? (uniIdRaw === "null" ? null : Number(uniIdRaw)) : undefined,
+  };
+}
+
 
 
 export default function MainPage() {
@@ -134,6 +165,140 @@ export default function MainPage() {
   }, []);
 
 
+
+  // ---------------- My University ----------------
+  const [{ accessToken, universityId }] = useState(getStoredAuth());
+  const [myUniv, setMyUniv] = useState<University | null>(null);
+  const [loadingMyUniv, setLoadingMyUniv] = useState(false);
+  const [myUnivError, setMyUnivError] = useState<string | null>(null);
+
+  // universityId가 있을 때만 상세 조회 → 이름을 링크용으로 사용
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!accessToken || universityId == null) return; // 토큰 없거나 미인증(null)이면 패스
+      try {
+        setLoadingMyUniv(true);
+        setMyUnivError(null);
+
+        // 보통은 /universities/{id}가 있을 확률이 높습니다.
+        // 없으면 주석의 fallback을 사용하세요.
+        const res = await fetch(`http://k13d104.p.ssafy.io/api/v1/universities/${universityId}`, {
+          headers: { accept: "*/*" },
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: University = await res.json();
+        if (mounted) setMyUniv(data);
+      } catch (e: any) {
+        setMyUnivError(e?.message ?? "내 학교 정보를 불러오지 못했습니다.");
+        // 🔁 Fallback (만약 단건 API가 없다면 주석 해제해서 전체 목록에서 찾아도 됩니다)
+        // try {
+        //   const all = await fetch("http://k13d104.p.ssafy.io/api/v1/universities", { headers: { accept: "*/*" }});
+        //   const list: University[] = await all.json();
+        //   const found = list.find(u => u.universityId === universityId) || null;
+        //   if (mounted) setMyUniv(found);
+        // } catch {}
+      } finally {
+        if (mounted) setLoadingMyUniv(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [accessToken, universityId]);
+
+
+
+    // ---------------- Favorite Universities (내 학교 즐겨찾기) ----------------
+    const [favUnivs, setFavUnivs] = useState<FavoriteUniversity[]>([]);
+    const [loadingFavs, setLoadingFavs] = useState(false);
+    const [favError, setFavError] = useState<string | null>(null);
+
+    useEffect(() => {
+      let mounted = true;
+      (async () => {
+        if (!accessToken) return; // 비로그인 시 요청 X
+        try {
+          setLoadingFavs(true);
+          setFavError(null);
+          const res = await fetch(
+            "http://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities",
+            {
+              method: "GET",
+              headers: {
+                accept: "*/*",
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data: FavoriteUniversity[] = await res.json();
+          if (mounted) setFavUnivs(data);
+        } catch (e: any) {
+          if (mounted) setFavError(e?.message ?? "즐겨찾기한 학교를 불러오지 못했습니다.");
+        } finally {
+          if (mounted) setLoadingFavs(false);
+        }
+      })();
+      return () => { mounted = false; };
+    }, [accessToken]);
+
+
+
+      // ---------------- Favorite Documents ----------------
+  const [favDocs, setFavDocs] = useState<FavoriteDocument[]>([]);
+  const [loadingFavDocs, setLoadingFavDocs] = useState(false);
+  const [favDocsError, setFavDocsError] = useState<string | null>(null);
+
+  // 상대 시간 표시 유틸
+  const timeAgo = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      const diff = Date.now() - d.getTime();
+      const m = Math.floor(diff / 60000);
+      if (m < 1) return "방금 전";
+      if (m < 60) return `${m}분 전`;
+      const h = Math.floor(m / 60);
+      if (h < 24) return `${h}시간 전`;
+      const day = Math.floor(h / 24);
+      if (day < 7) return `${day}일 전`;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    } catch { return ""; }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!accessToken) return; // 비로그인 시 요청 X
+      try {
+        setLoadingFavDocs(true);
+        setFavDocsError(null);
+        const res = await fetch(
+          "http://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents",
+          {
+            method: "GET",
+            headers: {
+              accept: "*/*",
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: FavoriteDocument[] = await res.json();
+        if (mounted) setFavDocs(data);
+      } catch (e: any) {
+        if (mounted) setFavDocsError(e?.message ?? "즐겨찾기한 문서를 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setLoadingFavDocs(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [accessToken]);
+
+  
+
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-8">
       {/* 인기 많은 학교 */}
@@ -186,25 +351,192 @@ export default function MainPage() {
       <section className="mb-12 grid gap-8 md:grid-cols-2">
         <div>
           <h2 className="mb-4 text-xl font-semibold">내 학교</h2>
-          <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">IMG</div>
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 text-sm font-medium text-gray-900">내가 다니는 학교</div>
-              <p className="truncate text-xs text-gray-500">서울특별시의 어떤 도서관으로 2시간 운행…</p>
+          {/* 비로그인 or 토큰 없음 */}
+          {!accessToken && (
+            <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">IMG</div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 text-sm font-medium text-gray-900">내가 다니는 학교</div>
+                <p className="truncate text-xs text-gray-500">로그인하면 내 학교가 연결됩니다.</p>
+              </div>
+            </article>
+          )}
+
+          {/* 로그인 + universityId === null (미인증) */}
+          {accessToken && universityId === null && (
+            <article className="flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-xs text-amber-700">!</div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 text-sm font-medium text-gray-900">내가 다니는 학교</div>
+                <p className="text-xs text-amber-700">학교 이메일을 인증해주세요</p>
+              </div>
+            </article>
+          )}
+
+          {/* 로그인 + universityId 존재 → 학교 페이지 링크 */}
+          {accessToken && universityId !== null && (
+            <Link
+              to={myUniv ? `/univ/${encodeURIComponent(myUniv.universityName)}` : "#"}
+              state={myUniv ? { universityId: myUniv.universityId } : undefined}
+              className="block"
+            >
+              <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow transition">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">IMG</div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 text-sm font-medium text-gray-900">
+                    {loadingMyUniv ? "불러오는 중..." : (myUniv?.universityName ?? (myUnivError ? "내 학교 정보 오류" : "학교 정보 준비 중"))}
+                  </div>
+                </div>
+              </article>
+            </Link>
+          )}
+
+          {/* 즐겨찾기한 학교 */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between">
+              <h3 className="mb-4 text-xl font-semibold">즐겨찾기한 학교</h3>
+              {accessToken && favUnivs.length > 0 && (
+                <Link
+                  to={`/user/favorite`}
+                  className="text-sm text-gray-400 hover:text-gray-600 hover:underline"
+                >더보기</Link>
+              )}
             </div>
-          </article>
+
+            {/* 비로그인 → 로그인 유도 */}
+            {!accessToken && (
+              <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">★</div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 text-sm font-medium text-gray-900">즐겨찾기한 학교</div>
+                  <p className="truncate text-xs text-gray-500">로그인하면 즐겨찾기한 학교를 볼 수 있어요.</p>
+                </div>
+              </article>
+            )}
+
+            {/* 로그인 + 로딩 */}
+            {accessToken && loadingFavs && (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="h-12 w-12 rounded-xl bg-gray-100 animate-pulse" />
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 h-3 w-28 bg-gray-100 animate-pulse" />
+                      <div className="h-3 w-40 bg-gray-100 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 로그인 + 에러 */}
+            {accessToken && !loadingFavs && favError && (
+              <p className="text-xs text-red-500">즐겨찾기한 학교를 불러오지 못했습니다. 새로고침 해주세요.</p>
+            )}
+
+            {/* 로그인 + 데이터 */}
+            {accessToken && !loadingFavs && !favError && (
+              favUnivs.length === 0 ? (
+                <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">☆</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 text-sm font-medium text-gray-900">아직 즐겨찾기가 없어요</div>
+                    <p className="truncate text-xs text-gray-500">관심 있는 학교를 즐겨찾기해 보세요.</p>
+                  </div>
+                </article>
+              ) : (
+                <div className="space-y-3">
+                  {favUnivs.slice(0, 2).map((u) => (
+                    <Link
+                      key={u.universityId}
+                      to={`/univ/${encodeURIComponent(u.universityName)}`}
+                      state={{ universityId: u.universityId }}
+                      className="block"
+                      title={u.universityName}
+                    >
+                      <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow transition">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xl">
+                          {/* 로고가 있으면 표시 */}
+                          {u.logoUrl ? (
+                            <img src={u.logoUrl} alt={u.universityName} className="h-12 w-12 rounded-xl object-cover" />
+                          ) : (
+                            <span role="img" aria-label="school">🏛️</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 text-sm font-medium text-gray-900 truncate">{u.universityName}</div>
+                        </div>
+                      </article>
+                    </Link>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
         </div>
 
         <div>
-          <h2 className="mb-4 text-xl font-semibold">즐겨찾기 문서</h2>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((id) => (
-              <article key={id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <h3 className="text-sm font-medium text-gray-900">신촌캠퍼스 맛집</h3>
-                <p className="mt-1 text-xs text-gray-500">연세대학교 · 2시간 전</p>
-              </article>
-            ))}
+          <div className="flex item-center justify-between">
+            <h2 className="mb-4 text-xl font-semibold">즐겨찾기 문서</h2>
+            <Link
+              to={`/user/favorite`}
+              className="text-sm text-gray-400 hover:text-gray-600 hover:underline"
+            >더보기</Link>
           </div>
+
+          {/* 비로그인 → 로그인 유도 */}
+          {!accessToken && (
+            <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">📄</div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 text-sm font-medium text-gray-900">즐겨찾기한 문서</div>
+                <p className="truncate text-xs text-gray-500">로그인하면 즐겨찾기한 문서를 볼 수 있어요.</p>
+              </div>
+            </article>
+          )}
+
+          {/* 로그인 + 로딩 */}
+          {accessToken && loadingFavDocs && (
+            <div className="space-y-3">
+              {[1,2,3,4].map((i) => (
+                <div key={i} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="h-3 w-40 bg-gray-100 animate-pulse" />
+                  <div className="mt-2 h-3 w-28 bg-gray-100 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 로그인 + 에러 */}
+          {accessToken && !loadingFavDocs && favDocsError && (
+            <p className="text-xs text-red-500">즐겨찾기한 문서를 불러오지 못했습니다. 새로고침 해주세요.</p>
+          )}
+
+          {/* 로그인 + 데이터 */}
+          {accessToken && !loadingFavDocs && !favDocsError && (
+            favDocs.length === 0 ? (
+              <article className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-medium text-gray-900">아직 즐겨찾기가 없어요</h3>
+                <p className="mt-1 text-xs text-gray-500">관심 있는 문서를 즐겨찾기해 보세요.</p>
+              </article>
+            ) : (
+              <div className="space-y-3">
+                {favDocs.slice(0, 4).map((d) => (
+                <Link
+                  key={d.documentId}
+                  to={`/univ/${encodeURIComponent(d.universityName)}/docs/${encodeURIComponent(d.documentTitle)}`}
+                  className="block"
+                  title={`${d.universityName} · ${d.documentTitle}`}
+                >
+                  <article className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow transition">
+                    <h3 className="text-sm font-medium text-gray-900 truncate">{d.documentTitle}</h3>
+                    <p className="mt-1 text-xs text-gray-500 truncate">{d.universityName} · {timeAgo(d.documentUpdateAt)}</p>
+                  </article>
+                </Link>
+                ))}
+              </div>
+            )
+          )}
         </div>
       </section>
 

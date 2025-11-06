@@ -1,55 +1,68 @@
 // src/pages/DiscussionListPage.tsx
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
-// ✅ 우측 레일 직접 사용 (라우터/레이아웃 변경 없음)
 import RecentEdit from "@/layout/RecentEdit";
 import RecentDiscuss from "@/layout/RecentDiscuss";
 
 type Discussion = {
   id: string;
   title: string;
-  createdAt: string; // ISO
+  createdAt?: string;
   author?: string;
-  status: "open" | "closed";
+  status?: "open" | "closed";
   commentCount?: number;
 };
 
-const SAMPLE_DISCUSSIONS: Discussion[] = [];
+type DocumentDto = {
+  universityId: number;
+  universityName: string;
+  categoryId: number;
+  categoryName: string;
+  documentId: number;
+  versionNumber: number;
+  documentTitle: string;
+  documentContent: string;
+  updatedAt: string;
+};
+
+const API_BASE = "http://k13d104.p.ssafy.io/api";
+
+// JWT
+function getAccessToken() {
+  try {
+    return localStorage.getItem("accessToken") || "";
+  } catch {
+    return "";
+  }
+}
+function authHeaders() {
+  const t = getAccessToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
 
 export default function DiscussionListPage() {
   const { documentTitle = "문서 제목" } = useParams();
   const docTitleParam = encodeURIComponent(documentTitle);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const [list, setList] = useState<Discussion[]>(SAMPLE_DISCUSSIONS);
+  const [docMeta, setDocMeta] = useState<DocumentDto | null>(null);
+  const [list, setList] = useState<Discussion[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [errorMsg, setErrorMsg] = useState<string>("");
+
+  // 플래시 배너
+  const [flash, setFlash] = useState<string>("");
+
+  // 새 토론 입력
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
-
-  const isEmpty = list.length === 0;
+  const [posting, setPosting] = useState(false);
   const canSubmit = content.trim().length > 0;
 
-  const onCreate = () => {
-    if (!canSubmit) return;
-    const now = new Date();
-    const fallbackTitle =
-      subject.trim() ||
-      content.trim().split("\n")[0].slice(0, 80) ||
-      "제목 없음";
-    const newItem: Discussion = {
-      id: Math.random().toString(36).slice(2),
-      title: fallbackTitle,
-      createdAt: now.toISOString(),
-      author: "나",
-      status: "open",
-      commentCount: 0,
-    };
-    setList((prev) => [...prev, newItem]); // 맨 아래 추가
-    setSubject("");
-    setContent("");
-  };
-
-  // 상단 이동 버튼 (문서 화면과 동일)
+  // Scroll-to-top
   const [showTop, setShowTop] = useState(false);
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 300);
@@ -58,24 +71,162 @@ export default function DiscussionListPage() {
   }, []);
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
+  // ----- 데이터 로딩 -----
+  async function fetchDocMeta(title: string) {
+    const res = await fetch(
+      `${API_BASE}/v1/documents/${encodeURIComponent(title)}`,
+      {
+        headers: { Accept: "application/json", ...authHeaders() },
+        credentials: "include",
+      }
+    );
+    if (res.status === 401) {
+      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      return null;
+    }
+    if (!res.ok) throw new Error(`문서 조회 실패 (${res.status})`);
+    return (await res.json()) as DocumentDto;
+  }
+
+  async function fetchDiscussionList(documentId: number) {
+    const res = await fetch(
+      `${API_BASE}/v1/discussions?document=${documentId}&page=0&size=10`,
+      {
+        headers: { Accept: "application/json", ...authHeaders() },
+        credentials: "include",
+      }
+    );
+    if (res.status === 401) {
+      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      return;
+    }
+    if (!res.ok) throw new Error(`토론 목록 실패 (${res.status})`);
+    const page = await res.json();
+
+    // 서버 최신순이더라도 화면은 오래된→새로 생성된 순으로
+    const itemsRaw = (page?.content ?? []).map((x: any) => ({
+      id: String(x.discussionId),
+      title: x.discussionTitle,
+      status: "open",
+    }));
+    setList(itemsRaw.slice().reverse());
+  }
+
+  useEffect(() => {
+    let abort = false;
+    (async () => {
+      setLoading(true);
+      setErrorMsg("");
+      setFlash("");
+      try {
+        const meta = await fetchDocMeta(documentTitle);
+        if (!meta || abort) return;
+        setDocMeta(meta);
+        await fetchDiscussionList(meta.documentId);
+      } catch (e: any) {
+        if (!abort) setErrorMsg(e?.message || "불러오기에 실패했습니다.");
+      } finally {
+        if (!abort) setLoading(false);
+      }
+    })();
+    return () => {
+      abort = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentTitle]);
+
+  // ----- 토론 생성 -----
+  const onCreate = async () => {
+    if (!canSubmit || posting) return;
+
+    if (!getAccessToken()) {
+      setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+      return;
+    }
+    if (!docMeta) {
+      setFlash("문서 정보를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+      return;
+    }
+
+    setPosting(true);
+    setFlash("");
+    try {
+      const res = await fetch(`${API_BASE}/v1/discussions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...authHeaders(),
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          documentId: docMeta.documentId,
+          discussionTitle:
+            subject.trim() ||
+            content.trim().split("\n")[0].slice(0, 80) ||
+            "제목 없음",
+          discussionContent: content.trim(),
+        }),
+      });
+
+      if (res.status === 401) {
+        setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        return;
+      }
+      if (res.status === 403) {
+        setFlash("해당 학교 소속 학생만 토론을 생성할 수 있습니다.");
+        return;
+      }
+      if (!res.ok) {
+        setFlash(`토론 생성 실패 (${res.status})`);
+        return;
+      }
+
+      // 성공: 입력 초기화 + 목록 재조회
+      await res.json();
+      setSubject("");
+      setContent("");
+      setFlash("토론이 생성되었습니다.");
+      await fetchDiscussionList(docMeta.documentId);
+    } catch (e: any) {
+      setFlash("네트워크 오류로 토론을 생성하지 못했습니다.");
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const isEmpty = !loading && list.length === 0;
+
   return (
     <div className="bg-white">
       <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 좌측 컬럼 */}
+        {/* 좌측 */}
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 문서정보 + 토론 목록 */}
           <section className="rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
+            {/* 플래시 배너 */}
+            {flash && (
+              <div className="mb-4 rounded-xl bg-[#2C80A0] text-white px-4 py-3 text-[16px]">
+                {flash}
+              </div>
+            )}
+
             <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
               <ol className="flex items-center gap-1">
-                <li><Link to="/" className="text-[#2C80A0] hover:underline">학교이름</Link></li>
+                <li>
+                  <Link to="/" className="text-[#2C80A0] hover:underline">
+                    {docMeta?.universityName ?? "학교이름"}
+                  </Link>
+                </li>
                 <li className="mx-1 text-gray-500">›</li>
                 <li>
-                  {/* 🔧 URL 정리: /categories → /category */}
                   <Link
-                    to={`/category/${encodeURIComponent("행사")}`}
+                    to={`/category/${encodeURIComponent(
+                      docMeta?.categoryName ?? "카테고리"
+                    )}`}
                     className="text-[#2C80A0] hover:underline"
                   >
-                    행사
+                    {docMeta?.categoryName ?? "카테고리"}
                   </Link>
                 </li>
               </ol>
@@ -105,7 +256,11 @@ export default function DiscussionListPage() {
             </div>
 
             <div>
-              {isEmpty ? (
+              {loading ? (
+                <p className="py-1 text-[20px] leading-snug text-[#7F7F7F]">불러오는 중…</p>
+              ) : errorMsg ? (
+                <p className="py-1 text-[20px] leading-snug text-red-600">{errorMsg}</p>
+              ) : isEmpty ? (
                 <p className="py-1 text-[20px] leading-snug text-[#7F7F7F]">
                   진행중인 토론이 없습니다.
                 </p>
@@ -142,7 +297,7 @@ export default function DiscussionListPage() {
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="주제를 입력하세요"
-                  className="w-full rounded-lg border bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-[#2C80A0]"
+                  className="w-full rounded-lg border border-[#B3B3B3] bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-[#2C80A0]"
                 />
               </div>
 
@@ -153,7 +308,7 @@ export default function DiscussionListPage() {
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="토론을 시작할 내용을 작성하세요"
                   rows={6}
-                  className="w-full resize-y rounded-lg border bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-[#2C80A0]"
+                  className="w-full resize-y rounded-lg border border-[#B3B3B3] bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-[#2C80A0]"
                 />
                 <p className="mt-2 text-sm text-gray-600">내용 수정 및 삭제가 불가능합니다.</p>
               </div>
@@ -162,17 +317,17 @@ export default function DiscussionListPage() {
                 <span />
                 <button
                   onClick={onCreate}
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || posting}
                   className="h-10 w-[clamp(92px,12vw,116px)] text-[18px] leading-tight rounded-xl bg-[#2C80A0] text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  생성
+                  {posting ? "생성 중…" : "생성"}
                 </button>
               </div>
             </div>
           </section>
         </div>
 
-        {/* ✅ 우측 : 최근 수정/토론 — sticky 없이 상단 배치 */}
+        {/* 우측 */}
         <aside className="lg:col-span-4 space-y-6">
           <RecentEdit />
           <RecentDiscuss />

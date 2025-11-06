@@ -5,175 +5,256 @@ import { ChevronUp } from "lucide-react";
 import RecentEdit from "@/layout/RecentEdit";
 import RecentDiscuss from "@/layout/RecentDiscuss";
 
+const API_BASE = "http://k13d104.p.ssafy.io/api";
+
+// ===== 토큰/유저 =====
+function getAccessToken() {
+  try {
+    return localStorage.getItem("accessToken") || "";
+  } catch {
+    return "";
+  }
+}
+function authHeaders() {
+  const t = getAccessToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+function getViewerIdFromStorage(): string | null {
+  try {
+    const directKeys = ["userId", "userID", "memberId", "id"];
+    for (const k of directKeys) {
+      const v = localStorage.getItem(k);
+      if (v && String(v).trim() !== "") return String(v);
+    }
+    const objKeys = ["user", "profile", "me"];
+    for (const k of objKeys) {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      try {
+        const o = JSON.parse(raw);
+        const cand = o?.userId ?? o?.id ?? o?.memberId;
+        if (cand != null) return String(cand);
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+
+// ===== 타입 =====
 type TalkMessage = {
   id: string;
   no: number;
   author: string;
+  isCreator: boolean;
   body: string;
-  createdAt: string; // ISO
+  createdAt: string; // ISO (서버: TZ 없는 UTC 가정)
 };
-
 type TalkDetail = {
   id: string;
   title: string;
   status: "open" | "closed";
   documentTitle: string;
+  creatorId?: string | number | null;
+  creatorNickname?: string;
   messages: TalkMessage[];
-};
-
-// 샘플 데이터
-const SAMPLE: TalkDetail = {
-  id: "d1",
-  title: "토론 제목",
-  status: "open",
-  documentTitle: "예시문서",
-  messages: [
-    {
-      id: "m1",
-      no: 1,
-      author: "토론연사람", // opener
-      body:
-        "여차저차 주제 구분의 의견이 길어질 때 카드 형식으로 표시합니다.\n두 줄 이상이어도 줄바꿈을 유지합니다.",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "m2",
-      no: 2,
-      author: "토론참가자",
-      body: "올해 규정에도 동일하게 적용되는지 궁금합니다.",
-      createdAt: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
-    },
-  ],
 };
 
 export default function DiscussionDetailPage() {
   const { documentTitle = "문서 제목", id = "" } = useParams();
 
+  // UI 상태
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [flash, setFlash] = useState("");
+
   // 데이터
-  const data = useMemo<TalkDetail>(
-    () => ({ ...SAMPLE, id, documentTitle: decodeURIComponent(documentTitle) }),
-    [id, documentTitle]
-  );
+  const [data, setData] = useState<TalkDetail>({
+    id,
+    title: "",
+    status: "open",
+    documentTitle: decodeURIComponent(documentTitle),
+    creatorId: null,
+    creatorNickname: "",
+    messages: [],
+  });
+
   const docTitleParam = encodeURIComponent(data.documentTitle);
   const docPath = `/docs/${docTitleParam}`;
 
-  // 현재 사용자 (로그인 연동 전: 빈 값)
-  const currentUser = ""; // TODO: 인증 연동 시 실제 로그인 사용자명/ID로 교체
-
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<TalkMessage[]>(data.messages);
-
-  // opener = 첫 글 작성자
-  const opener = messages[0]?.author ?? "";
-  const isOpener = currentUser === opener;
+  // 현재 로그인 사용자 id
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  useEffect(() => {
+    setViewerId(getViewerIdFromStorage());
+  }, []);
 
   // 상태
-  const [status, setStatus] = useState<"open" | "closed">(data.status);
-  useEffect(() => {
-    setStatus(data.status);
-  }, [data.status]);
+  const [status, setStatus] = useState<"open" | "closed">("open");
+  useEffect(() => setStatus(data.status), [data.status]);
 
-  const onSubmit = () => {
-    const v = input.trim();
-    if (!v || status === "closed") return;
-    const next: TalkMessage = {
-      id: `m${messages.length + 1}`,
-      no: messages.length + 1,
-      author: currentUser || "익명",
-      body: v,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, next]);
-    setInput("");
-  };
-  const onCloseDiscussion = () => setStatus("closed");
-
-  // 날짜 포맷터 (KST, 24시간제)
-  const fmtKST = useMemo(
-    () =>
-      new Intl.DateTimeFormat("ko-KR", {
+  // ---- 시간 포맷(KST) ----
+  const formatKST = useMemo(
+    () => (iso: string) => {
+      const norm = iso.replace(/(\.\d{3})\d+$/, "$1"); // ms 3자리로 정규화
+      const hasTZ = /Z$|[+\-]\d{2}:\d{2}$/.test(norm);
+      const utcIso = hasTZ ? norm : norm + "Z";
+      return new Date(utcIso).toLocaleString("sv-SE", {
         timeZone: "Asia/Seoul",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
         hour12: false,
-      }),
+      }); // YYYY-MM-DD HH:mm:ss
+    },
     []
   );
 
-  // 스크롤 버튼들
-  const panelRef = useRef<HTMLDivElement>(null);
+  // 성공 배너 자동 닫힘
+  useEffect(() => {
+    if (!flash) return;
+    const auto = /등록되었습니다|생성되었습니다|종료되었습니다/.test(flash);
+    if (!auto) return;
+    const t = setTimeout(() => setFlash(""), 2500);
+    return () => clearTimeout(t);
+  }, [flash]);
 
+  // 스크롤
+  const panelRef = useRef<HTMLDivElement>(null);
   const [showTopPage, setShowTopPage] = useState(false);
+  const [showTopPanel, setShowTopPanel] = useState(false);
   useEffect(() => {
     const onWinScroll = () => setShowTopPage(window.scrollY > 300);
-    onWinScroll();
     window.addEventListener("scroll", onWinScroll, { passive: true });
     return () => window.removeEventListener("scroll", onWinScroll);
   }, []);
-
-  const [showTopPanel, setShowTopPanel] = useState(false);
   useEffect(() => {
     const el = panelRef.current;
     if (!el) return;
     const onPanelScroll = () => setShowTopPanel(el.scrollTop > 200);
-    onPanelScroll();
     el.addEventListener("scroll", onPanelScroll, { passive: true });
     return () => el.removeEventListener("scroll", onPanelScroll);
   }, []);
-
   const scrollPageTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const scrollPanelTop = () => panelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 
-  // ===================== 신고 모달 상태/핸들러 =====================
-  const [reportOpen, setReportOpen] = useState(false);
-  const [reportTarget, setReportTarget] = useState<TalkMessage | null>(null);
-  const [reportReason, setReportReason] = useState("");
-  const [touched, setTouched] = useState(false);
-  const reportInputRef = useRef<HTMLInputElement>(null);
+  // ----- 상세 조회 -----
+  const loadDetail = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/v1/discussions/${id}`, {
+        headers: { Accept: "application/json", ...authHeaders() },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`상세 조회 실패 (${res.status})`);
+      const j = await res.json();
 
-  const openReportFor = (msg: TalkMessage) => {
-    if (msg.author === currentUser) return; // 내가 쓴 글이면 무시
-    setReportTarget(msg);
-    setReportReason("");
-    setTouched(false);
-    setReportOpen(true);
+      const mapped: TalkDetail = {
+        id: String(j.discussionId),
+        title: j.discussionTitle,
+        status: j.discussionStatus === "OPEN" ? "open" : "closed",
+        documentTitle: j.documentTitle || decodeURIComponent(documentTitle),
+        creatorId: j.creatorId ?? null,
+        creatorNickname: j.creatorNickname,
+        messages: (j.discussionContents ?? []).map((c: any) => ({
+          id: String(c.discussionContentId),
+          no: Number(c.contentNumber),
+          author: String(c.writerNickname ?? ""),
+          isCreator: Boolean(c.isCreator),
+          body: String(c.discussionContent ?? ""),
+          createdAt: String(c.createdAt),
+        })),
+      };
+
+      setData(mapped);
+      setStatus(mapped.status);
+    } catch (e: any) {
+      setErrorMsg(e?.message || "토론을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
   };
-
   useEffect(() => {
-    if (!reportOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setReportOpen(false); };
-    window.addEventListener("keydown", onKey);
-    setTimeout(() => reportInputRef.current?.focus(), 0);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [reportOpen]);
+    if (id) void loadDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, documentTitle]);
 
-  const submitReport = async () => {
-    setTouched(true);
-    if (!reportTarget || reportReason.trim() === "") return;
+  // ----- 개설자 == 현재 사용자 ? 종료 버튼 -----
+  const isCreator = useMemo(() => {
+    if (viewerId == null || data.creatorId == null) return false;
+    return String(viewerId) === String(data.creatorId);
+  }, [viewerId, data.creatorId]);
 
-    // TODO: 실제 API 연동
-    // await fetch(`/api/discussions/${data.id}/reports`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   credentials: "include",
-    //   body: JSON.stringify({ messageId: reportTarget.id, reason: reportReason.trim() }),
-    // });
-
-    console.log("REPORT", {
-      discussionId: data.id,
-      messageId: reportTarget.id,
-      reason: reportReason.trim(),
-    });
-    setReportOpen(false);
+  const [closing, setClosing] = useState(false);
+  const onCloseDiscussion = async () => {
+    if (!isCreator || status !== "open" || closing) return;
+    setClosing(true);
+    setFlash("");
+    try {
+      // ✅ 실제 스펙: PATCH /api/v1/discussions/{id}/close
+      const res = await fetch(`${API_BASE}/v1/discussions/${id}/close`, {
+        method: "PATCH",
+        headers: { Accept: "application/json", ...authHeaders() },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`토론 종료 실패 (${res.status})`);
+      setFlash("토론이 종료되었습니다.");
+      await loadDetail();
+    } catch (e: any) {
+      setFlash(e?.message || "토론 종료에 실패했습니다.");
+    } finally {
+      setClosing(false);
+    }
   };
-  const hasReportError = touched && reportReason.trim() === "";
-  // ===============================================================
 
-  // 상태 네모(비클릭)
+  // ----- 의견 작성 -----
+  const [input, setInput] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  const onSubmit = async () => {
+    const body = input.trim();
+    if (!body || status === "closed" || posting) return;
+
+    if (!getAccessToken()) {
+      setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+      return;
+    }
+
+    setPosting(true);
+    setFlash("");
+    try {
+      // ✅ 실제 스펙: POST /api/v1/discussions/{id}/contents
+      const res = await fetch(`${API_BASE}/v1/discussions/${id}/contents`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...authHeaders(),
+        },
+        credentials: "include",
+        body: JSON.stringify({ discussionContent: body }),
+      });
+
+      if (res.status === 401) {
+        setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        return;
+      }
+      if (res.status === 403) {
+        setFlash("해당 학교 소속 학생만 의견을 작성할 수 있습니다.");
+        return;
+      }
+      if (!res.ok) {
+        setFlash(`의견 생성 실패 (${res.status})`);
+        return;
+      }
+
+      setInput("");
+      setFlash("의견이 등록되었습니다.");
+      await loadDetail();
+    } catch {
+      setFlash("네트워크 오류로 의견을 등록하지 못했습니다.");
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  // 상태 네모
   const StatusRect = (
     <span
       className="inline-flex h-10 w-[clamp(92px,12vw,116px)] items-center justify-center rounded-xl border text-[18px] leading-tight"
@@ -195,26 +276,36 @@ export default function DiscussionDetailPage() {
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 헤더 + 액션바 + 패널 */}
           <section className="rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
-            {/* 제목 + 상태/종료하기 */}
+            {/* 배너 */}
+            {errorMsg && (
+              <div className="mb-4 rounded-xl bg-[#2C80A0] text-white px-4 py-3 text-[16px]">
+                {errorMsg}
+              </div>
+            )}
+            {flash && !errorMsg && (
+              <div className="mb-4 rounded-xl bg-[#2C80A0] text-white px-4 py-3 text-[16px]">
+                {flash}
+              </div>
+            )}
+
             <div className="mb-2 flex items-center gap-3">
               <h1 className="text-[28px] leading-tight font-semibold text-gray-900">
-                {data.title}
+                {data.title || "토론 상세"}
               </h1>
 
-              {/* 열림 & 오너 → '종료하기' / 그 외 → 상태 네모 */}
-              {status === "open" && isOpener ? (
+              {status === "open" && isCreator ? (
                 <button
                   onClick={onCloseDiscussion}
-                  className="h-10 w-[clamp(92px,12vw,116px)] rounded-xl bg-[color:var(--uniwikicolor,#2c80a0)] text-white flex items-center justify-center hover:opacity-90 text-[18px] leading-tight"
+                  disabled={closing}
+                  className="h-10 w-[clamp(92px,12vw,116px)] rounded-xl bg-[color:var(--uniwikicolor,#2c80a0)] text-white flex items-center justify-center hover:opacity-90 text-[18px] leading-tight disabled:opacity-60"
                 >
-                  종료하기
+                  {closing ? "종료 중…" : "종료하기"}
                 </button>
               ) : (
                 StatusRect
               )}
             </div>
 
-            {/* ‘해당 문서’ + 액션바 */}
             <div className="mb-5 flex items-center gap-4">
               <p className="text-[18px] leading-tight text-gray-800 font-medium">
                 ‘{data.documentTitle}’에 관한 토론
@@ -251,45 +342,30 @@ export default function DiscussionDetailPage() {
                 className="max-h-[760px] overflow-y-auto rounded-xl p-1"
                 style={{ maxHeight: "72vh" }}
               >
-                <ul className="space-y-3">
-                  {messages.map((m) => {
-                    const isMine = m.author === currentUser;
-                    const isOpenerMsg = m.author === opener;
-                    return (
-                      <li
-                        key={m.id}
-                        className="rounded-lg border"
-                        onClick={() => !isMine && openReportFor(m)}
-                        role={isMine ? undefined : "button"}
-                        tabIndex={isMine ? -1 : 0}
-                        onKeyDown={(e) => {
-                          if (!isMine && (e.key === "Enter" || e.key === " ")) openReportFor(m);
-                        }}
-                        title={isMine ? undefined : "클릭하여 신고하기"}
-                        style={{ cursor: isMine ? "default" : "pointer" }}
-                      >
+                {loading ? (
+                  <div className="px-3 py-2 text-[18px] text-[#7F7F7F]">불러오는 중…</div>
+                ) : (
+                  <ul className="space-y-3">
+                    {data.messages.map((m) => (
+                      <li key={m.id} className="rounded-lg border border-[#B3B3B3]">
                         <div
                           className={
                             "flex items-center justify-between rounded-t-lg px-3 py-2 text-sm " +
-                            (isOpenerMsg
+                            (m.isCreator
                               ? "bg-[color:var(--uniwikicolor,#2c80a0)] text-white"
                               : "bg-gray-200 text-gray-700")
                           }
                         >
-                          <div className="font-semibold">
-                            #{m.no} {m.author}
-                          </div>
-                          <div className="opacity-80">
-                            {fmtKST.format(new Date(m.createdAt))}
-                          </div>
+                          <div className="font-semibold">#{m.no} {m.author}</div>
+                          <div className="opacity-80">{formatKST(m.createdAt)}</div>
                         </div>
                         <div className="whitespace-pre-wrap rounded-b-lg bg-white px-3 py-3 text-gray-800">
                           {m.body}
                         </div>
                       </li>
-                    );
-                  })}
-                </ul>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {/* 패널 우하단 상단이동 버튼 */}
@@ -308,13 +384,11 @@ export default function DiscussionDetailPage() {
           {/* 의견 작성 */}
           <section className="pt-2">
             <header className="mb-4">
-              <h2 className="text-[28px] leading-tight font-semibold text-gray-900">
-                의견 작성
-              </h2>
+              <h2 className="text-[28px] leading-tight font-semibold text-gray-900">의견 작성</h2>
             </header>
 
             <textarea
-              className="h-28 w-full resize-none rounded-lg border bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-[#2C80A0] disabled:cursor-not-allowed disabled:bg-gray-100"
+              className="h-28 w-full resize-none rounded-lg border border-[#B3B3B3] bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-[#2C80A0] disabled:cursor-not-allowed disabled:bg-gray-100"
               rows={4}
               placeholder={
                 status === "open"
@@ -329,10 +403,10 @@ export default function DiscussionDetailPage() {
             <div className="mt-3 flex justify-end">
               <button
                 onClick={onSubmit}
-                disabled={!input.trim() || status === "closed"}
+                disabled={!input.trim() || status === "closed" || posting}
                 className="h-10 w-[clamp(92px,12vw,116px)] rounded-xl bg-[color:var(--uniwikicolor,#2c80a0)] px-5 text-white disabled:opacity-50 disabled:cursor-not-allowed text-[18px] leading-tight"
               >
-                생성
+                {posting ? "생성 중…" : "생성"}
               </button>
             </div>
           </section>
@@ -356,68 +430,6 @@ export default function DiscussionDetailPage() {
           <ChevronUp className="h-5 w-5" strokeWidth={3} />
         </button>
       )}
-
-      {/* ================== 토론 신고 모달 ================== */}
-      {reportOpen && (
-        <div
-          onClick={() => setReportOpen(false)}
-          className="fixed inset-0 flex items-center justify-center bg-black/30 z-[1000]"
-          aria-hidden
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="report-title"
-            className="bg-white rounded-2xl p-8 w-[420px]"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <h2 id="report-title" className="text-xl font-semibold">토론 내용 신고하기</h2>
-              <button
-                onClick={() => setReportOpen(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl"
-                aria-label="닫기"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm mb-1">신고 사유</label>
-              <input
-                ref={reportInputRef}
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                onBlur={() => setTouched(true)}
-                onKeyDown={(e) => { if (e.key === "Enter") submitReport(); }}
-                placeholder=""
-                className={`w-full border rounded-lg px-3 py-2 text-sm ${
-                  hasReportError ? "border-red-500" : ""
-                }`}
-              />
-              {hasReportError && (
-                <p className="mt-2 text-[12px] text-red-500">신고 사유를 입력해주세요.</p>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setReportOpen(false)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-              >
-                취소
-              </button>
-              <button
-                onClick={submitReport}
-                className="px-4 py-2 rounded-lg bg-[#e25b5b] text-white hover:opacity-90"
-              >
-                신고
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* =================================================== */}
     </div>
   );
 }

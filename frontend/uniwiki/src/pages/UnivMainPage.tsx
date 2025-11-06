@@ -1,3 +1,5 @@
+// src/pages/UnivMainPage.tsx
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 
@@ -71,7 +73,7 @@ export default function UnivMainPage() {
     return () => { mounted = false; };
   }, [inputName, univId]);
 
-  // 5) 확정된 id로 “공식 이름 포함” 정보 확보
+  // 5) 확정된 id로 "공식 이름 포함" 정보 확보
   useEffect(() => {
     if (!univId) return;
     let mounted = true;
@@ -105,22 +107,20 @@ export default function UnivMainPage() {
     }
   }, [univ, location.pathname, navigate]);
 
-  // 7) 표시는 항상 “공식 이름”
+  // 7) 표시는 항상 "공식 이름"
   const displayName = univ?.universityName || inputName || "대학교";
 
   if (err) return <div className="p-4 text-xs text-red-500">{err}</div>;
   if (loading && !univ) return <div className="p-4 text-sm text-gray-500">불러오는 중…</div>;
 
   const categories = [
-    { icon: "🏫", title: "학과", desc: "전공 및 학과별 위키 문서", count: 124 },
-    { icon: "👨‍🏫", title: "교수", desc: "교수 및 연구진 정보", count: 58 },
-    { icon: "📘", title: "강의", desc: "강의 요약 및 후기", count: 342 },
-    { icon: "🏢", title: "시설", desc: "학교 시설 및 위치 정보", count: 87 },
-    { icon: "🎉", title: "행사", desc: "축제·세미나 등 행사 정보", count: 25 },
-    { icon: "🏷️", title: "기타", desc: "장학금·교통·등록금 등 기타 문서", count: 19 },
+    { icon: "🏛️", title: "학교", path: "학교", desc: "학교 정보 및 연혁", count: 45 },
+    { icon: "🏫", title: "학과", path: "학과", desc: "학과별 커리큘럼 및 진로 정보", count: 124 },
+    { icon: "📘", title: "강의", path: "강의", desc: "강의 요약 및 후기", count: 342 },
+    { icon: "🏢", title: "시설", path: "시설", desc: "학교 시설 및 위치 정보", count: 87 },
+    { icon: "🎉", title: "행사", path: "행사", desc: "축제·세미나 등 행사 정보", count: 25 },
+    { icon: "🏷️", title: "기타", path: "기타", desc: "장학금·교통·등록금 등 기타 문서", count: 19 },
   ];
-
-
 
   return (
     <section className="space-y-8">
@@ -130,7 +130,7 @@ export default function UnivMainPage() {
           🏫
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{ displayName }</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
           <p className="text-sm text-gray-600 leading-relaxed">
             (id: {univId ?? "미전달"}) {univ ? "매핑 완료" : ""}
           </p>
@@ -144,7 +144,16 @@ export default function UnivMainPage() {
           {categories.map((cat, idx) => (
             <div
               key={idx}
-              className="group flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center hover:shadow-sm transition"
+              onClick={() => {
+                if (!univId) {
+                  alert("대학교 정보를 불러오는 중입니다.");
+                  return;
+                }
+                navigate(`/univ/${encodeURIComponent(univName!)}/category/${cat.path}`, {
+                  state: { universityId: univId }
+                });
+              }}
+              className="group flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center hover:shadow-sm transition cursor-pointer"
             >
               <div className="text-3xl mb-2">{cat.icon}</div>
               <div className="font-medium text-gray-900">{cat.title}</div>
