@@ -7,9 +7,6 @@ import MDEditor from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
-import RecentEdit from '@/layout/RecentEdit';
-import RecentDiscuss from '@/layout/RecentDiscuss';
-
 type DocumentDto = {
   universityId: number;
   universityName: string;
@@ -289,8 +286,7 @@ export default function DocumentViewPage() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 좌측 */}
+      <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         <div className="lg:col-span-8">
           {flashMsg && (
             <div
@@ -412,12 +408,6 @@ export default function DocumentViewPage() {
             </section>
           )}
         </div>
-
-        {/* 우측 */}
-        <aside className="lg:col-span-4 space-y-6">
-          <RecentEdit />
-          <RecentDiscuss />
-        </aside>
       </div>
 
       {showTop && (

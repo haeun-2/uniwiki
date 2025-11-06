@@ -5,9 +5,6 @@ import MDEditor, { ICommand, TextAreaTextApi, TextState } from '@uiw/react-md-ed
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
-import RecentEdit from '@/layout/RecentEdit';
-import RecentDiscuss from '@/layout/RecentDiscuss';
-
 const API_BASE = 'http://k13d104.p.ssafy.io/api';
 const PRESIGN_API = `${API_BASE}/v1/s3/presigned-urls`;
 const REFRESH_URL = `${API_BASE}/v1/auth/refresh`; // 실제 경로 다르면 수정
@@ -428,7 +425,7 @@ export default function DocumentEditPage() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         {/* 좌측 메인 */}
         <div className="lg:col-span-8">
           <h1 className="text-[28px] leading-tight font-semibold text-gray-900">
@@ -566,12 +563,6 @@ export default function DocumentEditPage() {
             </button>
           </div>
         </div>
-
-        {/* 우측 레일 */}
-        <aside className="lg:col-span-4 space-y-6">
-          <RecentEdit />
-          <RecentDiscuss />
-        </aside>
       </div>
     </div>
   );

@@ -2,8 +2,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
-import RecentEdit from "@/layout/RecentEdit";
-import RecentDiscuss from "@/layout/RecentDiscuss";
 
 const API_BASE = "http://k13d104.p.ssafy.io/api";
 
@@ -271,7 +269,7 @@ export default function DiscussionDetailPage() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         {/* Left */}
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 헤더 + 액션바 + 패널 */}
@@ -411,12 +409,6 @@ export default function DiscussionDetailPage() {
             </div>
           </section>
         </div>
-
-        {/* Right rail */}
-        <aside className="lg:col-span-4 space-y-6">
-          <RecentEdit />
-          <RecentDiscuss />
-        </aside>
       </div>
 
       {/* 페이지 우하단 '상단으로' */}

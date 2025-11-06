@@ -72,18 +72,11 @@ const router = createBrowserRouter([
       { path: 'signup', element: <SignupPage /> },
       { path: 'signup/complete', element: <SignupCompletePage /> },
       { path: 'profile', element: <ProfilePage /> },
-
-      // 문서, 토론
-      { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
-      { path: '/docs/:documentTitle/history', element: <DocumentHistoryPage /> },   // ✅ 역사 라우트
-      { path: '/docs/:documentTitle/edit', element: <DocumentEditPage /> },         // ✅ 편집 라우트
-      { path: '/docs/:documentTitle/discussions', element: <DiscussionListPage /> },
-      { path: '/docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
     ],
   },
 
   /** ✅ 레거시 경로 리다이렉트(404 방지) */
-  { path: '/univ/:univName/docs/:documentTitle', element: <LegacyUnivDocRedirect /> },
+  // { path: '/univ/:univName/docs/:documentTitle', element: <LegacyUnivDocRedirect /> },
 
   // 대학교 메인 페이지
   {
@@ -93,6 +86,13 @@ const router = createBrowserRouter([
       // 대학교 메인 페이지
       { index: true, element: <UnivMainPage /> },
       { path: 'category/:categoryName', element: <CategoryPage /> },
+
+      // 문서, 토론
+      { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
+      { path: 'docs/:documentTitle/history', element: <DocumentHistoryPage /> },   // ✅ 역사 라우트
+      { path: 'docs/:documentTitle/edit', element: <DocumentEditPage /> },         // ✅ 편집 라우트
+      { path: 'docs/:documentTitle/discussions', element: <DiscussionListPage /> },
+      { path: 'docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
     ]
   },
 

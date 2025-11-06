@@ -2,8 +2,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronUp, ChevronRight } from "lucide-react";
-import RecentEdit from "@/layout/RecentEdit";
-import RecentDiscuss from "@/layout/RecentDiscuss";
 
 type Revision = {
   id: number;
@@ -136,7 +134,7 @@ export default function DocumentHistoryPage() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         {/* 좌측 본문 */}
         <div className="lg:col-span-8 space-y-4 lg:pr-10 xl:pr-12">
           {/* 브레드크럼 & 제목 */}
@@ -251,12 +249,6 @@ export default function DocumentHistoryPage() {
             <Pager />
           </div>
         </div>
-
-        {/* 우측 레일 */}
-        <aside className="lg:col-span-4 space-y-6">
-          <RecentEdit />
-          <RecentDiscuss />
-        </aside>
       </div>
 
       {/* 상단 이동 버튼 */}
