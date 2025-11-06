@@ -89,7 +89,7 @@ type TalkDetail = {
 };
 
 export default function DiscussionDetailPage() {
-  const { documentTitle = "문서 제목", id = "" } = useParams();
+  const { univName = "대학교", documentTitle = "문서 제목", id = "" } = useParams();
 
   // UI 상태
   const [loading, setLoading] = useState(true);
@@ -107,8 +107,11 @@ export default function DiscussionDetailPage() {
     messages: [],
   });
 
-  const docTitleParam = encodeURIComponent(data.documentTitle);
-  const docPath = `/docs/${docTitleParam}`;
+  // ---- 경로(중요): /univ/:univName/docs/:documentTitle 기준 ----
+  const univNameDec = decodeURIComponent(univName);
+  const univSeg = encodeURIComponent(univNameDec);
+  const docTitleEnc = encodeURIComponent(data.documentTitle);
+  const docPath = `/univ/${univSeg}/docs/${docTitleEnc}`;
 
   // 현재 로그인 사용자 id
   const [viewerId, setViewerId] = useState<string | null>(null);
@@ -208,7 +211,7 @@ export default function DiscussionDetailPage() {
   useEffect(() => {
     if (id) void loadDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, documentTitle]);
+  }, [id, documentTitle, univName]);
 
   // ===== SSE: 실시간 스트림 (열림 상태에서만) =====
   const evtSrcRef = useRef<EventSource | null>(null);

@@ -168,7 +168,10 @@ export default function DocumentEditPage() {
   const navigate = useNavigate();
   const location = useLocation() as any;
   const { documentTitle = '문서 제목' } = useParams();
-  const docTitleParam = encodeURIComponent(documentTitle);
+
+  const enc = (s: string) => encodeURIComponent(s || '');
+  const [universityName, setUniversityName] = useState<string>(''); // ✅ univ 경로에 필요
+  const [categoryName, setCategoryName] = useState<string>('');     // 표시용 유지
 
   // 상태
   const [status, setStatus] = useState<Status>('loading');
@@ -183,7 +186,6 @@ export default function DocumentEditPage() {
   const [docId, setDocId] = useState<number | null>(null);
   const [baseVersionNumber, setBaseVersionNumber] = useState<number | null>(null);
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [categoryName, setCategoryName] = useState<string>(''); // 초기 표시 보조
 
   // 진행 상태
   const [busy, setBusy] = useState(false);
@@ -272,6 +274,7 @@ export default function DocumentEditPage() {
         setBaseVersionNumber(data.versionNumber);
         setCategoryId(data.categoryId);
         setCategoryName(data.categoryName || '');
+        setUniversityName(data.universityName || ''); // ✅ univ 경로 사용
 
         initialRef.current = {
           value: data.documentContent || '',
@@ -407,8 +410,10 @@ export default function DocumentEditPage() {
       }
 
       const nextTitle = await getSavedTitleFromResponse(res, documentTitle);
+      const univ = universityName || '대학교'; // 안전장치
 
-      navigate(`/docs/${encodeURIComponent(nextTitle)}`, {
+      // ✅ 저장 후: /univ/:univName/docs/:documentTitle 로 이동
+      navigate(`/univ/${enc(univ)}/docs/${enc(nextTitle)}`, {
         state: { flash: { type: 'success', msg: '저장되었습니다.' } },
         replace: false,
       });
@@ -422,6 +427,9 @@ export default function DocumentEditPage() {
   // 현재 선택된 카테고리 이름(표시용)
   const selectedCatName =
     CATEGORY_OPTIONS.find((c) => c.id === categoryId)?.name || categoryName || '—';
+
+  // ✅ 취소/문서보기 경로 (univ 하위)
+  const docHref = `/univ/${enc(universityName || '대학교')}/docs/${enc(documentTitle)}`;
 
   return (
     <div className="bg-white">
@@ -536,7 +544,7 @@ export default function DocumentEditPage() {
           {/* 액션 버튼 */}
           <div className="mt-5 flex justify-end gap-3">
             <Link
-              to={`/docs/${docTitleParam}`}
+              to={docHref}
               className="inline-flex min-w-[104px] items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50"
             >
               취소

@@ -1,12 +1,16 @@
 // src/pages/DiscussionHistoryPage.tsx
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
+const API_BASE = "http://k13d104.p.ssafy.io/api";
 
 interface DiscussionRow {
   discussionId: number;
   discussionName: string;   // 토론 제목
   documentTitle: string;    // 문서 제목(라우팅에 사용)
   updateAt: string;         // ISO
+  // 🔹 백에서 제공되면 즉시 사용, 없으면 클릭 시 문서 상세 조회로 보완
+  universityName?: string;
 }
 
 interface PaginationResponse<T> {
@@ -53,6 +57,48 @@ export default function DiscussionHistoryPage() {
       .replace(".", "");
   };
 
+  // 안전 인코딩
+  const enc = (s: string) => encodeURIComponent(s || "");
+
+  // 문서 상세로부터 universityName을 필요시에만 조회
+  const fetchUnivNameIfNeeded = async (title: string): Promise<string | null> => {
+    try {
+      const token = localStorage.getItem("accessToken") || "";
+      const res = await fetch(`${API_BASE}/v1/documents/${enc(title)}`, {
+        headers: {
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) return null;
+      const j = await res.json();
+      // 서버의 키 후보들 중 하나를 안전히 참조
+      return j.universityName ?? j.univName ?? j.university ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  // 행 클릭 → 올바른 /univ/:univName/docs/:documentTitle/discussions/:id 로 이동
+  const goToDiscussion = async (row: DiscussionRow) => {
+    const docTitle = row.documentTitle || "";
+    let univName = (row.universityName || "").trim();
+
+    if (!univName) {
+      // 필요시에만 추가 조회
+      const fetched = await fetchUnivNameIfNeeded(docTitle);
+      if (fetched) univName = fetched;
+    }
+
+    if (!univName) {
+      // 최후의 폴백: 사용자에게 안내하고 이동 중단(잘못된 경로로 보내지 않음)
+      alert("해당 문서의 대학교 정보를 찾지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+
+    navigate(`/univ/${enc(univName)}/docs/${enc(docTitle)}/discussions/${row.discussionId}`);
+  };
+
   // API 호출
   const fetchDiscussions = async (page: number) => {
     const token = localStorage.getItem("accessToken");
@@ -65,7 +111,7 @@ export default function DiscussionHistoryPage() {
     setIsLoading(true);
     try {
       const resp = await fetch(
-        `http://k13d104.p.ssafy.io/api/v1/users/me/discussions?page=${page}&size=${pageSize}`,
+        `${API_BASE}/v1/users/me/discussions?page=${page}&size=${pageSize}`,
         {
           method: "GET",
           headers: {
@@ -153,16 +199,21 @@ export default function DiscussionHistoryPage() {
             className="flex items-center justify-between border-b border-gray-200 py-4"
           >
             <div className="flex items-center gap-4 flex-1">
-              {/* 토론 제목 */}
-              <Link
-                to={`/docs/${encodeURIComponent(row.documentTitle)}/discussions/${row.discussionId}`}
-                className="text-sm font-semibold text-uniwikicolor hover:underline"
+              {/* 토론 제목 — 버튼으로 바꿔 onClick에서 정확 경로로 내비게이션 */}
+              <button
+                onClick={() => goToDiscussion(row)}
+                className="text-left text-sm font-semibold text-uniwikicolor hover:underline"
                 title={row.discussionName}
               >
                 • {row.discussionName}
-              </Link>
+              </button>
+
               {/* 문서명 */}
               <span className="text-sm text-gray-500">{row.documentTitle}</span>
+              {/* (선택) 대학교명 노출: 응답에 universityName 있으면 표시 */}
+              {row.universityName && (
+                <span className="text-xs text-gray-400">/ {row.universityName}</span>
+              )}
             </div>
             {/* 업데이트 시간 */}
             <div className="text-sm text-gray-600">{formatDate(row.updateAt)}</div>
