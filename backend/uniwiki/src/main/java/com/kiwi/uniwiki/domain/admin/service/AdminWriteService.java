@@ -7,6 +7,9 @@ import com.kiwi.uniwiki.domain.code.entity.Code;
 import com.kiwi.uniwiki.domain.code.service.CodeService;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
 import com.kiwi.uniwiki.domain.discussion.repository.DiscussionContentRepository;
+import com.kiwi.uniwiki.domain.document.entity.Document;
+import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
+import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
 import com.kiwi.uniwiki.domain.report.entity.DiscussionReport;
 import com.kiwi.uniwiki.domain.report.entity.UserReport;
 import com.kiwi.uniwiki.domain.report.repository.DiscussionReportRepository;
@@ -38,6 +41,7 @@ public class AdminWriteService {
     private final UserRepository userRepository;
     private final DiscussionReportRepository discussionReportRepository;
     private final DiscussionContentRepository discussionContentRepository;
+    private final DocumentRepository documentRepository;
 
     @Transactional
     public void rejectUserReport(User admin, Integer reportedUserId, AdminRequestDTO.ReportRejectedRequest request){
@@ -148,4 +152,11 @@ public class AdminWriteService {
                 discussionReport.reportProcess(admin, request.getReason(), resolvedCode)
         );
     }
+
+//    @Transactional
+//    public void deleteDocument(Integer documentId){
+//        Document document = documentRepository
+//     }
+
+
 }

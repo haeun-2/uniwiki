@@ -29,6 +29,7 @@ public class AdminResponseDTO {
         private Integer reportId;
         private String code;
         private String reporterName;
+        private String reason;
         private LocalDateTime createdAt;
     }
 
@@ -51,5 +52,17 @@ public class AdminResponseDTO {
         private String reason;
         private String code;
         private LocalDateTime createdAt;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class DocumentVersionList{
+        private String universityName;
+        private String categoryName;
+        private String documentTitle;
+        private LocalDateTime createdAt;
+        private Integer plusCount;
+        private Integer minusCount;
     }
 }
