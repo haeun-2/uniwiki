@@ -7,9 +7,6 @@ import MDEditor from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
-import RecentEdit from '@/layout/RecentEdit';
-import RecentDiscuss from '@/layout/RecentDiscuss';
-
 type BaseDoc = {
   universityId: number;
   universityName: string;
@@ -158,97 +155,88 @@ export default function DocumentVersionViewPage() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 좌측 */}
-        <div className="lg:col-span-8">
-          {/* 🔔 알림 배너: 카드 바깥 */}
-          {status === 'ok' && doc && (
-            <div className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white">
-              <span className="text-[15px]">
-                {isLatest ? '최신 버전의 문서입니다.' : `r${doc.versionNumber} 버전 보기 — 최신 버전과 내용이 다를 수 있습니다.`}
-              </span>
-              <div />
-            </div>
-          )}
-          {(status === 'error' || status === 'notfound') && (
-            <div className="mb-4 rounded-lg bg-[#2C80A0] px-4 py-2 text-white">
-              {status === 'error' ? `오류: ${errMsg}` : '문서를 찾을 수 없습니다.'}
-            </div>
-          )}
+      <div className="mx-auto w-full max-w-6xl px-4 py-8">
+        {/* 🔔 알림 배너 */}
+        {status === 'ok' && doc && (
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white">
+            <span className="text-[15px]">
+              {isLatest ? '최신 버전의 문서입니다.' : `r${doc.versionNumber} 버전 보기 — 최신 버전과 내용이 다를 수 있습니다.`}
+            </span>
+            <div />
+          </div>
+        )}
+        {(status === 'error' || status === 'notfound') && (
+          <div className="mb-4 rounded-lg bg-[#2C80A0] px-4 py-2 text-white">
+            {status === 'error' ? `오류: ${errMsg}` : '문서를 찾을 수 없습니다.'}
+          </div>
+        )}
 
-          {/* 📦 카드(문서조회와 동일 레이아웃) */}
-          <section className="relative rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
-            {/* 브레드크럼 */}
-            <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
-              <ol className="flex items-center gap-1">
-                <li><Link to={univHref} className="text-[#2C80A0] hover:underline">{univName}</Link></li>
-                <li className="mx-1 text-gray-500">›</li>
-                <li><Link to={cateHref} className="text-[#2C80A0] hover:underline">{cateName}</Link></li>
-              </ol>
-            </nav>
+        {/* 📦 카드 */}
+        <section className="relative rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
+          {/* 브레드크럼 */}
+          <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
+            <ol className="flex items-center gap-1">
+              <li><Link to={univHref} className="text-[#2C80A0] hover:underline">{univName}</Link></li>
+              <li className="mx-1 text-gray-500">›</li>
+              <li><Link to={cateHref} className="text-[#2C80A0] hover:underline">{cateName}</Link></li>
+            </ol>
+          </nav>
 
-            {/* 제목 */}
-            <h1 className="text-[28px] leading-tight font-semibold text-gray-900 mb-2">
-              {documentTitle}
-              {doc?.versionNumber ? (
-                <span className="ml-2 align-middle text-sm text-gray-500">(r{doc.versionNumber} 보기)</span>
-              ) : null}
-            </h1>
+          {/* 제목 */}
+          <h1 className="text-[28px] leading-tight font-semibold text-gray-900 mb-2">
+            {documentTitle}
+            {doc?.versionNumber ? (
+              <span className="ml-2 align-middle text-sm text-gray-500">(r{doc.versionNumber} 보기)</span>
+            ) : null}
+          </h1>
 
-            {/* 날짜 + 액션바 */}
-            <div className="mb-5 flex items-center gap-4">
-              {lastUpdated && (
-                <p className="text-[18px] text-gray-800 whitespace-nowrap">
-                  수정 시각 : {lastUpdated}
-                </p>
-              )}
-              <div className="ml-auto" />
-              <div
-                role="tablist"
-                aria-label="버전 보기 메뉴"
-                className="grid grid-cols-1 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(92px,12vw,116px)]"
+          {/* 날짜 + 액션바 */}
+          <div className="mb-5 flex items-center gap-4">
+            {lastUpdated && (
+              <p className="text-[18px] text-gray-800 whitespace-nowrap">
+                수정 시각 : {lastUpdated}
+              </p>
+            )}
+            <div className="ml-auto" />
+            <div
+              role="tablist"
+              aria-label="버전 보기 메뉴"
+              className="grid grid-cols-1 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(92px,12vw,116px)]"
+            >
+              <Link
+                role="tab"
+                to={`${docBase}/history`}
+                className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
               >
-                <Link
-                  role="tab"
-                  to={`${docBase}/history`}
-                  className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
-                >
-                  돌아가기
-                </Link>
-              </div>
+                돌아가기
+              </Link>
             </div>
+          </div>
 
-            {/* 본문 */}
-            <article data-color-mode="light" className="prose max-w-none">
-              {status === 'loading' && (
-                <div className="animate-pulse">
-                  <div className="mb-3 h-6 w-1/3 rounded bg-gray-200" />
-                  <div className="mb-2 h-4 w-full rounded bg-gray-200" />
-                  <div className="mb-2 h-4 w-11/12 rounded bg-gray-200" />
-                  <div className="h-4 w-10/12 rounded bg-gray-200" />
-                </div>
-              )}
-              {status === 'ok' && doc && (
-                <MDEditor.Markdown
-                  source={doc.documentContent || ''}
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[[rehypeSanitize, rehypeSchema]]}
-                  style={{
-                    backgroundColor: '#FAFAFA',
-                    ['--color-canvas-default' as any]: '#FAFAFA',
-                    ['--color-canvas-subtle' as any]: '#FAFAFA',
-                  }}
-                />
-              )}
-            </article>
-          </section>
-        </div>
-
-        {/* 우측 */}
-        <aside className="lg:col-span-4 space-y-6">
-          <RecentEdit />
-          <RecentDiscuss />
-        </aside>
+          {/* 본문 */}
+          <article data-color-mode="light" className="prose max-w-none">
+            {status === 'loading' && (
+              <div className="animate-pulse">
+                <div className="mb-3 h-6 w-1/3 rounded bg-gray-200" />
+                <div className="mb-2 h-4 w-full rounded bg-gray-200" />
+                <div className="mb-2 h-4 w-11/12 rounded bg-gray-200" />
+                <div className="h-4 w-10/12 rounded bg-gray-200" />
+              </div>
+            )}
+            {status === 'ok' && doc && (
+              <MDEditor.Markdown
+                source={doc.documentContent || ''}
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[[rehypeSanitize, rehypeSchema]]}
+                style={{
+                  backgroundColor: '#FAFAFA',
+                  ['--color-canvas-default' as any]: '#FAFAFA',
+                  ['--color-canvas-subtle' as any]: '#FAFAFA',
+                }}
+              />
+            )}
+          </article>
+        </section>
       </div>
 
       {/* 상단 이동 버튼 */}

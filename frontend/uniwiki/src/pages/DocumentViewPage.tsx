@@ -190,6 +190,59 @@ export default function DocumentViewPage() {
     return () => controller.abort();
   }, [documentTitle]);
 
+  // ✅ 즐겨찾기 토글 (누락 복구)
+  const toggleFavorite = async () => {
+    if (!docId || favBusy) return;
+
+    const token = getAccessToken();
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      navigate('/login', { replace: true, state: { from: location.pathname } });
+      return;
+    }
+
+    try {
+      setFavBusy(true);
+
+      if (favOn) {
+        const delRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents/${docId}`, {
+          method: 'DELETE',
+          headers: authHeaders({ Accept: '*/*' }),
+          credentials: 'include',
+        });
+        if (delRes.status === 401) {
+          navigate('/login', { replace: true, state: { from: location.pathname } });
+          return;
+        }
+        if (!delRes.ok && delRes.status !== 204) {
+          const t = await delRes.text().catch(() => '');
+          throw new Error(t || '즐겨찾기 해제 실패');
+        }
+        setFavOn(false);
+      } else {
+        const addRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents/${docId}`, {
+          method: 'POST',
+          headers: authHeaders({ Accept: '*/*' }),
+          credentials: 'include',
+          body: '',
+        });
+        if (addRes.status === 401) {
+          navigate('/login', { replace: true, state: { from: location.pathname } });
+          return;
+        }
+        if (!addRes.ok && addRes.status !== 201) {
+          const t = await addRes.text().catch(() => '');
+          throw new Error(t || '즐겨찾기 추가 실패');
+        }
+        setFavOn(true);
+      }
+    } catch (e: any) {
+      alert(e?.message || '즐겨찾기 처리 중 오류가 발생했습니다.');
+    } finally {
+      setFavBusy(false);
+    }
+  };
+
   // === 편집 사전 권한 체크: 로컬 universityId로만 비교 ===
   function handleEditClick() {
     const token = getAccessToken();
