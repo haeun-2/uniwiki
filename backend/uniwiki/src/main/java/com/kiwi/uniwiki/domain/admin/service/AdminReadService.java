@@ -12,16 +12,16 @@ import com.kiwi.uniwiki.domain.report.entity.UserReport;
 import com.kiwi.uniwiki.domain.report.repository.DiscussionReportRepository;
 import com.kiwi.uniwiki.domain.report.repository.UserReportRepository;
 import com.kiwi.uniwiki.domain.user.entity.User;
+import com.kiwi.uniwiki.domain.user.entity.UserBan;
+import com.kiwi.uniwiki.domain.user.repository.UserBanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +34,7 @@ public class AdminReadService {
     private final DiscussionReportRepository discussionReportRepository;
     private final DocumentVersionRepository documentVersionRepository;
     private final DiscussionRepository discussionRepository;
+    private final UserBanRepository userBanRepository;
 
     public PageResponse<AdminResponseDTO.UserReportResponse> getUserReports(Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -79,9 +80,15 @@ public class AdminReadService {
                             ))
                             .collect(Collectors.toList());
 
+                    //이 유저가 차단됬는지 확인
+                    //-> 차단을 했다면 제일 긴 차단이 날짜 넣기
+                    Optional<UserBan> userBan = userBanRepository.findActiveBanByUserId(reportedUser.getId(), LocalDateTime.now());
+
                     return new AdminResponseDTO.UserReportResponse(
                             reportedUserId,
                             reportedUser.getNickname(),
+
+                            !userBan.isEmpty() ? userBan.get().getBannedUntil() : null,
                             reportValueList
                     );
                 })
