@@ -25,7 +25,7 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
             "WHERE dv.id IN :ids")
     List<DocumentVersion> findByIdsWithDocument(@Param("ids") List<Integer> ids);
 
-    @EntityGraph( attributePaths = {"document", "document.university"})
+    @EntityGraph( attributePaths = {"document", "document.university", "document.category"})
     @Query("SELECT dv FROM DocumentVersion dv ORDER BY dv.createdAt DESC")
     Page<DocumentVersion> findAllDocumentVersion(Pageable pageable);
 
