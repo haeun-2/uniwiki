@@ -1,9 +1,11 @@
 // src/pages/ProfilePage.tsx
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const [nickname, setNickname] = useState("김코드");
   const [email] = useState("psh406014@gmail.com");
   const [role] = useState("User");
@@ -18,6 +20,7 @@ export default function ProfilePage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
   // 계정 삭제 모달 상태
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -58,8 +61,8 @@ export default function ProfilePage() {
     setNewNickname("");
   };
 
-  // 비밀번호 변경 저장
-  const handlePasswordSave = () => {
+  // 비밀번호 변경 저장 (API 연동)
+  const handlePasswordSave = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       alert("모든 필드를 입력해주세요.");
       return;
@@ -68,16 +71,66 @@ export default function ProfilePage() {
       alert("비밀번호가 일치하지 않습니다.");
       return;
     }
-    console.log("Password changed");
-    alert("비밀번호가 변경되었습니다.");
-    setIsPasswordModalOpen(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+
+    // 최소 요구사항만 체크
+    if (newPassword.length < 8) {
+      alert("비밀번호는 8자 이상이어야 합니다.");
+      return;
+    }
+
+    const accessToken = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+    
+    if (!accessToken) {
+      alert("로그인이 필요합니다.");
+      navigate("/login");
+      return;
+    }
+
+    setIsPasswordLoading(true);
+    
+    try {
+      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/users/password/reset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+          confirmPassword: confirmPassword,  // ✅ 추가!
+        }),
+      });
+
+      if (response.ok) {
+        alert("비밀번호가 변경되었습니다.");
+        setIsPasswordModalOpen(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else if (response.status === 401) {
+        alert("현재 비밀번호가 일치하지 않습니다.");
+      } else if (response.status === 400) {
+        const errorData = await response.json();
+        alert(errorData.message || "비밀번호 형식이 올바르지 않습니다.\n영문, 숫자, 특수문자를 포함하여 8자 이상 입력해주세요.");
+      } else {
+        alert("비밀번호 변경에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Password change error:", error);
+      alert("서버와의 연결에 실패했습니다.");
+    } finally {
+      setIsPasswordLoading(false);
+    }
   };
 
   const isNicknameValid = newNickname.length >= 2;
-  const isPasswordValid = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/.test(newPassword);
+  // 모든 특수문자 허용
+  const isPasswordValid = 
+    newPassword.length >= 8 && 
+    /[A-Za-z]/.test(newPassword) && 
+    /\d/.test(newPassword) && 
+    /[^A-Za-z\d]/.test(newPassword);
   const isPasswordMatch = newPassword === confirmPassword && confirmPassword !== "";
 
   return (
@@ -112,15 +165,12 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between border-b border-gray-200 pb-6">
             <label className="text-lg font-medium text-gray-900">비밀번호</label>
             <div className="flex items-center gap-4">
-              <span className="text-gray-400">비밀번호 변경</span>
-              {isEditing && (
-                <button 
-                  onClick={() => setIsPasswordModalOpen(true)}
-                  className="text-sm text-gray-400 hover:text-gray-600"
-                >
-                  수정
-                </button>
-              )}
+              <button 
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="text-gray-600 hover:text-gray-900 underline"
+              >
+                비밀번호 변경
+              </button>
             </div>
           </div>
 
@@ -215,6 +265,7 @@ export default function ProfilePage() {
             <button
               onClick={() => setIsPasswordModalOpen(false)}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              disabled={isPasswordLoading}
             >
               <X className="h-6 w-6" />
             </button>
@@ -232,7 +283,8 @@ export default function ProfilePage() {
                   placeholder="••••••••••"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  disabled={isPasswordLoading}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
                 />
               </div>
 
@@ -246,13 +298,14 @@ export default function ProfilePage() {
                   placeholder="••••••••••"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  disabled={isPasswordLoading}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
                 />
                 {newPassword && (
                   <p className={`mt-1 text-xs ${isPasswordValid ? "text-green-600" : "text-orange-500"}`}>
                     {isPasswordValid
                       ? "안전한 비밀번호입니다."
-                      : "영문, 대소문자, 숫자, 특수문자(~!@#$%^&*) 포함하여 8자리 이상"}
+                      : "영문, 숫자, 특수문자를 포함하여 8자리 이상"}
                   </p>
                 )}
               </div>
@@ -267,7 +320,8 @@ export default function ProfilePage() {
                   placeholder="••••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  disabled={isPasswordLoading}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
                 />
                 {confirmPassword && (
                   <p className={`mt-1 text-xs ${isPasswordMatch ? "text-green-600" : "text-red-500"}`}>
@@ -280,16 +334,17 @@ export default function ProfilePage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setIsPasswordModalOpen(false)}
-                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+                disabled={isPasswordLoading}
+                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={handlePasswordSave}
-                disabled={!isPasswordValid || !isPasswordMatch}
+                disabled={!isPasswordValid || !isPasswordMatch || isPasswordLoading}
                 className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
               >
-                저장
+                {isPasswordLoading ? "변경 중..." : "저장"}
               </button>
             </div>
           </div>
