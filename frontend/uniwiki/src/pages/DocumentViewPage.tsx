@@ -60,11 +60,13 @@ function getStoredUniId(): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+const enc = (s: string) => encodeURIComponent(s || '');
+
 export default function DocumentViewPage() {
   const navigate = useNavigate();
   const location = useLocation() as any;
   const { documentTitle = '문서 제목' } = useParams();
-  const docTitleParam = encodeURIComponent(documentTitle);
+  const docTitleParam = enc(documentTitle);
 
   const formatKST = (d: Date) =>
     new Intl.DateTimeFormat('ko-KR', {
@@ -188,59 +190,6 @@ export default function DocumentViewPage() {
     return () => controller.abort();
   }, [documentTitle]);
 
-  // 즐겨찾기 토글
-  const toggleFavorite = async () => {
-    if (!docId || favBusy) return;
-
-    const token = getAccessToken();
-    if (!token) {
-      alert('로그인이 필요합니다.');
-      navigate('/login', { replace: true, state: { from: location.pathname } });
-      return;
-    }
-
-    try {
-      setFavBusy(true);
-
-      if (favOn) {
-        const delRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents/${docId}`, {
-          method: 'DELETE',
-          headers: authHeaders({ Accept: '*/*' }),
-          credentials: 'include',
-        });
-        if (delRes.status === 401) {
-          navigate('/login', { replace: true, state: { from: location.pathname } });
-          return;
-        }
-        if (!delRes.ok && delRes.status !== 204) {
-          const t = await delRes.text().catch(() => '');
-          throw new Error(t || '즐겨찾기 해제 실패');
-        }
-        setFavOn(false);
-      } else {
-        const addRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents/${docId}`, {
-          method: 'POST',
-          headers: authHeaders({ Accept: '*/*' }),
-          credentials: 'include',
-          body: '',
-        });
-        if (addRes.status === 401) {
-          navigate('/login', { replace: true, state: { from: location.pathname } });
-          return;
-        }
-        if (!addRes.ok && addRes.status !== 201) {
-          const t = await addRes.text().catch(() => '');
-          throw new Error(t || '즐겨찾기 추가 실패');
-        }
-        setFavOn(true);
-      }
-    } catch (e: any) {
-      alert(e?.message || '즐겨찾기 처리 중 오류가 발생했습니다.');
-    } finally {
-      setFavBusy(false);
-    }
-  };
-
   // === 편집 사전 권한 체크: 로컬 universityId로만 비교 ===
   function handleEditClick() {
     const token = getAccessToken();
@@ -248,15 +197,18 @@ export default function DocumentViewPage() {
       navigate('/login', { replace: true, state: { from: location.pathname } });
       return;
     }
+    const univName = meta?.universityName || '대학교';
+    const base = `/univ/${enc(univName)}/docs/${docTitleParam}`;
+
     if (!docUniId) {
       // 문서 메타가 없으면 서버에 맡김
-      navigate(`/docs/${docTitleParam}/edit`);
+      navigate(`${base}/edit`);
       return;
     }
 
     const myUniId = getStoredUniId();
     if (myUniId != null && Number(myUniId) === Number(docUniId)) {
-      navigate(`/docs/${docTitleParam}/edit`);
+      navigate(`${base}/edit`);
     } else {
       setFlashMsg('소속 대학생만 문서 작업을 할 수 있습니다.');
       setTimeout(() => setFlashMsg(null), 3000);
@@ -277,10 +229,12 @@ export default function DocumentViewPage() {
     []
   );
 
-  const uniLabel = meta?.universityName ?? '학교이름';
-  const catLabel = meta?.categoryName ?? '카테고리';
-  const uniHref = meta ? `/univ/${encodeURIComponent(meta.universityName)}` : '/';
-  const catHref = meta ? `/category/${encodeURIComponent(meta.categoryName)}` : '#';
+  // ✅ 링크 전부 univ 하위로 정규화
+  const univNameSafe = meta?.universityName || '대학교';
+  const cateNameSafe = meta?.categoryName || '카테고리';
+  const univHref = `/univ/${enc(univNameSafe)}`;
+  const catHref  = `/univ/${enc(univNameSafe)}/category/${enc(cateNameSafe)}`;
+  const docBase  = `${univHref}/docs/${docTitleParam}`;
 
   const showCard = status === 'ok' || status === 'loading';
 
@@ -312,14 +266,14 @@ export default function DocumentViewPage() {
               <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
                 <ol className="flex items-center gap-1">
                   <li>
-                    <Link to={uniHref} className="text-[#2C80A0] hover:underline">
-                      {uniLabel}
+                    <Link to={univHref} className="text-[#2C80A0] hover:underline">
+                      {univNameSafe}
                     </Link>
                   </li>
                   <li className="mx-1 text-gray-500">›</li>
                   <li>
                     <Link to={catHref} className="text-[#2C80A0] hover:underline">
-                      {catLabel}
+                      {cateNameSafe}
                     </Link>
                   </li>
                 </ol>
@@ -366,7 +320,7 @@ export default function DocumentViewPage() {
 
                   <Link
                     role="tab"
-                    to={`/docs/${docTitleParam}/discussions`}
+                    to={`${docBase}/discussions`}
                     className={`h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3]
                       ${hasTalk ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg-white/60'}`}
                   >
@@ -375,7 +329,7 @@ export default function DocumentViewPage() {
 
                   <Link
                     role="tab"
-                    to={`/docs/${docTitleParam}/history`}
+                    to={`${docBase}/history`}
                     className="h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
                   >
                     역사
