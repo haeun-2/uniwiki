@@ -7,6 +7,7 @@ import com.kiwi.uniwiki.domain.code.entity.Code;
 import com.kiwi.uniwiki.domain.code.service.CodeService;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
 import com.kiwi.uniwiki.domain.discussion.repository.DiscussionContentRepository;
+import com.kiwi.uniwiki.domain.discussion.service.DiscussionContentService;
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
 import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
@@ -42,6 +43,8 @@ public class AdminWriteService {
     private final DiscussionReportRepository discussionReportRepository;
     private final DiscussionContentRepository discussionContentRepository;
     private final DocumentRepository documentRepository;
+
+    private final DiscussionContentService discussionContentService;
 
     @Transactional
     public void rejectUserReport(User admin, Integer reportedUserId, AdminRequestDTO.ReportRejectedRequest request){
@@ -161,5 +164,12 @@ public class AdminWriteService {
 
     }
 
+    //토론 종료
+    @Transactional
+    public void closedDiscussion(Integer discussionId, User admin){
+
+        discussionContentService.updateDiscussionStatus(discussionId , admin, "CLOSED");
+
+    }
 
 }

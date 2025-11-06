@@ -106,4 +106,24 @@ public class AdminController {
         adminWriteService.deleteDocument(request, documentId);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/discussions")
+    @Operation(summary = "오래된 토론 목록 조회", description = "안닫힌 토론 목록을 최근 댓글이 오래된 순으로 보여줍니다.")
+    public ResponseEntity<PageResponse<AdminResponseDTO.DiscussionList>> getDiscussions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<AdminResponseDTO.DiscussionList> response=  adminReadService.getAllDiscussion(page,size);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/discussions/{discussionId}/close")
+    @Operation(summary = "오래된 토론 종료", description = "오래된 토론을 종료합니다.")
+    public ResponseEntity<Void> closedDiscussion(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Integer discussionId
+    ) {
+        adminWriteService.closedDiscussion(discussionId,userDetails.getUser());
+        return ResponseEntity.ok().build();
+    }
 }
