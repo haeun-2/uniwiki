@@ -3,9 +3,6 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
-import RecentEdit from "@/layout/RecentEdit";
-import RecentDiscuss from "@/layout/RecentDiscuss";
-
 type Discussion = {
   id: string;
   title: string;
@@ -199,7 +196,7 @@ export default function DiscussionListPage() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         {/* 좌측 */}
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 문서정보 + 토론 목록 */}
@@ -326,12 +323,6 @@ export default function DiscussionListPage() {
             </div>
           </section>
         </div>
-
-        {/* 우측 */}
-        <aside className="lg:col-span-4 space-y-6">
-          <RecentEdit />
-          <RecentDiscuss />
-        </aside>
       </div>
 
       {showTop && (
