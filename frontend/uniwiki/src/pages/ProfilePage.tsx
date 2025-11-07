@@ -161,18 +161,22 @@ export default function ProfilePage() {
             <span className="text-gray-900">{email}</span>
           </div>
 
-          {/* 비밀번호 */}
-          <div className="flex items-center justify-between border-b border-gray-200 pb-6">
-            <label className="text-lg font-medium text-gray-900">비밀번호</label>
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setIsPasswordModalOpen(true)}
-                className="text-gray-600 hover:text-gray-900 underline"
-              >
-                비밀번호 변경
-              </button>
-            </div>
-          </div>
+         {/* 비밀번호 */}
+<div className="flex items-center justify-between border-b border-gray-200 pb-6">
+  <label className="text-lg font-medium text-gray-900">비밀번호</label>
+  <div className="flex items-center gap-4">
+    {isEditing ? (
+      <button 
+        onClick={() => setIsPasswordModalOpen(true)}
+        className="text-gray-600 hover:text-gray-900 underline"
+      >
+        비밀번호 변경
+      </button>
+    ) : (
+      <span className="text-gray-900">••••••••</span>
+    )}
+  </div>
+</div>
 
           {/* 권한 */}
           <div className="flex items-center justify-between border-b border-gray-200 pb-6">
