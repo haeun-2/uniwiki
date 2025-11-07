@@ -412,9 +412,12 @@ export default function DocumentHistoryPage() {
                             토론
                           </Link>
                           <span className="mx-2 text-gray-400">|</span>
+
+                          {/* ✅ 최신본과 비교: diff 페이지로 이동 (docId를 쿼리로 전달) */}
                           <Link
-                            to={`${docBase}/history?compare=r${rev.id}-prev`}
+                            to={`${docBase}/versions/${rev.id}/diff${docId ? `?docId=${docId}` : ""}`}
                             className="text-[#2C80A0] hover:underline"
+                            title="이 버전을 최신본과 비교"
                           >
                             비교
                           </Link>
@@ -448,7 +451,7 @@ export default function DocumentHistoryPage() {
           className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
           aria-label="문서 상단으로 이동" title="문서 상단으로 이동"
         >
-          <ChevronUp className="h-5 w-5" strokeWidth={3} />
+          <ChevronUp className="h-5 w-5" />
         </button>
       )}
     </div>

@@ -41,8 +41,14 @@ import DiscussionDetailPage from './pages/DiscussionDetailPage'
 import DocumentEditPage from './pages/DocumentEditPage'
 import DocumentHistoryPage from './pages/DocumentHistoryPage'
 
-// ✅ 특정 버전 문서 조회(신규)
+// ✅ 특정 버전 문서 조회
 import DocumentVersionViewPage from './pages/DocumentVersionViewPage'
+
+// ✅ 버전 비교
+import DocumentDiffPage from './pages/DocumentDiffPage'
+
+// ✅ 새 문서 생성
+import DocumentCreatePage from './pages/DocumentCreatePage'
 
 // 즐겨찾기, 참여 토론, 기여 문서
 import FavoritePage from './pages/FavoritePage'
@@ -77,7 +83,7 @@ const router = createBrowserRouter([
       { path: 'profile', element: <ProfilePage /> },
     ],
   },
-  
+
   /** ✅ 레거시 경로 리다이렉트(404 방지) */
   // { path: '/univ/:univName/docs/:documentTitle', element: <LegacyUnivDocRedirect /> },
 
@@ -90,22 +96,26 @@ const router = createBrowserRouter([
       { path: 'category/:categoryName', element: <CategoryPage /> },
 
       // 문서, 토론
+      { path: 'docs/new', element: <DocumentCreatePage /> },                 // ✅ 새 문서 생성
       { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
-      { path: 'docs/:documentTitle/history', element: <DocumentHistoryPage /> },   // ✅ 역사 라우트
-      { path: 'docs/:documentTitle/edit', element: <DocumentEditPage /> },         // ✅ 편집 라우트
+      { path: 'docs/:documentTitle/history', element: <DocumentHistoryPage /> }, // ✅ 역사
+      { path: 'docs/:documentTitle/edit', element: <DocumentEditPage /> },       // ✅ 편집
       { path: 'docs/:documentTitle/discussions', element: <DiscussionListPage /> },
       { path: 'docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
       { path: 'docs/:documentTitle/versions/:versionId', element: <DocumentVersionViewPage /> },
-    ]
+
+      // ✅ 버전 비교 (r{versionId} vs 직전)
+      { path: 'docs/:documentTitle/versions/:versionId/diff', element: <DocumentDiffPage /> },
+    ],
   },
 
   // 카테고리 페이지
   {
     path: '/category/:categoryName',
     element: <CategoryLayout />,
-    children: [{ index: true, element: <CategoryPage /> }]
+    children: [{ index: true, element: <CategoryPage /> }],
   },
-  
+
   // 사용자 페이지(즐겨찾기, 참여토론)
   {
     path: '/user',
@@ -114,7 +124,7 @@ const router = createBrowserRouter([
       { path: 'contributions', element: <AttributePage /> },
       { path: 'favorite', element: <FavoritePage /> },
       { path: 'discussions', element: <DiscussionHistoryPage /> },
-    ]
+    ],
   },
 
   // 관리자 페이지
@@ -124,7 +134,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminIndexGate /> },
       { path: 'login', element: <AdminLoginPage /> },
-      { 
+      {
         element: <RequireAdmin />,
         children: [
           { path: 'user_report', element: <AdminUserReportPage /> },
@@ -132,10 +142,10 @@ const router = createBrowserRouter([
           { path: 'document', element: <AdminDocumentPage /> },
           { path: 'discussion', element: <AdminDiscussionPage /> },
           { path: 'manual', element: <AdminManualPage /> },
-        ]
-      }
-    ]
-  }
+        ],
+      },
+    ],
+  },
 ])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

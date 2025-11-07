@@ -44,6 +44,13 @@ function authHeaders(extra: HeadersInit = {}) {
 }
 const enc = (s: string) => encodeURIComponent(s || '');
 
+// ===== 시간 유틸 =====
+// 서버가 UTC인데 타임존 표기가 없을 수 있으므로, 없으면 'Z'를 붙여 UTC로 파싱
+function parseServerUtc(iso: string): Date {
+  const norm = iso.replace(/(\.\d{3})\d+$/, '$1'); // ms 3자리로 정규화
+  const hasTZ = /Z$|[+\-]\d{2}:\d{2}$/.test(norm);
+  return new Date(hasTZ ? norm : `${norm}Z`);
+}
 // KST 포맷터(문서조회와 동일 형식)
 const formatKST = (d: Date) =>
   new Intl.DateTimeFormat('ko-KR', {
@@ -147,9 +154,9 @@ export default function DocumentVersionViewPage() {
 
   const isLatest = latestVersion != null && doc?.versionNumber === latestVersion;
 
-  // 해당 버전의 수정시각(KST)
+  // ✅ KST로 정확히 표기 (서버 UTC 가정, tz 없으면 Z 부여)
   const lastUpdated = useMemo(
-    () => (doc?.updatedAt ? formatKST(new Date(doc.updatedAt)) : ''),
+    () => (doc?.updatedAt ? formatKST(parseServerUtc(doc.updatedAt)) : ''),
     [doc?.updatedAt]
   );
 
