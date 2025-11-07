@@ -16,13 +16,17 @@ public class ErrorResponse {
     private LocalDateTime time;
 
     public static ResponseEntity<ErrorResponse> toResponseEntity(ErrorCode errorCode) {
+        return toResponseEntity(errorCode, errorCode.getMessage());
+    }
+
+    // 커스텀 메시지를 받는 메서드 추가
+    public static ResponseEntity<ErrorResponse> toResponseEntity(ErrorCode errorCode, String customMessage) {
         return ResponseEntity.status(errorCode.getStatus().value())
                 .body(ErrorResponse.builder()
                         .status(errorCode.getStatus().value())
                         .code(errorCode.getCode())
-                        .message(errorCode.getMessage())
+                        .message(customMessage != null ? customMessage : errorCode.getMessage())
                         .time(LocalDateTime.now())
                         .build());
     }
-
 }

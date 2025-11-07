@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
+
 public class DiffDTO {
 
     /**
@@ -15,12 +17,22 @@ public class DiffDTO {
     @AllArgsConstructor
     public static class DiffInfoDTO {
 
-        public Integer plusCount;
-        public Integer minusCount;
-        public String diffs;
+        private LocalDateTime oldCreatedAt;
+        private LocalDateTime newCreatedAt;
+        private Integer editorId;
+        private String editorNickname;
+        private String editMemo;
+        private Integer plusCount;
+        private Integer minusCount;
+        private String diffs;
 
-        public static DiffInfoDTO from(DocumentVersion documentVersion) {
+        public static DiffInfoDTO from(LocalDateTime oldCreatedAt, DocumentVersion documentVersion) {
             return DiffInfoDTO.builder()
+                    .oldCreatedAt(oldCreatedAt)
+                    .newCreatedAt(documentVersion.getCreatedAt())
+                    .editorId(documentVersion.getEditor().getId())
+                    .editorNickname(documentVersion.getEditor().getNickname())
+                    .editMemo(documentVersion.getEditMemo())
                     .plusCount(documentVersion.getPlusCount())
                     .minusCount(documentVersion.getMinusCount())
                     .diffs(documentVersion.getContentDiff())
@@ -36,8 +48,8 @@ public class DiffDTO {
     @AllArgsConstructor
     public static class DiffLineDTO {
 
-        public Integer lineNumber;
-        public String content;
-        public String type; // INSERT, DELETE, CHANGE_OLD, CHANGE_NEW
+        private Integer lineNumber;
+        private String content;
+        private String type; // INSERT, DELETE, CHANGE_OLD, CHANGE_NEW
     }
 }

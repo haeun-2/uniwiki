@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
         log.error("에러 메시지: {}", e.getMessage());
         log.error("요청 URL: {}", request.getRequestURI());
 
-        return ErrorResponse.toResponseEntity(e.getErrorCode());
+        return ErrorResponse.toResponseEntity(e.getErrorCode(), e.getCustomMessage());
     }
 
     @ExceptionHandler(HttpClientErrorException.class)
