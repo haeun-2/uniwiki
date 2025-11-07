@@ -140,7 +140,7 @@ public enum ErrorCode {
      * 404 NOT_FOUND - 토론 없음
      */
     DISCUSSION_NOT_FOUND(HttpStatus.NOT_FOUND, "DISCUSSION_404_01", "요청한 토론을 찾을 수 없습니다."),
-
+    DISCUSSION_CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DISCUSSION_CONTENT_404_01", "요청한 토론 댓글 내용을 찾을 수 없습니다."),
 
 
     MAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MAIL_500_01", "메일 발송에 실패했습니다."),

@@ -2,6 +2,7 @@ package com.kiwi.uniwiki.domain.admin.dto.response;
 
 import com.kiwi.uniwiki.domain.code.entity.Code;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -78,5 +79,21 @@ public class AdminResponseDTO {
         private String discussionTitle;
         private String code;
         private LocalDateTime createdAt;
+    }
+
+    //관리자가 토론 댓글 id로 해당 토론의 댓글의 내용을 가져옴 -> 이걸 보고 수정을 한다고 함
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class DiscussionContentValue{
+
+        private Integer discussionContentId;
+        private Integer discussionId;
+        private String discussionTitle;
+        private String discussionContent;
+        private LocalDateTime createdAt;
+
+
     }
 }

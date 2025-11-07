@@ -4,6 +4,7 @@ import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.admin.dto.response.AdminResponseDTO;
 import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
+import com.kiwi.uniwiki.domain.discussion.repository.DiscussionContentRepository;
 import com.kiwi.uniwiki.domain.discussion.repository.DiscussionRepository;
 import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
 import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
@@ -35,6 +36,7 @@ public class AdminReadService {
     private final DocumentVersionRepository documentVersionRepository;
     private final DiscussionRepository discussionRepository;
     private final UserBanRepository userBanRepository;
+    private final DiscussionContentRepository discussionContentRepository;
 
     public PageResponse<AdminResponseDTO.UserReportResponse> getUserReports(Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -199,5 +201,21 @@ public class AdminReadService {
         );
 
         return PageResponse.from(resultPage);
+    }
+
+    public AdminResponseDTO.DiscussionContentValue getDiscussionContent(Integer discussionId){
+
+        DiscussionContent content = discussionContentRepository.findByIdWithDocument(discussionId);
+
+        AdminResponseDTO.DiscussionContentValue result = AdminResponseDTO.DiscussionContentValue.builder().
+                discussionContentId(content.getId())
+                .discussionId(content.getDiscussion().getId())
+                .discussionTitle(content.getDiscussion().getTitle())
+                .discussionContent(content.getContent())
+                .createdAt(content.getCreatedAt())
+                .build();
+
+        return result;
+
     }
 }

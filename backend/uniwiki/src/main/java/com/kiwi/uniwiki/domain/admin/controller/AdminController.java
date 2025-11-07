@@ -127,4 +127,24 @@ public class AdminController {
         adminWriteService.closedDiscussion(discussionId,userDetails.getUser());
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/discussion/content/{discussionContentId}")
+    @Operation(summary = "토론 댓글 내용 조회", description = "토론 댓글 내용을 조회합니다.")
+    public ResponseEntity<AdminResponseDTO.DiscussionContentValue> getDiscussionContent(
+
+            @PathVariable Integer discussionContentId
+    ) {
+        AdminResponseDTO.DiscussionContentValue response =   adminReadService.getDiscussionContent(discussionContentId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/discussion/content/{discussionContentId}")
+    @Operation(summary = "토론 댓글 내용 수정", description = "토론 댓글 내용을 수정합니다.")
+    public ResponseEntity<Void> changeDiscussionContent(
+            @PathVariable Integer discussionContentId,
+            @RequestBody AdminRequestDTO.DiscussionChangeRequest request
+    ) {
+        adminWriteService.changeDiscussionContent(discussionContentId, request);
+        return ResponseEntity.ok().build();
+    }
 }
