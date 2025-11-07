@@ -49,10 +49,13 @@ public class DocumentVersionService {
      */
     public DiffDTO.DiffInfoDTO getDiffOfVersion(Integer documentId, Integer documentVersionId) {
 
-        DocumentVersion version = documentVersionRepository.findByDocumentIdAndVersionNumber(documentId, documentVersionId)
+        DocumentVersion oldVersion = documentVersionRepository.findByDocumentIdAndVersionNumberFetchEditor(documentId, documentVersionId - 1)
+                .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND, "이전 버전이 존재하지 않습니다."));
+
+        DocumentVersion newVersion = documentVersionRepository.findByDocumentIdAndVersionNumberFetchEditor(documentId, documentVersionId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
-        return DiffDTO.DiffInfoDTO.from(version);
+        return DiffDTO.DiffInfoDTO.from(oldVersion.getCreatedAt(), newVersion);
     }
 
     /**
