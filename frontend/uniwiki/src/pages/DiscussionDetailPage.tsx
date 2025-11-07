@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
-const API_BASE = "http://k13d104.p.ssafy.io/api";
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 const FLASH_AUTO_MS = 3200;
 
 // 로컬 디버깅용(콘솔 로그만): localStorage.setItem('debugSSE','1')

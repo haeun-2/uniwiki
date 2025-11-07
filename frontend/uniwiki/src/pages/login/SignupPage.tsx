@@ -24,7 +24,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/email/send-code", {
+      const response = await fetch("https://k13d104.p.ssafy.io/api/v1/auth/email/send-code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -54,7 +54,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/email/verify", {
+      const response = await fetch("https://k13d104.p.ssafy.io/api/v1/auth/email/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

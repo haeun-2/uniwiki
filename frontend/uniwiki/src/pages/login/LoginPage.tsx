@@ -53,7 +53,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/login", {
+      const response = await fetch("https://k13d104.p.ssafy.io/api/v1/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -111,7 +111,7 @@ export default function LoginPage() {
     setIsVerifying(true);
 
     try {
-      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/password/find/request", {
+      const response = await fetch("https://k13d104.p.ssafy.io/api/v1/auth/password/find/request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -168,7 +168,7 @@ if (!passwordRegex.test(newPassword)) {
     setIsVerifying(true);
 
     try {
-      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/password/find", {
+      const response = await fetch("https://k13d104.p.ssafy.io/api/v1/auth/password/find", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

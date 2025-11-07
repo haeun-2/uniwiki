@@ -53,7 +53,7 @@ export default function UnivMainPage() {
     (async () => {
       try {
         setErr(null);
-        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/universities", {
+        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
           headers: { accept: "*/*" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -91,7 +91,7 @@ export default function UnivMainPage() {
         setLoading(true);
         setErr(null);
         // (임시) 목록 재사용. 백엔드에 /universities/:id 가 생기면 교체 권장
-        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/universities", {
+        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
           headers: { accept: "*/*" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -129,7 +129,7 @@ export default function UnivMainPage() {
       try {
         setPopularLoading(true);
         const resp = await fetch(
-          `http://k13d104.p.ssafy.io/api/v1/documents/popular?universityId=${univId}`,
+          `https://k13d104.p.ssafy.io/api/v1/documents/popular?universityId=${univId}`,
           {
             method: "GET",
             headers: { Accept: "*/*" },

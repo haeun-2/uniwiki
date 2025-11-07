@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
-const API_BASE = "http://k13d104.p.ssafy.io/api";
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 
 /* ===== 공통 유틸 ===== */
 function getAccessToken() {

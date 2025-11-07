@@ -31,7 +31,7 @@ export type AdminDiscussionReportResponse = {
 };
 
 /** ===== 유틸 ===== */
-const API_BASE = "http://k13d104.p.ssafy.io/api/v1";
+const API_BASE = "https://k13d104.p.ssafy.io/api/v1";
 
 const fmt = (iso: string) => new Date(iso).toLocaleString();
 const codeBadge: Record<ReportCode, string> = {

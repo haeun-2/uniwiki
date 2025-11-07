@@ -24,7 +24,7 @@ type DocumentDto = {
   updatedAt: string;
 };
 
-const API_BASE = "http://k13d104.p.ssafy.io/api";
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 
 // JWT
 function getAccessToken() {

@@ -5,7 +5,7 @@ import MDEditor, { ICommand, TextAreaTextApi, TextState } from "@uiw/react-md-ed
 import remarkGfm from "remark-gfm";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 
-const API_BASE = "http://k13d104.p.ssafy.io/api";
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 const PRESIGN_API = `${API_BASE}/v1/s3/presigned-urls`;
 const REFRESH_URL = `${API_BASE}/v1/auth/refresh`;
 

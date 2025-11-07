@@ -20,7 +20,7 @@ export type AdminDiscussionResponse = {
   content: AdminDiscussionItem[];
 };
 
-const API_BASE = "http://k13d104.p.ssafy.io/api/v1";
+const API_BASE = "https://k13d104.p.ssafy.io/api/v1";
 
 function getToken() {
   return (

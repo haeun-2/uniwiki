@@ -45,7 +45,7 @@ export default function RecentDiscuss({ univName: propUnivName }: Props) {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/universities", {
+        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
           headers: { accept: "*/*" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -73,7 +73,7 @@ export default function RecentDiscuss({ univName: propUnivName }: Props) {
       try {
         setLoading(true);
         const res = await fetch(
-          `http://k13d104.p.ssafy.io/api/v1/discussions/recent?university=${universityId}`,
+          `https://k13d104.p.ssafy.io/api/v1/discussions/recent?university=${universityId}`,
           { headers: { accept: "*/*" } }
         );
 

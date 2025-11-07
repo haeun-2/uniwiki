@@ -38,7 +38,7 @@ type DocumentDto = {
   categoryName?: string;
 };
 
-const API_BASE = "http://k13d104.p.ssafy.io/api";
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 
 // ===== 토큰 =====
 function getAccessToken() {

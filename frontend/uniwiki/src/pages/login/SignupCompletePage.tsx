@@ -36,7 +36,7 @@ export default function SignupCompletePage() {
 
     try {
       const response = await fetch(
-        `http://k13d104.p.ssafy.io/api/v1/auth/nickname/check?nickname=${encodeURIComponent(nickname)}`,
+        `https://k13d104.p.ssafy.io/api/v1/auth/nickname/check?nickname=${encodeURIComponent(nickname)}`,
         {
           method: "GET",
           headers: {
@@ -100,7 +100,7 @@ export default function SignupCompletePage() {
 
     try {
       // API 호출: 회원가입 완료
-      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/auth/signup", {
+      const response = await fetch("https://k13d104.p.ssafy.io/api/v1/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

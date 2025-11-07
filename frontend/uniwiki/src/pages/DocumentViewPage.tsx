@@ -21,7 +21,7 @@ type DocumentDto = {
 
 type Status = 'loading' | 'ok' | 'notfound' | 'error';
 
-const API_BASE = 'http://k13d104.p.ssafy.io/api';
+const API_BASE = 'https://k13d104.p.ssafy.io/api';
 
 /** ===== Auth utils ===== */
 function decodeJwtPayload(token: string): any | null {

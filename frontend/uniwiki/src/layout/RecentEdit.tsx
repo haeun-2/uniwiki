@@ -63,7 +63,7 @@ export default function RecentEdit({ univName: propUnivName }: Props) {
       try {
         setLoading(true);
         // 이름 → id 매핑(전체 목록 조회 후 정확 일치)
-        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/universities", {
+        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
           headers: { accept: "*/*" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -94,7 +94,7 @@ export default function RecentEdit({ univName: propUnivName }: Props) {
           sessionStorage.getItem("accessToken") || localStorage.getItem("accessToken") || "";
 
         const res = await fetch(
-          `http://k13d104.p.ssafy.io/api/v1/documents/recent?universityId=${universityId}`,
+          `https://k13d104.p.ssafy.io/api/v1/documents/recent?universityId=${universityId}`,
           {
             method: "GET",
             headers: {
