@@ -52,7 +52,7 @@ public class DocumentVersionController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{versionId}/rollback")
+    @PostMapping("/{versionId}/rollback")
     @Operation(summary = "특정 버전으로 되돌리기 (새 버전 생성)", description = "특정 버전의 내용으로 문서의 새 버전을 생성합니다.")
     public ResponseEntity<String> rollbackToVersion(
             @PathVariable Integer documentId,

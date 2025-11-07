@@ -52,12 +52,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 userId = ((CustomUserDetails) userDetails).getUser().getId();
             }
 
-
-            if (userId != null && userBanRepository.existsActiveBanByUserId(userId, LocalDateTime.now())) {
-                sendBanResponse(response, userId);
-                return;
+            // 차단 유저의 경우 GET 요청을 제외한 모든 요청 이용 불가
+            if (!"GET".equalsIgnoreCase(request.getMethod())) {
+                if (userId != null && userBanRepository.existsActiveBanByUserId(userId, LocalDateTime.now())) {
+                    sendBanResponse(response, userId);
+                    return;
+                }
             }
-
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
