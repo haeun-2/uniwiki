@@ -124,7 +124,7 @@ public class AuthService {
 
     //로그인 하지 않은 사용자가 비밀번호 변경하기
     @Transactional
-    public void ChangePassword(AuthRequestDTO.ChangePasswordRequest request){
+    public void ChangePassword(AuthRequestDTO.FindChangePasswordRequest request){
         EmailVerificationRequestDTO.VerificationEmailCodeRequest emailRequest = EmailVerificationRequestDTO.VerificationEmailCodeRequest.builder()
                         .email(request.getEmail())
                         .code(request.getCode()).

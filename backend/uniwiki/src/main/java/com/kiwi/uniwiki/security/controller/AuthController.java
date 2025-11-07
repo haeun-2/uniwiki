@@ -92,7 +92,7 @@ public class AuthController {
 
     @PostMapping("/password/find")
     @Operation(summary = "비밀번호 변경 ", description = "이메일 인증 후 비밀번호를 변경합니다.")
-    public ResponseEntity<Void> changePassword(@RequestBody AuthRequestDTO.ChangePasswordRequest request){
+    public ResponseEntity<Void> changePassword(@RequestBody AuthRequestDTO.FindChangePasswordRequest request){
         authService.ChangePassword(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
