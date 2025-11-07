@@ -87,7 +87,7 @@ public class DocumentService {
      */
     public DocumentDetailResponseDTO getDocumentByTitle(String documentTitle) {
 
-        Document document = documentRepository.findByTitle(documentTitle)
+        Document document = documentRepository.findByTitleAndIsDeletedFalse(documentTitle)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
 
         DocumentVersion latestVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(document.getId(), document.getLatestVersionNumber())
@@ -106,7 +106,7 @@ public class DocumentService {
     public String updateDocument(Integer documentId, DocumentUpdateRequestDTO request, User user) {
 
         // 문서, 카테고리, 최근 버전 조회
-        Document document = documentRepository.findById(documentId)
+        Document document = documentRepository.findByIdAndIsDeletedFalse(documentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
 
         // 대학 확인
@@ -160,7 +160,7 @@ public class DocumentService {
      * 대학별 문서 조회
      */
     public PageResponse<DocumentResponseDTO> getAllByUniversity(Short universityId, Integer page, Integer size) {
-        Page<Document> documents = documentRepository.findAllByUniversityId(
+        Page<Document> documents = documentRepository.findAllByUniversityIdAndIsDeletedFalse(
                 universityId,
                 PageRequest.of(page, size, Sort.by(Sort.Order.desc("updatedAt")))
         );
