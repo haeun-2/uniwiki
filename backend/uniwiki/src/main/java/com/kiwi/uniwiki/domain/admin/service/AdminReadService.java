@@ -151,6 +151,7 @@ public class AdminReadService {
 
                     return new AdminResponseDTO.DiscussionReportResponse(
                             reportedDiscussionId,
+                            discussionContent.getDiscussion().getId(),
                             discussionContent.getDiscussion().getDocument().getUniversity().getName(),
                             discussionContent.getDiscussion().getDocument().getTitle(),
                             reportValueList
