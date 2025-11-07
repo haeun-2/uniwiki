@@ -1,21 +1,108 @@
 // src/pages/DocumentCreatePage.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ChevronUp } from "lucide-react";
-
-import MDEditor from "@uiw/react-md-editor";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
+import MDEditor, { ICommand, TextAreaTextApi, TextState } from "@uiw/react-md-editor";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 
 const API_BASE = "http://k13d104.p.ssafy.io/api";
+const PRESIGN_API = `${API_BASE}/v1/s3/presigned-urls`;
+const REFRESH_URL = `${API_BASE}/v1/auth/refresh`;
 
-type CreateResponse = {
-  documentId: number;
-  documentTitle: string;
-  universityName?: string;
-  categoryId?: number;
-  categoryName?: string;
-};
+/* ===================== Auth & Storage utils ===================== */
+function decodeJwtPayload(token: string): any | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+function getAccessToken(): string {
+  try {
+    const t = localStorage.getItem("accessToken");
+    if (!t) return "";
+    const payload = decodeJwtPayload(t);
+    if (payload && typeof payload.exp === "number") {
+      const now = Math.floor(Date.now() / 1000);
+      if (now >= payload.exp) {
+        localStorage.removeItem("accessToken");
+        return "";
+      }
+    }
+    return t;
+  } catch {
+    return "";
+  }
+}
+function setAccessToken(t: string) {
+  try { localStorage.setItem("accessToken", t); } catch {}
+}
+function authHeaders(extra: HeadersInit = {}) {
+  const token = getAccessToken();
+  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
+}
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const r = await fetch(REFRESH_URL, {
+      method: "POST",
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+    if (!r.ok) return null;
+    const j = await r.json().catch(() => ({}));
+    const t = j?.accessToken || j?.token;
+    if (!t) return null;
+    setAccessToken(t);
+    return t;
+  } catch {
+    return null;
+  }
+}
+async function fetchWithAuth(input: RequestInfo, init: RequestInit = {}) {
+  const first = await fetch(input, { ...init, headers: authHeaders(init.headers || {}) });
+  if (first.status !== 401) return first;
+  const newTok = await refreshAccessToken();
+  if (!newTok) return first;
+  return fetch(input, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${newTok}` } });
+}
+
+/** 로그인 후 localStorage에서 universityId를 최대한 유연하게 읽어온다. */
+function getUniversityIdFromStorage(): number | null {
+  try {
+    const singleKeys = ["universityId", "univId", "schoolId"];
+    for (const k of singleKeys) {
+      const raw = localStorage.getItem(k);
+      if (raw != null && raw !== "") {
+        const n = Number(raw);
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+    }
+    const objectKeys = ["user", "profile", "me"];
+    for (const k of objectKeys) {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      try {
+        const o = JSON.parse(raw);
+        const cand =
+          o?.universityId ??
+          o?.univId ??
+          o?.schoolId ??
+          (o?.user && (o.user.universityId ?? o.user.univId ?? o.user.schoolId));
+        const n = Number(cand);
+        if (Number.isFinite(n) && n > 0) return n;
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+/* =============================================================== */
+
+const MAX_IMAGE_MB = 10;
+const isImage = (f?: File | null) => !!f && f.type.startsWith("image/");
+const overLimit = (f: File) => f.size > MAX_IMAGE_MB * 1024 * 1024;
 
 const CATEGORY_OPTIONS = [
   { id: 1, name: "학교" },
@@ -24,92 +111,186 @@ const CATEGORY_OPTIONS = [
   { id: 4, name: "시설" },
   { id: 5, name: "행사" },
   { id: 6, name: "기타" },
-];
+] as const;
 
-function getAccessToken() {
-  try { return localStorage.getItem("accessToken") || ""; } catch { return ""; }
+/* ---------- S3 Presign 발급/업로드 ---------- */
+async function getPresignedUrl(): Promise<string> {
+  const r = await fetchWithAuth(PRESIGN_API, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    credentials: "include",
+  });
+  if (r.status === 401) throw Object.assign(new Error("E401"), { code: 401 });
+  if (r.status === 403) {
+    const msg = await r.text().catch(() => "");
+    throw Object.assign(new Error(`E403:${msg || ""}`), { code: 403 });
+  }
+  if (!r.ok) throw new Error((await r.text().catch(() => "")) || "presigned URL 발급 실패");
+  const j = await r.json();
+  if (!j?.presignedUrl) throw new Error("presignedUrl 없음");
+  return j.presignedUrl as string;
 }
-function authHeaders(extra: HeadersInit = {}) {
-  const t = getAccessToken();
-  return t ? { ...extra, Authorization: `Bearer ${t}` } : extra;
+async function uploadToS3ViaPresign(file: File): Promise<string> {
+  const presignedUrl = await getPresignedUrl();
+  const fileUrl = presignedUrl.split("?")[0];
+  let put = await fetch(presignedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type || "application/octet-stream" },
+    body: file,
+  });
+  if (!put.ok) put = await fetch(presignedUrl, { method: "PUT", body: file });
+  if (!put.ok) throw new Error((await put.text().catch(() => "")) || "S3 업로드 실패");
+  return fileUrl;
 }
-const enc = (s: string) => encodeURIComponent(s || "");
 
+/* ---------- 컴포넌트 ---------- */
 export default function DocumentCreatePage() {
   const { univName = "대학교" } = useParams();
-  const univSeg = enc(univName);
   const navigate = useNavigate();
+  const location = useLocation() as any;
 
-  // ── 입력 상태
-  const [title, setTitle] = useState("");
+  const enc = (s: string) => encodeURIComponent(s || "");
+
+  // 입력값
+  const [title, setTitle] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [editMemo, setEditMemo] = useState("");
 
-  // ── UI 상태
-  const [posting, setPosting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [showTop, setShowTop] = useState(false);
+  // storage에서 읽은 universityId
+  const [universityId, setUniversityId] = useState<number | null>(null);
+
+  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string>("");
+
+  // 🔹 라이선스 동의(체크해야 생성 가능)
+  const [agree, setAgree] = useState<boolean>(false);
+
   useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 300);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const uid = getUniversityIdFromStorage();
+    setUniversityId(uid);
   }, []);
-  const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  // ── 미리보기 Sanitize 스키마 (프로젝트와 동일)
-  const rehypeSchema = useMemo(
-    () =>
-      ({
-        ...defaultSchema,
-        attributes: {
-          ...defaultSchema.attributes,
-          a: [...(defaultSchema.attributes?.a || []), ["target"], ["rel"]],
-          img: [
-            ...(defaultSchema.attributes?.img || []),
-            ["alt"],
-            ["title"],
-            ["width"],
-            ["height"],
-          ],
-        },
-      }) as Parameters<typeof rehypeSanitize>[0],
+  // sanitize 확장
+  const sanitizeSchema: any = useMemo(
+    () => ({
+      ...defaultSchema,
+      attributes: {
+        ...(defaultSchema as any).attributes,
+        a: [...(((defaultSchema as any).attributes?.a) || []), "target", "rel"],
+        img: ["src", "alt", "title"],
+      },
+    }),
     []
   );
 
-  const univHref = `/univ/${univSeg}`;
+  async function handleFiles(files: FileList | null, appendAtEnd = true) {
+    if (!files || files.length === 0) return;
+    const images = Array.from(files).filter(isImage);
+    if (images.length === 0) return;
+    const big = images.find(overLimit);
+    if (big) {
+      alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`);
+      return;
+    }
+    try {
+      setBusy(true);
+      const urls = await Promise.all(images.map(uploadToS3ViaPresign));
+      const md = urls.map((u, i) => `![image${i + 1}](${u})`).join("\n");
+      setContent((prev) => (appendAtEnd ? `${prev.trimEnd()}\n\n${md}\n` : `${md}\n${prev}`));
+    } catch (e: any) {
+      const msg = String(e?.message || "");
+      if (msg.startsWith("E401")) {
+        navigate("/login", { replace: true, state: { from: location.pathname } });
+        return;
+      }
+      if (msg.startsWith("E403")) {
+        alert(msg.replace(/^E403:/, "") || "이미지 업로드 권한이 없습니다.");
+        return;
+      }
+      alert(e?.message || "이미지 업로드 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  const disabled = !title.trim() || !categoryId || posting;
-  const onSubmit = async () => {
-    if (disabled) return;
+  const uploadImageCommand: ICommand = {
+    name: "uploadImage",
+    keyCommand: "uploadImage",
+    buttonProps: { "aria-label": "이미지 업로드" },
+    icon: <span style={{ fontSize: 12, fontWeight: 700 }}>IMG</span>,
+    execute: async (_state: TextState, api: TextAreaTextApi) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!isImage(file)) return;
+        if (file && overLimit(file)) {
+          alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`);
+          return;
+        }
+        try {
+          setBusy(true);
+          const url = await uploadToS3ViaPresign(file!);
+          api.replaceSelection(`![${file!.name}](${url} "${file!.name}")`);
+        } catch (e: any) {
+          const msg = String(e?.message || "");
+          if (msg.startsWith("E401")) {
+            navigate("/login", { replace: true, state: { from: location.pathname } });
+            return;
+          }
+          if (msg.startsWith("E403")) {
+            alert(msg.replace(/^E403:/, "") || "이미지 업로드 권한이 없습니다.");
+            return;
+          }
+          alert(e?.message || "이미지 업로드 실패");
+        } finally {
+          setBusy(false);
+        }
+      };
+      input.click();
+    },
+  };
 
-    // 로그인 체크
-    if (!getAccessToken()) {
-      navigate("/login", {
-        replace: false,
-        state: { from: location.pathname },
-      });
+  // 🔒 동의 + 제목 + 카테고리 + universityId 모두 있어야 저장 가능
+  const canSave =
+    agree &&
+    !!title.trim() &&
+    !!categoryId &&
+    !busy &&
+    !saving &&
+    universityId != null &&
+    universityId > 0;
+
+  // 저장(문서 생성): POST /api/v1/documents
+  const onCreate = async () => {
+    if (!canSave) return;
+
+    const token = getAccessToken();
+    if (!token) {
+      alert("세션이 만료되었습니다. 다시 로그인해 주세요.");
+      navigate("/login", { replace: true, state: { from: location.pathname } });
       return;
     }
 
-    setPosting(true);
-    setErrorMsg("");
     try {
-      // ⚠️ 백엔드 스펙 추정: 실제 필드명과 다를 수 있으니 백엔드 열리면 맞춰 수정
+      setSaving(true);
+      setErrorMsg("");
+
       const body = {
+        universityId: Number(universityId),
+        categoryId: Number(categoryId),
         documentTitle: title.trim(),
         documentContent: content ?? "",
-        categoryId,                       // 기본: 카테고리 단일 선택
-        editMemo: editMemo?.trim() || "", // "편집 내용 요약"
-        universityName: univName,         // 필요 시 활용
       };
 
-      const res = await fetch(`${API_BASE}/v1/documents`, {
+      const res = await fetchWithAuth(`${API_BASE}/v1/documents`, {
         method: "POST",
-        headers: authHeaders({
+        headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
-        }),
+          Accept: "application/json, text/plain, */*",
+        },
         credentials: "include",
         body: JSON.stringify(body),
       });
@@ -119,165 +300,171 @@ export default function DocumentCreatePage() {
         return;
       }
       if (res.status === 403) {
-        setErrorMsg("해당 학교 소속만 문서를 생성할 수 있습니다.");
-        return;
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "문서 생성 권한이 없습니다.");
       }
       if (!res.ok) {
         const t = await res.text().catch(() => "");
-        throw new Error(t || `문서 생성 실패 (${res.status})`);
+        throw new Error(t || "문서 생성 실패");
       }
 
-      const j: CreateResponse = await res.json().catch(() => ({} as any));
-      const finalTitle = j?.documentTitle || title.trim();
-
-      // 문서 보기로 이동 + 플래시
-      navigate(`/univ/${univSeg}/docs/${enc(finalTitle)}`, {
-        replace: true,
-        state: { flash: { msg: "새 문서를 생성했습니다." } },
+      navigate(`/univ/${enc(univName)}/docs/${enc(title)}`, {
+        state: { flash: { type: "success", msg: "문서가 생성되었습니다." } },
+        replace: false,
       });
     } catch (e: any) {
-      setErrorMsg(e?.message || "문서 생성 중 오류가 발생했습니다.");
+      setErrorMsg(e?.message || "문서 생성 실패");
     } finally {
-      setPosting(false);
+      setSaving(false);
     }
   };
 
+  const cancelHref = `/univ/${enc(univName)}`;
+
   return (
     <div className="bg-white">
-      <div className="mx-auto w-full max-w-6xl px-4 py-6">
-        {/* 브레드크럼 */}
-        <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
-          <ol className="flex items-center gap-1">
-            <li>
-              <Link to={univHref} className="text-[#2C80A0] hover:underline">
-                {univName}
-              </Link>
-            </li>
-            <li className="mx-1 text-gray-500">›</li>
-            <li className="text-gray-500">새 문서 만들기</li>
-          </ol>
-        </nav>
+      <div className="mx-auto w-full max-w-6xl px-4 gap-6">
+        <div className="lg:col-span-8">
+          {/* 브레드크럼 */}
+          <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
+            <ol className="flex items-center gap-1">
+              <li>
+                <Link to={`/univ/${enc(univName)}`} className="text-[#2C80A0] hover:underline">
+                  {decodeURIComponent(univName)}
+                </Link>
+              </li>
+            </ol>
+          </nav>
 
-        {/* 제목(편집 화면과 유사, 단 입력 가능) + 액션 */}
-        <div className="mb-4 flex items-center gap-3">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="문서 제목을 입력하세요"
-            className="flex-1 rounded-lg border border-[#B3B3B3] bg-white px-3 py-2 text-[28px] font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[#2C80A0]"
-          />
-          <div
-            role="tablist"
-            aria-label="작업"
-            className="grid grid-cols-2 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA]"
-          >
+          {/* 제목 입력 */}
+          <div className="mb-2">
+            <input
+              className="w-full rounded-lg border border-[#B3B3B3] bg-white px-3 py-2 text-[28px] font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[#2C80A0]"
+              placeholder="문서 제목을 입력하세요"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <div className="mt-1 text-sm text-gray-500">새 문서 생성</div>
+          </div>
+
+          {(busy || saving) && (
+            <div className="mt-2 text-sm text-gray-600" role="status" aria-live="polite">
+              {busy ? "이미지 업로드 중…" : "저장 중…"}
+            </div>
+          )}
+          {errorMsg && (
+            <div className="mt-3 rounded-lg bg-[#2C80A0] px-4 py-2 text-white">{errorMsg}</div>
+          )}
+          {universityId == null && (
+            <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-amber-800">
+              로그인 정보에서 <b>universityId</b>를 찾을 수 없습니다. 로그인 상태/학교 인증을 확인해주세요.
+            </div>
+          )}
+
+          {/* 편집기 */}
+          <div className="mt-4" data-color-mode="light">
+            <MDEditor
+              height={520}
+              value={content}
+              onChange={(v) => setContent(v || "")}
+              preview="live"
+              previewOptions={{
+                remarkPlugins: [remarkGfm],
+                rehypePlugins: [[rehypeSanitize, sanitizeSchema]],
+              }}
+              extraCommands={[uploadImageCommand]}
+              textareaProps={{
+                placeholder:
+                  "마크다운 작성. 이미지 파일을 붙여넣기/드래그앤드롭하거나 IMG 버튼으로 업로드하세요.",
+                onPaste: async (e) => {
+                  const items = Array.from(e.clipboardData?.items || []);
+                  const file = items.find((i) => i.kind === "file")?.getAsFile();
+                  if (isImage(file)) {
+                    e.preventDefault();
+                    await handleFiles({ 0: file!, length: 1, item: () => file! } as any, true);
+                  }
+                },
+                onDrop: async (e) => {
+                  if (e.dataTransfer?.files?.length) {
+                    e.preventDefault();
+                    await handleFiles(e.dataTransfer.files, true);
+                  }
+                },
+              }}
+            />
+          </div>
+
+          {/* 카테고리 */}
+          <div className="mt-6">
+            <p className="mb-2 text-gray-900 font-medium">카테고리</p>
+            <div className="flex flex-wrap gap-x-10 gap-y-2 text-[15px]">
+              {CATEGORY_OPTIONS.map((opt) => (
+                <label key={opt.id} className="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="doc-category"
+                    checked={categoryId === opt.id}
+                    onChange={() => setCategoryId(opt.id)}
+                  />
+                  {opt.name}
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-sm text-gray-500">
+              현재 선택:{" "}
+              <span className="font-medium text-gray-800">
+                {CATEGORY_OPTIONS.find((c) => c.id === categoryId)?.name || "—"}
+              </span>
+            </p>
+          </div>
+
+          {/* 🔹 라이선스 동의 */}
+          <label className="mt-4 flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={agree}
+              onChange={(e) => setAgree(e.target.checked)}
+              className="mt-1"
+            />
+            <span className="text-[14px] leading-relaxed text-gray-700">
+              문서 편집을 저장하면 당신은 기여한 내용을 CC-BY-NC-SA 2.0 KR로 배포하고 기여한 문서에 대한
+              라이선스 이용(저작자 표시, 비영리, 동일조건변경허락)에 동의하는 것입니다. 이 동의는 철회할 수 없습니다.
+            </span>
+          </label>
+
+          {/* 버튼 */}
+          <div className="mt-5 flex justify-end gap-3">
             <Link
-              to={univHref}
-              className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
+              to={cancelHref}
+              className="inline-flex min-w-[104px] items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50"
             >
               취소
             </Link>
             <button
-              onClick={onSubmit}
-              disabled={disabled}
-              className="h-10 px-4 text-[18px] leading-tight border-l border-[#B3B3B3] bg-[color:var(--uniwikicolor,#2c80a0)] text-white hover:opacity-90 disabled:opacity-50"
+              onClick={onCreate}
+              disabled={!canSave}
+              className="inline-flex min-w-[104px] items-center justify-center rounded-xl bg-[#2C80A0] px-5 py-2 font-medium text-white hover:bg-[#276E86] disabled:opacity-40 disabled:cursor-not-allowed"
+              title={
+                !agree
+                  ? "라이선스 동의가 필요합니다."
+                  : universityId == null
+                  ? "로그인 정보에 universityId가 없습니다."
+                  : !title.trim()
+                  ? "제목을 입력하세요."
+                  : !categoryId
+                  ? "카테고리를 선택하세요."
+                  : busy
+                  ? "이미지 업로드가 끝난 뒤 저장할 수 있습니다."
+                  : saving
+                  ? "저장 중입니다."
+                  : undefined
+              }
             >
               저장
             </button>
           </div>
         </div>
-
-        {/* 에러 배너 */}
-        {errorMsg && (
-          <div className="mb-3 rounded-xl bg-[#2C80A0] px-4 py-3 text-white">{errorMsg}</div>
-        )}
-
-        {/* 편집/미리보기 두 칼럼 */}
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* 에디터 */}
-          <div className="rounded-2xl border border-[#B3B3B3] bg-white p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-[18px] font-medium text-gray-900">본문 편집</h2>
-              <span className="text-sm text-gray-500">IMG 업로드는 기존 편집 화면과 동일한 흐름로 추후 연결</span>
-            </div>
-            <div data-color-mode="light">
-              <MDEditor
-                value={content}
-                onChange={(v) => setContent(v ?? "")}
-                preview="edit"
-                height={560}
-              />
-            </div>
-          </div>
-
-          {/* 미리보기 */}
-          <div className="rounded-2xl border border-[#B3B3B3] bg-white p-3">
-            <div className="mb-2">
-              <h2 className="text-[18px] font-medium text-gray-900">미리보기</h2>
-            </div>
-            <article data-color-mode="light" className="prose max-w-none">
-              <MDEditor.Markdown
-                source={content || ""}
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[[rehypeSanitize, rehypeSchema]]}
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  ["--color-canvas-default" as any]: "#FFFFFF",
-                  ["--color-canvas-subtle" as any]: "#FFFFFF",
-                }}
-              />
-            </article>
-          </div>
-        </section>
-
-        {/* 카테고리(단일 선택) */}
-        <section className="mt-5 rounded-2xl border border-[#B3B3B3] bg-white p-4">
-          <h3 className="mb-2 text-[18px] font-medium text-gray-900">카테고리</h3>
-          <div className="flex flex-wrap items-center gap-4">
-            {CATEGORY_OPTIONS.map((c) => (
-              <label key={c.id} className="inline-flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  name="category"
-                  value={c.id}
-                  checked={categoryId === c.id}
-                  onChange={() => setCategoryId(c.id)}
-                />
-                <span className="text-[16px] text-gray-800">{c.name}</span>
-              </label>
-            ))}
-          </div>
-          <p className="mt-2 text-sm text-gray-500">* 하나만 선택할 수 있습니다.</p>
-        </section>
-
-        {/* 편집 내용 요약 */}
-        <section className="mt-5">
-          <h3 className="mb-2 text-[18px] font-medium text-gray-900">편집 내용 요약</h3>
-          <input
-            value={editMemo}
-            onChange={(e) => setEditMemo(e.target.value)}
-            placeholder="편집 내용을 요약해서 적어주세요."
-            className="h-12 w-full rounded-lg border border-[#B3B3B3] bg-white px-3 outline-none focus:ring-2 focus:ring-[#2C80A0]"
-          />
-          <p className="mt-3 text-[13px] leading-5 text-gray-600">
-            문서 편집을 저장하면 당신은 기여한 내용을 CC-BY-NC-SA 2.0 KR로 배포하고 기여한 문서에 대한
-            라이선스 이양(저작자표시, 비영리, 동일조건변경허락)에 동의하는 것입니다. 이 동의는 취소할 수
-            없습니다.
-          </p>
-        </section>
       </div>
-
-      {/* 상단 이동 버튼 */}
-      {showTop && (
-        <button
-          onClick={scrollTop}
-          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
-          aria-label="상단으로"
-          title="상단으로"
-        >
-          <ChevronUp className="h-5 w-5" strokeWidth={3} />
-        </button>
-      )}
     </div>
   );
 }
