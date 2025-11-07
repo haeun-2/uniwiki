@@ -32,6 +32,10 @@ export type AdminUserReportResponse = {
 // ====== 유틸 ======
 const fmt = (iso: string) => new Date(iso).toLocaleString();
 const fmtDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : "");
+const isFuture = (iso?: string | null) => {
+  if (!iso) return false;
+  return new Date(iso).getTime() > Date.now();
+};
 
 const codeBadge: Record<ReportCode, string> = {
   PENDING: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
@@ -48,6 +52,54 @@ function sortReports(list: ReportValue[]) {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 }
+
+const API_BASE = "http://k13d104.p.ssafy.io/api/v1";
+
+function getToken() {
+  return localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || "";
+}
+
+// 유저 단위 기각
+async function apiRejectUser(userId: number, reason: string) {
+  const res = await fetch(`${API_BASE}/admin/user-reports/${userId}/reject`, {
+    method: "PATCH",
+    headers: {
+      Accept: "*/*",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) throw new Error(`Reject HTTP ${res.status}`);
+}
+
+// 유저 단위 차단(해결)
+async function apiResolveUser(userId: number, reason: string, banUntil: string) {
+  const res = await fetch(`${API_BASE}/admin/user-reports/${userId}/resolve`, {
+    method: "PATCH",
+    headers: {
+      Accept: "*/*",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ reason, banUntil }),
+  });
+  if (!res.ok) throw new Error(`Resolve HTTP ${res.status}`);
+}
+
+// '일수' → banUntil(ISO)
+function daysToBanUntilISO(days: string): string | null {
+  if (!days) return null;
+  const now = new Date();
+  if (days === "1000") { // 영구 = 1000년
+    now.setFullYear(now.getFullYear() + 1000);
+    return now.toISOString();
+  }
+  now.setDate(now.getDate() + Number(days));
+  return now.toISOString();
+}
+
+
 
 // ====== 차단 모달 ======
 function BlockModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (days: string, reason: string) => void }) {
@@ -151,6 +203,8 @@ function ReportedUserSection({ user, defaultOpen = true, onOpenBlock, onOpenReje
     );
   }, [user.reportValueList]);
 
+  const isBanned = user.banUntil && isFuture(user.banUntil);
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
       {/* 헤더 */}
@@ -178,7 +232,7 @@ function ReportedUserSection({ user, defaultOpen = true, onOpenBlock, onOpenReje
           <span className="px-2 py-1 rounded-full ring-1 ring-amber-200 bg-amber-50 text-amber-700">대기 {counts.PENDING}</span>
           <span className="px-2 py-1 rounded-full ring-1 ring-emerald-200 bg-emerald-50 text-emerald-700">처리 {counts.RESOLVED}</span>
           <span className="px-2 py-1 me-5 rounded-full ring-1 ring-rose-200 bg-rose-50 text-rose-700">기각 {counts.REJECTED}</span>
-          {user.banUntil && (
+          {isBanned && (
             <span
               className="px-3 py-2 text-sm text-uniwikicolor"
             >
@@ -248,6 +302,23 @@ export default function AdminUserReportPageGrouped() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  async function refetchList() {
+    try {
+      const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+      const res = await fetch(`http://k13d104.p.ssafy.io/api/v1/admin/user-reports?page=${page}&size=${size}`, {
+        headers: {
+          Accept: "*/*",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as AdminUserReportResponse;
+      setData(json);
+    } catch (e) {
+      // 필요 시 에러 토스트/알럿 처리
+    }
+  }
+
   // API 연동: 신고 목록 조회
   useEffect(() => {
     const controller = new AbortController();
@@ -256,7 +327,7 @@ export default function AdminUserReportPageGrouped() {
       setError(null);
       try {
         const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
-        const res = await fetch(`http://k13d104.p.ssafy.io/api/v1/admin/user-reports?page=${page}&size=${size}`, {
+        const res = await fetch(`${API_BASE}/admin/user-reports?page=${page}&size=${size}`, {
           headers: {
             Accept: "*/*",
             Authorization: token ? `Bearer ${token}` : "",
@@ -363,8 +434,25 @@ export default function AdminUserReportPageGrouped() {
       {openBlock && (
         <BlockModal
           onClose={() => setOpenBlock(null)}
-          onConfirm={(days, reason) => {
-            alert(`대상: ${openBlock.user.reportedName}\n리포트ID: ${openBlock.report?.reportId ?? "(일괄)"}\n차단: ${days}일\n사유: ${reason}`);
+          onConfirm={async (days, reason) => {
+            const userId = openBlock.user?.reportedId;
+            if (!userId) {
+              alert("대상 유저 ID가 없습니다.");
+              return;
+            }
+            const banUntil = daysToBanUntilISO(days);
+            if (!banUntil) {
+              alert("차단 기간을 선택해 주세요.");
+              return;
+            }
+            try {
+              await apiResolveUser(userId, reason, banUntil);
+              await refetchList();
+            } catch (e: any) {
+              alert(`차단 처리 중 오류가 발생했습니다: ${e?.message ?? "Unknown"}`);
+            } finally {
+              setOpenBlock(null);
+            }
           }}
         />
       )}
@@ -372,8 +460,20 @@ export default function AdminUserReportPageGrouped() {
       {openReject && (
         <RejectModal
           onClose={() => setOpenReject(null)}
-          onConfirm={(reason) => {
-            alert(`기각 대상: ${openReject.user.reportedName}\n리포트ID: ${openReject.report?.reportId ?? "(일괄)"}\n기각 사유: ${reason}`);
+          onConfirm={async (reason) => {
+            const userId = openReject.user?.reportedId;
+            if (!userId) {
+              alert("대상 유저 ID가 없습니다.");
+              return;
+            }
+            try {
+              await apiRejectUser(userId, reason);
+              await refetchList();
+            } catch (e: any) {
+              alert(`기각 중 오류가 발생했습니다: ${e?.message ?? "Unknown"}`);
+            } finally {
+              setOpenReject(null);
+            }
           }}
         />
       )}

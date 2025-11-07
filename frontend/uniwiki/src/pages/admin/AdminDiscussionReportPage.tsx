@@ -1,295 +1,458 @@
-import React, { useMemo, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
-/** ---------------- Types & Mocks ---------------- */
-type DiscussionReport = {
-  id: number;
-  processed: boolean;     // 처리 여부
-  reporter: string;       // 신고자
-  targetTitle: string;    // 대상(토론 제목)
-  createdAt: string;      // 일시
-  content: string;        // 신고/발언 내용(요약)
+/** ===== 타입 (API 스키마 기반) ===== */
+export type ReportCode = "PENDING" | "RESOLVED" | "REJECTED";
+
+export type DiscussionReportValue = {
+  reportId: number;
+  reporterName: string;
+  reason: string;
+  code: ReportCode;
+  createdAt: string; // ISO
 };
 
-const mockDiscussionReports: DiscussionReport[] = Array.from({ length: 68 }).map((_, i) => ({
-  id: i + 1,
-  processed: i % 6 > 3, // 일부만 처리된 상태
-  reporter: "김코드",
-  targetTitle: "서울대학교 토론 주제 #21",
-  createdAt: "2025.10.22 13:21:15",
-  content: "최혜정 바보", // 샘플 발언 내용
-}));
+export type ReportedDiscussion = {
+  discussionId: number;
+  discussionValueList: DiscussionReportValue[];
+};
 
-/** ---------------- Modals (Inline Components) ---------------- */
+export type AdminDiscussionReportResponse = {
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  hasPre: boolean;
+  hasNext: boolean;
+  content: ReportedDiscussion[];
+};
 
-/** 토론 신고 처리 모달 */
-function DiscussionProcessModal({
+/** ===== 유틸 ===== */
+const API_BASE = "http://k13d104.p.ssafy.io/api/v1";
+
+const fmt = (iso: string) => new Date(iso).toLocaleString();
+const codeBadge: Record<ReportCode, string> = {
+  PENDING: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+  RESOLVED: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  REJECTED: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+};
+function getToken() {
+  return localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || "";
+}
+// 상태(PENDING 우선) → 최신순
+function sortReports(list: DiscussionReportValue[]) {
+  const order = { PENDING: 0, RESOLVED: 1, REJECTED: 2 } as const;
+  return [...list].sort((a, b) => {
+    const byStatus = order[a.code] - order[b.code];
+    if (byStatus !== 0) return byStatus;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+/** ===== API ===== */
+async function apiRejectDiscussion(discussionId: number, reason: string) {
+  const res = await fetch(`${API_BASE}/admin/discussion-reports/${discussionId}/reject`, {
+    method: "PATCH",
+    headers: {
+      Accept: "*/*",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) throw new Error(`Reject HTTP ${res.status}`);
+}
+
+async function apiResolveDiscussion(discussionId: number, reason: string) {
+  const res = await fetch(`${API_BASE}/admin/discussion-reports/${discussionId}/resolve`, {
+    method: "PATCH",
+    headers: {
+      Accept: "*/*",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) throw new Error(`Resolve HTTP ${res.status}`);
+}
+
+/** ===== 공용 모달 ===== */
+function ReasonModal({
+  title,
+  confirmText,
+  placeholder,
   onClose,
   onConfirm,
-  targetTitle,
-  speech, // 발언 내용 (읽기 전용 표시)
+  defaultReason,
 }: {
+  title: string;
+  confirmText: string;
+  placeholder: string;
+  defaultReason?: string;
   onClose: () => void;
-  onConfirm: (days: string, reason: string) => void;
-  targetTitle: string;
-  speech: string;
+  onConfirm: (reason: string) => void;
 }) {
-  const [days, setDays] = useState("");
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState(defaultReason ?? "");
+  const canSubmit = reason.trim().length > 0;
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-8 w-[520px]">
-        <div className="flex justify-between items-start mb-6">
-          <h2 className="text-xl font-semibold">토론 신고 처리</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[480px]">
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-lg font-semibold">{title}</h3>
+          <button className="text-gray-400 text-xl" onClick={onClose}>×</button>
         </div>
-
-        <div className="mb-2">
-          <Link to="#" className="underline text-sm text-gray-700 hover:text-gray-900">
-            {targetTitle}
-          </Link>
-        </div>
-
-        <div className="mb-5">
-          <label className="block text-sm mb-1">발언 내용</label>
+        <div className="space-y-3">
+          <label className="text-sm block">사유</label>
           <textarea
-            readOnly
-            value={speech}
-            className="w-full h-28 border rounded-xl px-3 py-2 text-sm bg-gray-50 resize-none"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm mb-1">차단 일자 선택</label>
-          <select
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
-            className="w-full border rounded-xl px-3 py-2 text-sm"
-          >
-            <option value="">차단 일자 선택</option>
-            <option value="1">1일</option>
-            <option value="3">3일</option>
-            <option value="7">7일</option>
-            <option value="30">30일</option>
-            <option value="1000">영구</option>
-          </select>
-        </div>
-
-        <div className="mb-7">
-          <label className="block text-sm mb-1">차단 사유</label>
-          <input
+            autoFocus
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="차단 사유"
-            className="w-full border rounded-xl px-3 py-2 text-sm"
+            placeholder={placeholder}
+            className="w-full h-28 border rounded-lg px-3 py-2 text-sm resize-none"
           />
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border rounded-xl hover:bg-gray-50">취소</button>
-          <button
-            onClick={() => {
-              onConfirm(days, reason);
-              onClose();
-            }}
-            className="px-4 py-2 rounded-xl bg-uniwikicolor text-white hover:bg-uniwikicolor_hover"
-          >
-            확인
-          </button>
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={onClose} className="px-3 py-2 border rounded-lg">취소</button>
+            <button
+              disabled={!canSubmit}
+              onClick={() => { onConfirm(reason.trim()); onClose(); }}
+              className={`px-3 py-2 rounded-lg text-white ${canSubmit ? "bg-uniwikicolor hover:bg-uniwikicolor_hover" : "bg-gray-300 cursor-not-allowed"}`}
+            >
+              {confirmText}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/** 신고 처리 내역 모달 */
-function DiscussionProcessCheckModal({
-  onClose,
-  data,
+/** ===== 섹션(토론 1건) ===== */
+function ReportedDiscussionSection({
+  item,
+  defaultOpen = true,
+  onOpenReject,
+  onOpenResolve,
 }: {
-  onClose: () => void;
-  data: { days: string; reason: string; admin: string };
+  item: ReportedDiscussion;
+  defaultOpen?: boolean;
+  onOpenReject: (discussion: ReportedDiscussion) => void;
+  onOpenResolve: (discussion: ReportedDiscussion) => void;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const sorted = useMemo(() => sortReports(item.discussionValueList), [item.discussionValueList]);
+
+  const counts = useMemo(() => {
+    return item.discussionValueList.reduce(
+      (acc, r) => {
+        acc.total += 1;
+        acc[r.code] += 1 as 1;
+        return acc;
+      },
+      { total: 0, PENDING: 0, RESOLVED: 0, REJECTED: 0 } as { total: number } & Record<ReportCode, number>
+    );
+  }, [item.discussionValueList]);
+
+  const hasPending = item.discussionValueList.some((r) => r.code === "PENDING");
+
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-8 w-[520px]">
-        <div className="flex justify-between items-start mb-6">
-          <h2 className="text-xl font-semibold">신고 처리 내역</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+    <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      {/* 헤더 */}
+      <div
+        role="button"
+        aria-expanded={open}
+        tabIndex={0}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50"
+      >
+        <div className="flex items-center gap-3 text-left">
+          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center font-medium">
+            D
+          </div>
+          <div>
+            <div className="font-semibold">
+              토론 #{item.discussionId}
+            </div>
+            <div className="text-xs text-gray-500">신고 총 {counts.total}건 · 진행 {counts.PENDING}건</div>
+          </div>
         </div>
 
-        <div className="mb-4">
-          <label className="block text-sm mb-1">차단 일자</label>
-          <input
-            readOnly
-            value={data.days}
-            className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50"
-          />
-        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="px-2 py-1 rounded-full ring-1 ring-amber-200 bg-amber-50 text-amber-700">대기 {counts.PENDING}</span>
+          <span className="px-2 py-1 rounded-full ring-1 ring-emerald-200 bg-emerald-50 text-emerald-700">처리 {counts.RESOLVED}</span>
+          <span className="px-2 py-1 me-5 rounded-full ring-1 ring-rose-200 bg-rose-50 text-rose-700">기각 {counts.REJECTED}</span>
 
-        <div className="mb-4">
-          <label className="block text-sm mb-1">차단 사유</label>
-          <input
-            readOnly
-            value={data.reason}
-            className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50"
-          />
-        </div>
-
-        <div className="mb-7">
-          <label className="block text-sm mb-1">담당자</label>
-          <input
-            readOnly
-            value={data.admin}
-            className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50"
-          />
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-uniwikicolor text-white hover:bg-uniwikicolor_hover">
-            확인
+          <button
+            className="px-3 py-2 ms-5 text-sm rounded-lg text-uniwikicolor border hover:bg-gray-200 disabled:opacity-40"
+            onClick={(e) => { e.stopPropagation(); onOpenReject(item); }}
+            disabled={!hasPending}
+          >
+            기각하기
           </button>
+          <button
+            className="px-3 py-2 text-sm rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover disabled:opacity-40"
+            onClick={(e) => { e.stopPropagation(); onOpenResolve(item); }}
+            disabled={!hasPending}
+          >
+            처리하기
+          </button>
+          <span className={`ml-3 text-gray-400 transition-transform ${open ? "rotate-180" : "rotate-0"}`}>▼</span>
         </div>
       </div>
-    </div>
+
+      {/* 바디 */}
+      {open && (
+        <div className="px-5 pb-5">
+          <ul className="divide-y">
+            {sorted.map((r) => (
+              <li key={r.reportId} className="py-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] ${codeBadge[r.code]}`}>{r.code}</span>
+                      <span className="text-xs text-gray-400">{fmt(r.createdAt)}</span>
+                    </div>
+                    <div className="ms-2 mt-3 text-sm text-gray-800 leading-relaxed">
+                      <p className="whitespace-pre-wrap">{r.reason}</p>
+                      <p className="mt-2 text-gray-400">
+                        신고자{" "}
+                        <Link to="#" className="hover:underline">
+                          {r.reporterName}
+                        </Link>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* 닫기 핸들 */}
+          <div className="pt-4">
+            <div className="relative">
+              <div className="h-px bg-gray-200" />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+                className="group absolute left-1/2 -translate-x-1/2 -top-3 focus:outline-none"
+              >
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white text-xs text-gray-500 shadow-sm group-hover:bg-gray-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M5.22 12.78a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L10 8.81l-3.97 3.97a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
+                  </svg>
+                  <span>접기</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
-/** ---------------- Page ---------------- */
-export default function AdminDiscussionReportPage() {
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-  const totalPages = Math.max(1, Math.ceil(mockDiscussionReports.length / pageSize));
+/** ===== 페이지 ===== */
+export default function AdminDiscussionReportPageGrouped() {
+  const [page, setPage] = useState(0);
+  const size = 10;
 
-  const pageSlice = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return mockDiscussionReports.slice(start, start + pageSize);
+  const [data, setData] = useState<AdminDiscussionReportResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refetchList() {
+    const res = await fetch(`${API_BASE}/admin/discussion-reports?page=${page}&size=${size}`, {
+      headers: {
+        Accept: "*/*",
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = (await res.json()) as AdminDiscussionReportResponse;
+    setData(json);
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/admin/discussion-reports?page=${page}&size=${size}`, {
+          headers: {
+            Accept: "*/*",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = (await res.json()) as AdminDiscussionReportResponse;
+        setData(json);
+      } catch (e: any) {
+        if (e?.name !== "AbortError") setError(e?.message ?? "불러오기에 실패했습니다");
+      } finally {
+        setLoading(false);
+      }
+    })();
+    return () => controller.abort();
   }, [page]);
 
-  const paginationNumbers = useMemo(() => {
-    const visible = 10;
-    let start = Math.max(1, page - Math.floor(visible / 2));
-    let end = start + visible - 1;
-    if (end > totalPages) {
-      end = totalPages;
-      start = Math.max(1, end - visible + 1);
-    }
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-  }, [page, totalPages]);
+  const content = data?.content ?? [];
+
+  // 검색
+  const [keyword, setKeyword] = useState("");
+  const filtered = useMemo(() => {
+    const kw = keyword.trim();
+    if (!kw) return content;
+    // 현재는 title 정보가 없으므로 ID/사유/신고자명 기준으로 필터
+    return content.filter((d) => {
+      const idMatch = String(d.discussionId).includes(kw);
+      const inValues = d.discussionValueList.some(
+        (r) => r.reporterName.includes(kw) || r.reason.includes(kw)
+      );
+      return idMatch || inValues;
+    });
+  }, [content, keyword]);
+
+  // 진행중 토론 상단 → 최신 신고 시점 desc
+  const sortedDiscussions = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const aPending = a.discussionValueList.some((r) => r.code === "PENDING");
+      const bPending = b.discussionValueList.some((r) => r.code === "PENDING");
+      if (aPending !== bPending) return aPending ? -1 : 1;
+      const aLatest = Math.max(...a.discussionValueList.map((r) => new Date(r.createdAt).getTime()));
+      const bLatest = Math.max(...b.discussionValueList.map((r) => new Date(r.createdAt).getTime()));
+      return bLatest - aLatest;
+    });
+  }, [filtered]);
 
   // 모달 상태
-  const [showProcessModal, setShowProcessModal] = useState(false);
-  const [showCheckModal, setShowCheckModal] = useState(false);
-  const [selected, setSelected] = useState<DiscussionReport | null>(null);
-
-  const openProcess = (r: DiscussionReport) => {
-    setSelected(r);
-    setShowProcessModal(true);
-  };
-
-  const openCheck = (r: DiscussionReport) => {
-    setSelected(r);
-    setShowCheckModal(true);
-  };
+  const [openReject, setOpenReject] = useState<null | ReportedDiscussion>(null);
+  const [openResolve, setOpenResolve] = useState<null | ReportedDiscussion>(null);
 
   return (
-    <>
-      {/* 우측 콘텐츠 */}
-      <h1 className="text-xl font-semibold mb-6">토론 신고 내역</h1>
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">토론 신고 내역</h1>
 
-      <div className="overflow-x-auto border-t border-gray-200">
-        <table className="min-w-[960px] w-full text-left border-collapse">
-          <thead className="bg-gray-50 text-gray-700 font-medium">
-            <tr className="border-b">
-              <th className="py-2 w-24 text-center">처리 여부</th>
-              <th className="py-2 w-40">일시</th>
-              <th className="py-2 w-32">신고자</th>
-              <th className="py-2 w-80">대상</th>
-              <th className="py-2">내용</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageSlice.map((r) => (
-              <tr
-                key={r.id}
-                onClick={() => (r.processed ? openCheck(r) : openProcess(r))}
-                className={`border-b hover:bg-gray-50 transition-colors cursor-pointer ${
-                  r.processed ? "text-gray-400" : "text-gray-800"
-                }`}
-              >
-                <td className="py-3 text-center">{r.processed ? "Y" : "N"}</td>
-                <td className="py-3">{r.createdAt}</td>
-                <td className="py-3">
-                  <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                    {r.reporter}
-                  </Link>
-                </td>
-                <td className="py-3">
-                  <Link to="#" className="hover:underline" onClick={(e) => e.stopPropagation()}>
-                    {r.targetTitle}
-                  </Link>
-                </td>
-                <td className="py-3">{r.content}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* 상단 바: 페이지/검색 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-sm text-gray-500">
+          페이지 {data ? data.page + 1 : page + 1} / {data ? data.totalPages : 1}
+        </div>
+        <div className="relative ml-auto">
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="토론 ID / 신고자 / 사유 검색"
+            className="w-72 border rounded-lg px-3 py-2 text-sm pr-8"
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+        </div>
       </div>
 
+      {/* 리스트 */}
+      {loading && (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-gray-200 bg-white p-5 animate-pulse">
+              <div className="h-5 w-48 bg-gray-200 rounded" />
+              <div className="mt-3 h-4 w-full bg-gray-100 rounded" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 p-4 text-sm">
+          불러오는 중 오류가 발생했습니다: {error}
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="space-y-3">
+          {sortedDiscussions.map((d) => (
+            <ReportedDiscussionSection
+              key={d.discussionId}
+              item={d}
+              defaultOpen={false}
+              onOpenReject={(discussion) => setOpenReject(discussion)}
+              onOpenResolve={(discussion) => setOpenResolve(discussion)}
+            />
+          ))}
+          {sortedDiscussions.length === 0 && (
+            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+              신고 내역이 없습니다.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 페이지네이션 */}
-      <div className="mt-5 flex items-center gap-1 text-xs">
+      <div className="pt-2 flex items-center gap-1 text-xs">
         <button
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
+          disabled={loading || !(data?.hasPre)}
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40"
         >
           &lt; 이전
         </button>
-
-        {paginationNumbers.map((n) => (
-          <button
-            key={n}
-            onClick={() => setPage(n)}
-            className={`px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer ${
-              n === page ? "bg-gray-100 font-semibold" : ""
-            }`}
-          >
-            {n}
-          </button>
-        ))}
-
+        <span className="px-2 py-1 rounded border bg-gray-100 font-semibold">
+          {data ? data.page + 1 : page + 1}
+        </span>
         <button
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer"
+          disabled={loading || !(data?.hasNext)}
+          onClick={() => setPage((p) => p + 1)}
+          className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40"
         >
           다음 &gt;
         </button>
       </div>
 
-      {/* ---------------- Render Modals ---------------- */}
-      {showProcessModal && selected && (
-        <DiscussionProcessModal
-          targetTitle={selected.targetTitle}
-          speech={selected.content}
-          onClose={() => setShowProcessModal(false)}
-          onConfirm={(days, reason) =>
-            alert(
-              `토론 신고 #${selected.id}\n차단: ${days || "(미선택)"}일\n사유: ${reason || "(미입력)"}`
-            )
-          }
-        />
-      )}
-
-      {showCheckModal && (
-        <DiscussionProcessCheckModal
-          onClose={() => setShowCheckModal(false)}
-          data={{
-            days: "3일",
-            reason: "토론 중에 상대방을 비하함",
-            admin: "이지오",
+      {/* 모달: 기각 */}
+      {openReject && (
+        <ReasonModal
+          title={`토론 #${openReject.discussionId} 신고 기각`}
+          confirmText="기각하기"
+          placeholder="기각 사유를 입력하세요"
+          onClose={() => setOpenReject(null)}
+          onConfirm={async (reason) => {
+            try {
+              await apiRejectDiscussion(openReject.discussionId, reason);
+              await refetchList();
+            } catch (e: any) {
+              alert(`기각 처리 중 오류가 발생했습니다: ${e?.message ?? "Unknown"}`);
+            } finally {
+              setOpenReject(null);
+            }
           }}
         />
       )}
-    </>
+
+      {/* 모달: 처리(해결) */}
+      {openResolve && (
+        <ReasonModal
+          title={`토론 #${openResolve.discussionId} 신고 처리`}
+          confirmText="처리하기"
+          placeholder="처리 사유를 입력하세요"
+          onClose={() => setOpenResolve(null)}
+          onConfirm={async (reason) => {
+            try {
+              await apiResolveDiscussion(openResolve.discussionId, reason);
+              await refetchList();
+            } catch (e: any) {
+              alert(`처리 중 오류가 발생했습니다: ${e?.message ?? "Unknown"}`);
+            } finally {
+              setOpenResolve(null);
+            }
+          }}
+        />
+      )}
+    </div>
   );
 }
