@@ -40,10 +40,11 @@ public class AdminResponseDTO {
     public static class DiscussionReportResponse {
 
         private Integer discussionContentId;
+        private Integer discussionId;
         private String UniversityName;
         private String documentName;
 
-        List<DiscussionReportValue> discussionValueList;
+        private List<DiscussionReportValue> discussionValueList;
     }
 
     @Getter
