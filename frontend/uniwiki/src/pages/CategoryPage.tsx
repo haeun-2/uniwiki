@@ -53,8 +53,8 @@ export default function CategoryPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-           console.log("=== 카테고리 조회 시작 ===");
-      console.log("요청한 categoryName:", categoryName);
+        console.log("=== 카테고리 조회 시작 ===");
+        console.log("요청한 categoryName:", categoryName);
         const response = await fetch("http://k13d104.p.ssafy.io/api/v1/categories", {
           method: "GET",
           headers: {
@@ -64,14 +64,14 @@ export default function CategoryPage() {
 
         if (response.ok) {
           const data = await response.json();
-                  console.log("백엔드 전체 카테고리:", data);  // ← 여기서 확인!
+          console.log("백엔드 전체 카테고리:", data);
 
           const matchedCategory = data.find((cat: Category) => cat.categoryName === categoryName);
-                 console.log("매칭된 카테고리:", matchedCategory);
+          console.log("매칭된 카테고리:", matchedCategory);
 
           if (matchedCategory) {
             setCurrentCategoryId(matchedCategory.categoryId);
-          }else{
+          } else {
             console.error("❌ 카테고리를 찾을 수 없음. 요청:", categoryName);
           }
         } else {
@@ -239,7 +239,7 @@ export default function CategoryPage() {
           <div className="sticky top-8">
             <button 
               onClick={handleLanguageToggle}
-              className="w-full h-12 flex items-center justify-center border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 transition mb-2"
+              className="w-full lg:w-[80%] lg:mx-auto h-12 flex items-center justify-center border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 transition mb-2"
             >
               {isEnglish ? "한글 변환 / KR" : "영문 변환 / EN"}
             </button>
@@ -257,9 +257,9 @@ export default function CategoryPage() {
                   <button
                     key={letter}
                     onClick={() => setSelectedLetter(letter)}
-                    className={`w-full h-12 flex items-center justify-between px-4 border rounded transition font-medium flex-shrink-0 ${
+                    className={`w-full lg:w-[80%] lg:mx-auto h-12 flex items-center justify-between px-4 border rounded transition font-medium flex-shrink-0 ${
                       selectedLetter === letter
-                        ? "bg-blue-50 border-blue-500 text-blue-600"
+                        ? "bg-[rgba(44,128,160,0.1)] border-uniwikicolor text-uniwikicolor hover:bg-[rgba(44,128,160,0.15)]"
                         : "border-gray-300 text-gray-600 hover:bg-gray-50"
                     }`}
                     aria-pressed={selectedLetter === letter}
