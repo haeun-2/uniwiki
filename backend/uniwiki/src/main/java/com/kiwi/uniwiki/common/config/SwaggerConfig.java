@@ -32,7 +32,7 @@ public class SwaggerConfig {
 
         // 서버 URL 설정
         Server httpsServer = new Server()
-                .url("https://http://k13d104.p.ssafy.io")
+                .url("https://k13d104.p.ssafy.io")
                 .description("HTTPS 서버");
 
         Server httpServer = new Server()
