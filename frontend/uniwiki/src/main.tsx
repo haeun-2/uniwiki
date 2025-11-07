@@ -96,7 +96,7 @@ const router = createBrowserRouter([
       { path: 'category/:categoryName', element: <CategoryPage /> },
 
       // 문서, 토론
-      { path: 'docs/new', element: <DocumentCreatePage /> },                 // ✅ 새 문서 생성
+      { path: 'new/docs', element: <DocumentCreatePage /> },                 // ✅ 새 문서 생성
       { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
       { path: 'docs/:documentTitle/history', element: <DocumentHistoryPage /> }, // ✅ 역사
       { path: 'docs/:documentTitle/edit', element: <DocumentEditPage /> },       // ✅ 편집
