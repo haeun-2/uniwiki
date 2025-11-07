@@ -2,7 +2,6 @@ package com.kiwi.uniwiki.domain.discussion.repository;
 
 import com.kiwi.uniwiki.domain.code.entity.Code;
 import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
-import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +17,7 @@ import java.util.Optional;
 public interface DiscussionRepository extends JpaRepository<Discussion, Integer> {
 
     @EntityGraph(attributePaths = "document")
-    Page<Discussion> findAllByDocumentIdAndCode(Integer documentId, Code code, Pageable pageable);
+    Page<Discussion> findAllByDocumentIdAndCodeAndIsDeletedFalse(Integer documentId, Code code, Pageable pageable);
 
     List<Discussion> findAllByDocumentIdAndCode(Integer documentId, Code code);
 
@@ -27,7 +26,7 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Integer>
         SELECT d
         FROM Discussion d
         WHERE d.document.university.id = :universityId
-        ORDER BY d.updatedAt DESC
+        AND d.isDeleted = false
         """)
     Page<Discussion> findAllByUniversityId(@Param("universityId") Integer universityId, Pageable pageable);
 

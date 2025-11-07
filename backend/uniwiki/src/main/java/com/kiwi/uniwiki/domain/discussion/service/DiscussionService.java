@@ -3,7 +3,6 @@ package com.kiwi.uniwiki.domain.discussion.service;
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.common.page.PageResponse;
-import com.kiwi.uniwiki.domain.activity.entity.UserActivity;
 import com.kiwi.uniwiki.domain.activity.service.AsyncUserActivityService;
 import com.kiwi.uniwiki.domain.code.service.CodeService;
 import com.kiwi.uniwiki.domain.discussion.dto.request.DiscussionRequestDTO;
@@ -38,7 +37,7 @@ public class DiscussionService {
 
     @Transactional
     public DiscussionResponseDTO.CreateResponse createDiscussion(DiscussionRequestDTO.CreateRequest request, User user) {
-        Document document = documentRepository.findById(request.getDocumentId()).orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
+        Document document = documentRepository.findByIdAndIsDeletedFalse(request.getDocumentId()).orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
 
         // 유저가 토론 참여 권한을 가졌는지 확인
         validatePermission(user, document);
@@ -70,18 +69,27 @@ public class DiscussionService {
         return DiscussionResponseDTO.CreateResponse.from(savedDiscussion);
     }
 
+    /**
+     * 문서의 열린 토론 조회
+     */
     public PageResponse<DiscussionResponseDTO.SimpleResponse> getOpenDiscussionsByDocument(Integer documentId, Integer page, Integer size) {
-        Page<Discussion> discussions = discussionRepository.findAllByDocumentIdAndCode(
+        Page<Discussion> discussions = discussionRepository.findAllByDocumentIdAndCodeAndIsDeletedFalse(
                 documentId,
                 codeService.get("DISCUSSION_STATUS", "OPEN"),
-                PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
+                PageRequest.of(page, size, Sort.by("createdAt", "id").descending())
         );
 
         return PageResponse.from(discussions, DiscussionResponseDTO.SimpleResponse::from);
     }
 
+    /**
+     * 대학의 최근 토론 10개 조회
+     */
     public List<DiscussionResponseDTO.SimpleResponse> getRecentDiscussionsByUniversity(Integer universityId) {
-        List<Discussion> discussions = discussionRepository.findAllByUniversityId(universityId, PageRequest.of(0, 10)).getContent();
+        List<Discussion> discussions = discussionRepository.findAllByUniversityId(
+                universityId,
+                PageRequest.of(0, 10, Sort.by("updatedAt").descending())
+        ).getContent();
         return DiscussionResponseDTO.SimpleResponse.from(discussions);
     }
 
