@@ -287,11 +287,14 @@ export default function CategoryPage() {
                 {column.map((item, idx) => (
                   <div key={idx}>
                     <Link
-                      to={`/docs/${encodeURIComponent(item.documentTitle)}`}
-                      className="text-sm text-blue-600 hover:underline block py-1"
-                    >
-                      {item.documentTitle}
-                    </Link>
+  to={univName 
+    ? `/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(item.documentTitle)}`
+    : `/docs/${encodeURIComponent(item.documentTitle)}`
+  }
+  className="text-sm text-blue-600 hover:underline block py-1"
+>
+  {item.documentTitle}
+</Link>
                   </div>
                 ))}
               </div>
