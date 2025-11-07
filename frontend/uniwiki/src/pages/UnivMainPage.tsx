@@ -177,9 +177,20 @@ export default function UnivMainPage() {
             </p>
           </div>
         </div>
-        <button className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition flex-shrink-0">
-          새 문서 만들기
-        </button>
+        <button 
+  onClick={() => {
+    if (!univId) {
+      alert("대학교 정보를 불러오는 중입니다.");
+      return;
+    }
+    navigate(`/univ/${encodeURIComponent(univName!)}/docs/new`, {  // ✅ new/docs → docs/new
+      state: { universityId: univId }
+    });
+  }}
+  className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition flex-shrink-0"
+>
+  새 문서 만들기
+</button>
       </div>
 
       {/* 중단 - 주요 카테고리 */}
