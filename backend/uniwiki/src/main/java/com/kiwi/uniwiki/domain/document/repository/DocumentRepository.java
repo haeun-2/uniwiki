@@ -12,13 +12,18 @@ import java.util.Optional;
 public interface DocumentRepository extends JpaRepository<Document, Integer> {
 
     /**
-     * 제목으로 문서 조회
+     * 아이디로 삭제되지 않은 문서 조회
      */
-    Optional<Document> findByTitle(String title);
+    Optional<Document> findByIdAndIsDeletedFalse(Integer id);
+
+    /**
+     * 제목으로 삭제되지 않은 문서 조회
+     */
+    Optional<Document> findByTitleAndIsDeletedFalse(String title);
 
     boolean existsByTitle(String title);
 
-    Page<Document> findAllByUniversityId(Short universityId, Pageable pageable);
+    Page<Document> findAllByUniversityIdAndIsDeletedFalse(Short universityId, Pageable pageable);
 
     Page<Document> findAllByCategoryId(Short categoryId, Pageable pageable);
 

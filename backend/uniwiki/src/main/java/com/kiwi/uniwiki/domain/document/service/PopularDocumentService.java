@@ -26,7 +26,7 @@ public class PopularDocumentService {
     private static final Integer LIMIT = 9;     // TOP 10
     private static final int WINDOW_HOURS = 24;
     private static final String REDIS_VIEW_KEY = "documents:view";
-
+    private static final String REDIS_POPULAR_DOCUMENTS_KEY = "documents:popular";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHH");
 
     /**
@@ -42,7 +42,7 @@ public class PopularDocumentService {
     /**
      * 시간별 문서 조회수 취합하여 인기 순위 계산
      */
-    @Cacheable(value = "documents:popular", key = "#universityId")
+    @Cacheable(value = REDIS_POPULAR_DOCUMENTS_KEY, key = "#universityId")
     public List<DocumentSimpleResponseDTO> getPopularDocuments(Short universityId) {
         List<String> keys = getRecentHourKeys(universityId);
         String resultKey = "popular:temp:" + universityId + ":" + System.currentTimeMillis();
@@ -88,5 +88,27 @@ public class PopularDocumentService {
         }
 
         return keys;
+    }
+
+    /**
+     * 문서 삭제 시 집계 초기화
+     */
+    public void clearDocumentViewCacheForDeletion(Short universityId, String documentTitle, Integer documentId) {
+        List<String> keys = getRecentHourKeys(universityId);
+
+        // 각 시간별 조회수 집계 목록에서 해당 문서 제거
+        keys.forEach(key -> {
+            Long removed = redisTemplate.opsForZSet().remove(key, documentTitle);
+            if(removed != null && removed > 0) {
+                log.info("[REDIS] 문서 {}(title: {}) 삭제로 인한 조회수 집계 초기화 완료", documentId, documentTitle);
+            }
+        });
+
+        // 인기 문서 캐시 삭제
+        String popularCacheKey = REDIS_POPULAR_DOCUMENTS_KEY + "::" + universityId;
+        Boolean deleted = redisTemplate.delete(popularCacheKey);
+        if (Boolean.TRUE.equals(deleted)) {
+            log.info("[REDIS] 대학 {} 인기 문서 캐시 삭제 완료", universityId);
+        }
     }
 }

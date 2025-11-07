@@ -5,12 +5,14 @@ import com.kiwi.uniwiki.common.exception.ErrorCode;
 import com.kiwi.uniwiki.domain.admin.dto.request.AdminRequestDTO;
 import com.kiwi.uniwiki.domain.code.entity.Code;
 import com.kiwi.uniwiki.domain.code.service.CodeService;
+import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
 import com.kiwi.uniwiki.domain.discussion.repository.DiscussionContentRepository;
+import com.kiwi.uniwiki.domain.discussion.repository.DiscussionRepository;
 import com.kiwi.uniwiki.domain.discussion.service.DiscussionContentService;
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
-import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
+import com.kiwi.uniwiki.domain.document.service.PopularDocumentService;
 import com.kiwi.uniwiki.domain.report.entity.DiscussionReport;
 import com.kiwi.uniwiki.domain.report.entity.UserReport;
 import com.kiwi.uniwiki.domain.report.repository.DiscussionReportRepository;
@@ -21,15 +23,11 @@ import com.kiwi.uniwiki.domain.user.repository.UserBanRepository;
 import com.kiwi.uniwiki.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cglib.core.Local;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -40,11 +38,13 @@ public class AdminWriteService {
     private final CodeService codeService;
     private final UserBanRepository userBanRepository;
     private final UserRepository userRepository;
+    private final DiscussionRepository discussionRepository;
     private final DiscussionReportRepository discussionReportRepository;
     private final DiscussionContentRepository discussionContentRepository;
     private final DocumentRepository documentRepository;
 
     private final DiscussionContentService discussionContentService;
+    private final PopularDocumentService popularDocumentService;
 
     @Transactional
     public void rejectUserReport(User admin, Integer reportedUserId, AdminRequestDTO.ReportRejectedRequest request){
@@ -66,7 +66,6 @@ public class AdminWriteService {
         pendingReports.forEach(userReport ->
                 userReport.reportProcess(admin, request.getReason(), rejectedCode)
         );
-
     }
 
     @Transactional
@@ -157,11 +156,22 @@ public class AdminWriteService {
     }
 
     @Transactional
-    public void deleteDocument(AdminRequestDTO.DocumentDeleteRequest request, Integer documentId){
+    public void deleteDocument(AdminRequestDTO.DocumentDeleteRequest request, Integer documentId, User admin){
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_NOT_FOUND));
-        document.deleteDocument(request.getReason());
 
+        // 조회수 캐시 삭제
+        popularDocumentService.clearDocumentViewCacheForDeletion(document.getUniversity().getId(), document.getTitle(), document.getId());
+
+        // 열린 토론 전부 닫기
+        List<Discussion> discussions = discussionRepository.findAllByDocumentIdAndCode(documentId, codeService.get("DISCUSSION_STATUS", "OPEN"));
+        for(Discussion discussion : discussions){
+            closedDiscussion(discussion.getId(), admin);
+        }
+
+        // 제목 업데이트
+        String deletionTitle = "[uniwiki][deleted] " + UUID.randomUUID();
+        document.deleteDocument(request.getReason(), deletionTitle);
     }
 
     //토론 종료

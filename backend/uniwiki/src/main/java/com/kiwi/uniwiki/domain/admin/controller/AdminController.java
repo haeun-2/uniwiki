@@ -101,9 +101,10 @@ public class AdminController {
     @Operation(summary = "문서 삭제", description = "관리자가 문서를 삭제합니다.")
     public ResponseEntity<Void> deleteDocument(
             @PathVariable Integer documentId,
-            @RequestBody AdminRequestDTO.DocumentDeleteRequest request
+            @RequestBody AdminRequestDTO.DocumentDeleteRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        adminWriteService.deleteDocument(request, documentId);
+        adminWriteService.deleteDocument(request, documentId, userDetails.getUser());
         return ResponseEntity.noContent().build();
     }
 
