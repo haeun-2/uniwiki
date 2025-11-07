@@ -65,7 +65,7 @@ public class DiscussionContentService {
         Discussion discussion = discussionRepository.findAndLockById(discussionId).orElseThrow(() -> new CustomException(ErrorCode.DISCUSSION_NOT_FOUND));
 
         // 토론 생성자 혹은 관리자 확인
-        if (!discussion.isCreatedBy(user) || user.getRole() != User.Role.ADMIN) {
+        if (!discussion.isCreatedBy(user) && user.getRole() != User.Role.ADMIN) {
             throw new CustomException(ErrorCode.DISCUSSION_STATUS_ACCESS_DENIED);
         }
 

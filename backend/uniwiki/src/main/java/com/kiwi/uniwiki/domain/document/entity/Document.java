@@ -4,7 +4,6 @@ import com.kiwi.uniwiki.domain.university.entity.University;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -66,7 +65,8 @@ public class Document {
         this.updatedAt = updatedAt;
     }
 
-    public void deleteDocument(String reason){
+    public void deleteDocument(String title, String reason){
+        this.title = title;
         this.isDeleted = true;
         this.deleteReason = reason;
         this.deletedAt = LocalDateTime.now();
