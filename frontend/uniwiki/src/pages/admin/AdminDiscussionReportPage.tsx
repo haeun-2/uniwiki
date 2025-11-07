@@ -14,6 +14,9 @@ export type DiscussionReportValue = {
 
 export type ReportedDiscussion = {
   discussionId: number;
+  discussionContentId: number;
+  documentName: string;
+  universityName: string;
   discussionValueList: DiscussionReportValue[];
 };
 
@@ -49,9 +52,23 @@ function sortReports(list: DiscussionReportValue[]) {
   });
 }
 
-/** ===== API ===== */
-async function apiRejectDiscussion(discussionId: number, reason: string) {
-  const res = await fetch(`${API_BASE}/admin/discussion-reports/${discussionId}/reject`, {
+/** 토론 상세로 가는 링크 빌더
+ * 기본: /univ/:univName/docs/:documentTitle/discussions/:id
+ * 만약 프로젝트 라우트가 /docs/:documentTitle/discussions/:id 라면 아래 return 문을 주석의 대안으로 교체하세요.
+ */
+function buildDiscussionHref(universityName: string, documentName: string, discussionContentId: number) {
+  const univ = encodeURIComponent(universityName);
+  const doc = encodeURIComponent(documentName);
+  const id = encodeURIComponent(String(discussionContentId));
+  return `/univ/${univ}/docs/${doc}/discussions/${id}`;
+
+  // (대안) 라우트가 /docs/:documentTitle/discussions/:id 인 경우:
+  // return `/docs/${doc}/discussions/${id}`;
+}
+
+/* ===== API ===== */
+async function apiRejectDiscussion(discussionContentId: number, reason: string) {
+  const res = await fetch(`${API_BASE}/admin/discussion-reports/${discussionContentId}/reject`, {
     method: "PATCH",
     headers: {
       Accept: "*/*",
@@ -83,16 +100,14 @@ function ReasonModal({
   placeholder,
   onClose,
   onConfirm,
-  defaultReason,
 }: {
   title: string;
   confirmText: string;
   placeholder: string;
-  defaultReason?: string;
   onClose: () => void;
   onConfirm: (reason: string) => void;
 }) {
-  const [reason, setReason] = useState(defaultReason ?? "");
+  const [reason, setReason] = useState("");
   const canSubmit = reason.trim().length > 0;
 
   return (
@@ -115,8 +130,13 @@ function ReasonModal({
             <button onClick={onClose} className="px-3 py-2 border rounded-lg">취소</button>
             <button
               disabled={!canSubmit}
-              onClick={() => { onConfirm(reason.trim()); onClose(); }}
-              className={`px-3 py-2 rounded-lg text-white ${canSubmit ? "bg-uniwikicolor hover:bg-uniwikicolor_hover" : "bg-gray-300 cursor-not-allowed"}`}
+              onClick={() => {
+                onConfirm(reason.trim());
+                onClose();
+              }}
+              className={`px-3 py-2 rounded-lg text-white ${
+                canSubmit ? "bg-uniwikicolor hover:bg-uniwikicolor_hover" : "bg-gray-300 cursor-not-allowed"
+              }`}
             >
               {confirmText}
             </button>
@@ -130,18 +150,15 @@ function ReasonModal({
 /** ===== 섹션(토론 1건) ===== */
 function ReportedDiscussionSection({
   item,
-  defaultOpen = true,
   onOpenReject,
   onOpenResolve,
 }: {
   item: ReportedDiscussion;
-  defaultOpen?: boolean;
-  onOpenReject: (discussion: ReportedDiscussion) => void;
-  onOpenResolve: (discussion: ReportedDiscussion) => void;
+  onOpenReject: (d: ReportedDiscussion) => void;
+  onOpenResolve: (d: ReportedDiscussion) => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(false);
   const sorted = useMemo(() => sortReports(item.discussionValueList), [item.discussionValueList]);
-
   const counts = useMemo(() => {
     return item.discussionValueList.reduce(
       (acc, r) => {
@@ -152,16 +169,18 @@ function ReportedDiscussionSection({
       { total: 0, PENDING: 0, RESOLVED: 0, REJECTED: 0 } as { total: number } & Record<ReportCode, number>
     );
   }, [item.discussionValueList]);
-
   const hasPending = item.discussionValueList.some((r) => r.code === "PENDING");
+
+  const href = buildDiscussionHref(item.universityName, item.documentName, item.discussionId);
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
       {/* 헤더 */}
       <div
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50"
         role="button"
-        aria-expanded={open}
         tabIndex={0}
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -169,40 +188,63 @@ function ReportedDiscussionSection({
             setOpen((v) => !v);
           }
         }}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50"
       >
+        {/* 좌측: 제목/메타 (제목 영역은 상세 링크) */}
         <div className="flex items-center gap-3 text-left">
-          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center font-medium">
-            D
-          </div>
-          <div>
-            <div className="font-semibold">
-              토론 #{item.discussionId}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span
+                className="font-semibold truncate"
+                title={`${item.universityName} · ${item.documentName} · 토론 #${item.discussionId}`}
+              >
+                {item.discussionId}번 토론 #{item.discussionContentId}
+              </span>
+              <span className="text-xs text-gray-400">{item.universityName} · {item.documentName}</span>
             </div>
-            <div className="text-xs text-gray-500">신고 총 {counts.total}건 · 진행 {counts.PENDING}건</div>
+            <div className="text-xs text-gray-500">
+              신고 총 {counts.total}건 · 진행 {counts.PENDING}건
+            </div>
           </div>
         </div>
 
+        {/* 우측: 상태 배지 + 액션 + 펼치기 */}
         <div className="flex items-center gap-2 text-xs">
           <span className="px-2 py-1 rounded-full ring-1 ring-amber-200 bg-amber-50 text-amber-700">대기 {counts.PENDING}</span>
           <span className="px-2 py-1 rounded-full ring-1 ring-emerald-200 bg-emerald-50 text-emerald-700">처리 {counts.RESOLVED}</span>
           <span className="px-2 py-1 me-5 rounded-full ring-1 ring-rose-200 bg-rose-50 text-rose-700">기각 {counts.REJECTED}</span>
 
+          <Link
+            to={href}
+            onClick={(e) => e.stopPropagation()}
+            className="px-3 py-2 text-sm rounded-lg border hover:bg-gray-200"
+            title="토론 페이지로 이동"
+          >
+            바로가기
+          </Link>
+
           <button
-            className="px-3 py-2 ms-5 text-sm rounded-lg text-uniwikicolor border hover:bg-gray-200 disabled:opacity-40"
+            className="px-3 py-2 text-sm rounded-lg text-uniwikicolor border hover:bg-gray-200 disabled:opacity-40 cursor-pointer"
             onClick={(e) => { e.stopPropagation(); onOpenReject(item); }}
             disabled={!hasPending}
           >
             기각하기
           </button>
           <button
-            className="px-3 py-2 text-sm rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover disabled:opacity-40"
+            className="px-3 py-2 text-sm rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover disabled:opacity-40 cursor-pointer"
             onClick={(e) => { e.stopPropagation(); onOpenResolve(item); }}
             disabled={!hasPending}
           >
             처리하기
           </button>
-          <span className={`ml-3 text-gray-400 transition-transform ${open ? "rotate-180" : "rotate-0"}`}>▼</span>
+
+          <button
+            aria-expanded={open}
+            onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+            className="ml-2 text-gray-400 hover:text-gray-600"
+            title={open ? "접기" : "펼치기"}
+          >
+            <span className={`inline-block transition-transform ${open ? "rotate-180" : "rotate-0"}`}>▼</span>
+          </button>
         </div>
       </div>
 
@@ -239,7 +281,7 @@ function ReportedDiscussionSection({
               <div className="h-px bg-gray-200" />
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+                onClick={() => setOpen(false)}
                 className="group absolute left-1/2 -translate-x-1/2 -top-3 focus:outline-none"
               >
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white text-xs text-gray-500 shadow-sm group-hover:bg-gray-50">
@@ -305,18 +347,19 @@ export default function AdminDiscussionReportPageGrouped() {
 
   const content = data?.content ?? [];
 
-  // 검색
+  // 검색 (추가: 대학명/문서명도 포함)
   const [keyword, setKeyword] = useState("");
   const filtered = useMemo(() => {
     const kw = keyword.trim();
     if (!kw) return content;
-    // 현재는 title 정보가 없으므로 ID/사유/신고자명 기준으로 필터
     return content.filter((d) => {
       const idMatch = String(d.discussionId).includes(kw);
+      const univMatch = d.universityName?.includes(kw);
+      const docMatch = d.documentName?.includes(kw);
       const inValues = d.discussionValueList.some(
         (r) => r.reporterName.includes(kw) || r.reason.includes(kw)
       );
-      return idMatch || inValues;
+      return idMatch || univMatch || docMatch || inValues;
     });
   }, [content, keyword]);
 
@@ -349,8 +392,8 @@ export default function AdminDiscussionReportPageGrouped() {
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="토론 ID / 신고자 / 사유 검색"
-            className="w-72 border rounded-lg px-3 py-2 text-sm pr-8"
+            placeholder="대학 / 문서 / 토론 ID / 신고자 / 사유 검색"
+            className="w-80 border rounded-lg px-3 py-2 text-sm pr-8"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
         </div>
@@ -361,7 +404,7 @@ export default function AdminDiscussionReportPageGrouped() {
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="rounded-2xl border border-gray-200 bg-white p-5 animate-pulse">
-              <div className="h-5 w-48 bg-gray-200 rounded" />
+              <div className="h-5 w-56 bg-gray-200 rounded" />
               <div className="mt-3 h-4 w-full bg-gray-100 rounded" />
             </div>
           ))}
@@ -378,9 +421,8 @@ export default function AdminDiscussionReportPageGrouped() {
         <div className="space-y-3">
           {sortedDiscussions.map((d) => (
             <ReportedDiscussionSection
-              key={d.discussionId}
+              key={d.discussionContentId}
               item={d}
-              defaultOpen={false}
               onOpenReject={(discussion) => setOpenReject(discussion)}
               onOpenResolve={(discussion) => setOpenResolve(discussion)}
             />
@@ -417,13 +459,13 @@ export default function AdminDiscussionReportPageGrouped() {
       {/* 모달: 기각 */}
       {openReject && (
         <ReasonModal
-          title={`토론 #${openReject.discussionId} 신고 기각`}
+          title={`토론 #${openReject.discussionContentId} 신고 기각`}
           confirmText="기각하기"
           placeholder="기각 사유를 입력하세요"
           onClose={() => setOpenReject(null)}
           onConfirm={async (reason) => {
             try {
-              await apiRejectDiscussion(openReject.discussionId, reason);
+              await apiRejectDiscussion(openReject.discussionContentId, reason);
               await refetchList();
             } catch (e: any) {
               alert(`기각 처리 중 오류가 발생했습니다: ${e?.message ?? "Unknown"}`);
@@ -437,13 +479,13 @@ export default function AdminDiscussionReportPageGrouped() {
       {/* 모달: 처리(해결) */}
       {openResolve && (
         <ReasonModal
-          title={`토론 #${openResolve.discussionId} 신고 처리`}
+          title={`토론 #${openResolve.discussionContentId} 신고 처리`}
           confirmText="처리하기"
           placeholder="처리 사유를 입력하세요"
           onClose={() => setOpenResolve(null)}
           onConfirm={async (reason) => {
             try {
-              await apiResolveDiscussion(openResolve.discussionId, reason);
+              await apiResolveDiscussion(openResolve.discussionContentId, reason);
               await refetchList();
             } catch (e: any) {
               alert(`처리 중 오류가 발생했습니다: ${e?.message ?? "Unknown"}`);
