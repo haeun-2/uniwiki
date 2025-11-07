@@ -127,12 +127,12 @@ public class UserActivityService {
 
         List<UserActivityResponseDTO.UserDiscussionActivityResponse> responses = userActivities.getContent().stream()
                 .map(userActivity -> {
-                    DiscussionContent discussion = versionMap.get(userActivity.getTargetId());
+                    DiscussionContent discussionContent = versionMap.get(userActivity.getTargetId());
 
                     return new UserActivityResponseDTO.UserDiscussionActivityResponse(
-                            discussion.getId(),
-                            discussion.getDiscussion().getTitle(),
-                            discussion.getDiscussion().getDocument().getTitle(),
+                            discussionContent.getDiscussion().getId(),
+                            discussionContent.getDiscussion().getTitle(),
+                            discussionContent.getDiscussion().getDocument().getTitle(),
                             userActivity.getCreatedAt()
                     );
                 })
