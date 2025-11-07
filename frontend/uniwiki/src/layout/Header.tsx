@@ -175,7 +175,7 @@ export default function Header({
                     })()}
 
                     <Link
-                      to="/me"
+                      to="/profile"
                       role="menuitem"
                       className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setOpen(false)}
@@ -186,7 +186,7 @@ export default function Header({
                     <div className="my-1 h-px bg-gray-100" />
                     
                     <Link
-                      to="/me/contributions"
+                      to="/user/contributions"
                       role="menuitem"
                       className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setOpen(false)}
@@ -194,7 +194,7 @@ export default function Header({
                       기여 문서 목록
                     </Link>
                     <Link
-                      to="/me/discussions"
+                      to="/user/discussions"
                       role="menuitem"
                       className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setOpen(false)}
@@ -202,7 +202,7 @@ export default function Header({
                       참여 토론 목록
                     </Link>
                     <Link
-                      to="/me/favorites"
+                      to="/user/favorite"
                       role="menuitem"
                       className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setOpen(false)}
