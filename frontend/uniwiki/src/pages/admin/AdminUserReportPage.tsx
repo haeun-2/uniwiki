@@ -222,7 +222,6 @@ function ReportedUserSection({ user, defaultOpen = true, onOpenBlock, onOpenReje
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50"
       >
         <div className="flex items-center gap-3 text-left">
-          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center font-medium">{user.reportedName[0]?.toUpperCase() ?? "U"}</div>
           <div>
             <div className="font-semibold">{user.reportedName}</div>
             <div className="text-xs text-gray-500">신고 총 {counts.total}건 · 진행 {counts.PENDING}건</div>
@@ -239,8 +238,8 @@ function ReportedUserSection({ user, defaultOpen = true, onOpenBlock, onOpenReje
               {fmtDate(user.banUntil)} 까지 차단 중
             </span>
           )}
-          <button className="px-3 py-2 ms-5 text-sm rounded-lg text-uniwikicolor border hover:bg-gray-200" onClick={(e) => { onOpenReject(user); e.stopPropagation() }}>기각하기</button>
-          <button className="px-3 py-2 text-sm rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover" onClick={(e) => { onOpenBlock(user); e.stopPropagation() }}>차단하기</button>
+          <button className="px-3 py-2 ms-5 text-sm rounded-lg text-uniwikicolor border hover:bg-gray-200 cursor-pointer" onClick={(e) => { onOpenReject(user); e.stopPropagation() }}>기각하기</button>
+          <button className="px-3 py-2 text-sm rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover cursor-pointer" onClick={(e) => { onOpenBlock(user); e.stopPropagation() }}>차단하기</button>
           <span className={`ml-3 text-gray-400 transition-transform ${open ? "rotate-180" : "rotate-0"}`}>▼</span>
         </div>
       </div>
