@@ -41,7 +41,7 @@ public class AuthRequestDTO {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class ChangePasswordRequest{
+    public static class FindChangePasswordRequest{
 
         private String email;
         private String code;

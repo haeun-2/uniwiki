@@ -3,9 +3,15 @@ FROM gradle:8.5-jdk17 AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y tzdata
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tzdata wget && \
+    ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
+    echo "Asia/Seoul" > /etc/timezone && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 ENV TZ=Asia/Seoul
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 
 # Gradle 설정 파일 복사
 COPY build.gradle settings.gradle ./

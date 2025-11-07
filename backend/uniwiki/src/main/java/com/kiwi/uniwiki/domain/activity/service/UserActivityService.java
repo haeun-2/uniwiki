@@ -3,6 +3,7 @@ package com.kiwi.uniwiki.domain.activity.service;
 import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.activity.dto.response.UserActivityResponseDTO;
 
+import com.kiwi.uniwiki.domain.activity.entity.UserActivity;
 import com.kiwi.uniwiki.domain.activity.repository.UserActivityRepository;
 import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,25 +44,35 @@ public class UserActivityService {
             Integer page,
             Integer size) {
 
-
-
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt")));
 
-        Page<Integer> documentIds = userActivityRepository.findDocumentsTargetIdsByUserId(userId, pageable);
+        Page<UserActivity> userActivities = userActivityRepository.findDocumentsTargetIdsByUserId(userId, pageable);
 
-
-
-        if (documentIds.isEmpty()) {
+        if (userActivities.isEmpty()) {
             return PageResponse.from(Page.empty(pageable));
         }
 
 
+        List<Integer> documentVersionIds = userActivities.getContent().stream()
+                .map(UserActivity::getTargetId)
+                .collect(Collectors.toList());
+
+
         List<DocumentVersion> documentVersions = documentVersionRepository
-                .findByIdsWithDocument(documentIds.getContent());
+                .findByIdsWithDocument(documentVersionIds);
 
 
-        List<UserActivityResponseDTO.UserDocumentActivityResponse> responses = documentVersions.stream()
-                .map(documentVersion -> {
+        Map<Integer, DocumentVersion> versionMap = documentVersions.stream()
+                .collect(Collectors.toMap(DocumentVersion::getId, Function.identity()));
+
+        // 원래 순서대로 DTO 생성
+        List<UserActivityResponseDTO.UserDocumentActivityResponse> responses = userActivities.getContent().stream()
+                .map(userActivity -> {
+                    DocumentVersion documentVersion = versionMap.get(userActivity.getTargetId());
+                    if (documentVersion == null) {
+                        return null; // 또는 적절한 처리
+                    }
+
                     Document document = documentVersion.getDocument();
 
                     return new UserActivityResponseDTO.UserDocumentActivityResponse(
@@ -70,18 +82,17 @@ public class UserActivityService {
                             documentVersion.getEditMemo(),
                             documentVersion.getPlusCount(),
                             documentVersion.getMinusCount(),
-                            document.getUpdatedAt()
+                            userActivity.getCreatedAt()
                     );
                 })
+                .filter(Objects::nonNull) // null 제거
                 .collect(Collectors.toList());
 
-        // Page 객체 생성 (원래의 페이징 정보 유지)
         Page<UserActivityResponseDTO.UserDocumentActivityResponse> responsePage =
-                new PageImpl<>(responses, pageable, documentIds.getTotalElements());
+                new PageImpl<>(responses, pageable, userActivities.getTotalElements());
 
         return PageResponse.from(responsePage);
     }
-
     /**
      * 사용자의 토론 활동 조회
      */
@@ -94,37 +105,42 @@ public class UserActivityService {
 
 
 
-        Page<Integer> discussionIds = userActivityRepository.findDiscussionActivitiesByUserId(userId, pageable);
+        Page<UserActivity> userActivities = userActivityRepository.findDiscussionActivitiesByUserId(userId, pageable);
 
 
 
-        if (discussionIds.isEmpty()) {
+        if (userActivities.isEmpty()) {
             return PageResponse.from(Page.empty(pageable));
         }
 
+        List<Integer> contentIds = userActivities.getContent().stream()
+                .map(UserActivity::getTargetId)
+                .collect(Collectors.toList());
+
 
         List<DiscussionContent> discussionContents = discussionContentRepository
-                .findByIdsWithDocument(discussionIds.getContent());
+                .findByIdsWithDocument(contentIds);
 
 
+        Map<Integer, DiscussionContent> versionMap = discussionContents.stream()
+                .collect(Collectors.toMap(DiscussionContent::getId, Function.identity()));
 
-
-        List<UserActivityResponseDTO.UserDiscussionActivityResponse> responses = discussionContents.stream()
-                .map(discussionContent -> {
-                    Discussion discussion = discussionContent.getDiscussion();
+        List<UserActivityResponseDTO.UserDiscussionActivityResponse> responses = userActivities.getContent().stream()
+                .map(userActivity -> {
+                    DiscussionContent discussion = versionMap.get(userActivity.getTargetId());
 
                     return new UserActivityResponseDTO.UserDiscussionActivityResponse(
                             discussion.getId(),
-                            discussion.getTitle(),
-                            discussionContent.getDiscussion().getTitle(),
-                            discussion.getUpdatedAt()
+                            discussion.getDiscussion().getTitle(),
+                            discussion.getDiscussion().getDocument().getTitle(),
+                            userActivity.getCreatedAt()
                     );
                 })
                 .collect(Collectors.toList());
 
 
         Page<UserActivityResponseDTO.UserDiscussionActivityResponse> responsePage =
-                new PageImpl<>(responses, pageable, discussionIds.getTotalElements());
+                new PageImpl<>(responses, pageable, userActivities.getTotalElements());
 
         return PageResponse.from(responsePage);
     }

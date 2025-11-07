@@ -16,11 +16,11 @@ public interface UserActivityRepository extends JpaRepository<UserActivity, Inte
     /**
      * 사용자의 문서 활동 조회 (삭제되지 않은 문서만)
      */
-    @Query("SELECT ua.targetId FROM UserActivity ua " +
+    @Query("SELECT ua FROM UserActivity ua " +
             "JOIN ua.code c " +
             "WHERE ua.user.id = :userId " +
             "AND c.name IN ('CREATE_DOCUMENT', 'EDIT_DOCUMENT')")
-    Page<Integer> findDocumentsTargetIdsByUserId(
+    Page<UserActivity> findDocumentsTargetIdsByUserId(
             @Param("userId") Integer userId,
             Pageable pageable);
 
@@ -28,11 +28,11 @@ public interface UserActivityRepository extends JpaRepository<UserActivity, Inte
     /**
      * 사용자의 토론 활동 조회 (삭제되지 않은 토론만)
      */
-    @Query("SELECT ua.targetId FROM UserActivity ua " +
+    @Query("SELECT ua FROM UserActivity ua " +
             "JOIN ua.code c " +
             "WHERE ua.user.id = :userId " +
             "AND c.name IN ('CREATE_DISCUSSION', 'REPLY_DISCUSSION')")
-    Page<Integer> findDiscussionActivitiesByUserId(
+    Page<UserActivity> findDiscussionActivitiesByUserId(
             @Param("userId") Integer userId,
             Pageable pageable);
 }
