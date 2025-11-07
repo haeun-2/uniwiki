@@ -183,7 +183,7 @@ export default function UnivMainPage() {
       alert("대학교 정보를 불러오는 중입니다.");
       return;
     }
-    navigate(`/univ/${encodeURIComponent(univName!)}/docs/new`, {  // ✅ new/docs → docs/new
+    navigate(`/univ/${encodeURIComponent(univName!)}/new/docs`, {  // ✅ new/docs → docs/new
       state: { universityId: univId }
     });
   }}
