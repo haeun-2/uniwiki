@@ -54,4 +54,8 @@ public class DiscussionContent {
         this.content = "#";
     }
 
+    public void updateDiscussionContent(String content){
+        this.content = content;
+    }
+
 }

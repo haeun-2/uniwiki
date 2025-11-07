@@ -42,4 +42,12 @@ public class AdminRequestDTO {
         private String reason;
     }
 
+    @Getter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class DiscussionChangeRequest{
+
+        private String changeValue;
+    }
+
 }

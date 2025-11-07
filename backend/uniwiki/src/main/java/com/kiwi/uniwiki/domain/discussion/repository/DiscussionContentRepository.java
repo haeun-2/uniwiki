@@ -17,4 +17,9 @@ public interface DiscussionContentRepository extends JpaRepository<DiscussionCon
             "JOIN FETCH d.document " +
             "WHERE dc.id IN :ids")
     List<DiscussionContent> findByIdsWithDocument(@Param("ids") List<Integer> ids);
+
+    @Query("SELECT dc FROM DiscussionContent dc " +
+            "JOIN FETCH dc.discussion d " +
+            "WHERE dc.id = :id")
+    DiscussionContent findByIdWithDocument(@Param("id") Integer id);
 }

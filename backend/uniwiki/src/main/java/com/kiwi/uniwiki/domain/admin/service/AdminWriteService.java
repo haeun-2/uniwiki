@@ -182,4 +182,14 @@ public class AdminWriteService {
 
     }
 
+    //토론 댓글 내용 수정
+    @Transactional
+    public void changeDiscussionContent(Integer discussionContentId, AdminRequestDTO.DiscussionChangeRequest request){
+
+        DiscussionContent discussionContent = discussionContentRepository.findById(discussionContentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DISCUSSION_CONTENT_NOT_FOUND));
+
+        discussionContent.updateDiscussionContent(request.getChangeValue());
+    }
+
 }
