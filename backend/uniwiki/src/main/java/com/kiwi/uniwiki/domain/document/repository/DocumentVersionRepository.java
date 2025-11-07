@@ -13,6 +13,13 @@ import java.util.Optional;
 
 public interface DocumentVersionRepository extends JpaRepository<DocumentVersion, Integer> {
 
+    @EntityGraph(attributePaths = {"editor"})
+    @Query("SELECT dv FROM DocumentVersion dv WHERE dv.document.id = :documentId AND dv.versionNumber = :versionNumber")
+    Optional<DocumentVersion> findByDocumentIdAndVersionNumberFetchEditor(
+            @Param("documentId") Integer documentId,
+            @Param("versionNumber") Integer versionNumber
+    );
+
     Optional<DocumentVersion> findByDocumentIdAndVersionNumber(Integer documentId, Integer versionNumber);
 
     Integer countByDocumentId(Integer documentId);

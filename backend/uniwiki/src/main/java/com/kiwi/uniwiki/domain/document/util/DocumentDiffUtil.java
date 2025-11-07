@@ -40,11 +40,11 @@ public class DocumentDiffUtil {
         }
 
         long plusCount = diffLines.stream()
-                .filter(d -> d.type.equals("INSERT") || d.type.equals("CHANGE_NEW"))
+                .filter(d -> d.getType().equals("INSERT") || d.getType().equals("CHANGE_NEW"))
                 .count();
 
         long minusCount = diffLines.stream()
-                .filter(d -> d.type.equals("DELETE") || d.type.equals("CHANGE_OLD"))
+                .filter(d -> d.getType().equals("DELETE") || d.getType().equals("CHANGE_OLD"))
                 .count();
 
         return DiffInfoDTO.builder()
