@@ -154,12 +154,12 @@ export default function UnivMainPage() {
   if (loading && !univ) return <div className="p-4 text-sm text-gray-500">불러오는 중…</div>;
 
   const categories = [
-    { icon: "🏛️", title: "학교", path: "학교", desc: "학교 정보 및 연혁", count: 45 },
-    { icon: "🏫", title: "학과", path: "학과", desc: "학과별 커리큘럼 및 진로 정보", count: 124 },
-    { icon: "📘", title: "강의", path: "강의", desc: "강의 요약 및 후기", count: 342 },
-    { icon: "🏢", title: "시설", path: "시설", desc: "학교 시설 및 위치 정보", count: 87 },
-    { icon: "🎉", title: "행사", path: "행사", desc: "축제·세미나 등 행사 정보", count: 25 },
-    { icon: "🏷️", title: "기타", path: "기타", desc: "장학금·교통·등록금 등 기타 문서", count: 19 },
+    { icon: "🏛️", title: "학교", path: "학교", desc: "학교 정보 및 연혁" },
+    { icon: "🏫", title: "학과", path: "학과", desc: "학과별 커리큘럼 및 진로 정보" },
+    { icon: "📘", title: "강의", path: "강의", desc: "강의 요약 및 후기" },
+    { icon: "🏢", title: "시설", path: "시설", desc: "학교 시설 및 위치 정보"},
+    { icon: "🎉", title: "행사", path: "행사", desc: "축제·세미나 등 행사 정보",  },
+    { icon: "🏷️", title: "기타", path: "기타", desc: "장학금·교통·등록금 등 기타 문서" },
   ];
 
   return (
@@ -170,7 +170,7 @@ export default function UnivMainPage() {
           <div className="h-20 w-20 flex-shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">
             🏫
           </div>
-        <div className="flex-1">
+          <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
             <p className="text-sm text-gray-600 leading-relaxed">
               (id: {univId ?? "미전달"}) {univ ? "매핑 완료" : ""}
@@ -178,19 +178,39 @@ export default function UnivMainPage() {
           </div>
         </div>
         <button 
-  onClick={() => {
-    if (!univId) {
-      alert("대학교 정보를 불러오는 중입니다.");
-      return;
-    }
-    navigate(`/univ/${encodeURIComponent(univName!)}/new/docs`, {  // ✅ new/docs → docs/new
-      state: { universityId: univId }
-    });
-  }}
-  className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition flex-shrink-0"
->
-  새 문서 만들기
-</button>
+          onClick={() => {
+            if (!univId) {
+              alert("대학교 정보를 불러오는 중입니다.");
+              return;
+            }
+
+            // ✅ 로그인 체크
+            const accessToken = localStorage.getItem("accessToken");
+            if (!accessToken) {
+              alert("로그인이 필요합니다.");
+              navigate("/login", { 
+                replace: false, 
+                state: { from: location.pathname } 
+              });
+              return;
+            }
+
+            // ✅ 대학교 일치 여부 확인 (universityId가 없거나 다른 경우 모두 포함)
+            const userUnivId = localStorage.getItem("universityId");
+            if (!userUnivId || parseInt(userUnivId) !== univId) {
+              alert("해당 학교 소속만 문서를 생성할 수 있습니다.");
+              return;
+            }
+
+            // ✅ 모든 체크 통과 → 페이지 이동
+            navigate(`/univ/${encodeURIComponent(univName!)}/new/docs`, {
+              state: { universityId: univId }
+            });
+          }}
+          className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition flex-shrink-0"
+        >
+          새 문서 만들기
+        </button>
       </div>
 
       {/* 중단 - 주요 카테고리 */}
@@ -233,7 +253,15 @@ export default function UnivMainPage() {
                 <div
                   key={`${doc.documentTitle}-${idx}`}
                   className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition cursor-pointer"
-                  onClick={() => navigate(`/docs/${encodeURIComponent(doc.documentTitle)}`)}
+                  onClick={() => {
+                    if (!univName) {
+                      alert("대학교 정보를 불러오는 중입니다.");
+                      return;
+                    }
+                    navigate(`/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(doc.documentTitle)}`, {
+                      state: { universityId: univId }
+                    });
+                  }}
                 >
                   <h3 className="font-medium text-gray-900 mb-1">{doc.documentTitle}</h3>
                   <p className="text-sm text-gray-500">
