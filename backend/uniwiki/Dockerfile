@@ -3,6 +3,10 @@ FROM gradle:8.5-jdk17 AS builder
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y tzdata
+ENV TZ=Asia/Seoul
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Gradle 설정 파일 복사
 COPY build.gradle settings.gradle ./
 COPY gradle ./gradle
@@ -30,6 +34,8 @@ EXPOSE 8080
 # 헬스체크
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+
+
 
 # 실행
 ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=prod", "app.jar"]
