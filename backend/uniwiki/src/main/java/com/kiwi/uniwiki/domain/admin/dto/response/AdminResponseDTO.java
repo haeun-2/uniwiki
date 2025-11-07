@@ -43,7 +43,7 @@ public class AdminResponseDTO {
         private Integer discussionId;
         private String UniversityName;
         private String documentName;
-
+/// ///
         private List<DiscussionReportValue> discussionValueList;
     }
 
