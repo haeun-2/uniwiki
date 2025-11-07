@@ -39,7 +39,9 @@ public class AdminResponseDTO {
     @NoArgsConstructor
     public static class DiscussionReportResponse {
 
-        private Integer discussionId;
+        private Integer discussionContentId;
+        private String UniversityName;
+        private String documentName;
 
         List<DiscussionReportValue> discussionValueList;
     }
