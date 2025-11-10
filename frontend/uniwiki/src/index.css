@@ -9,3 +9,5 @@
 body {
   font-family: 'Pretendard', sans-serif;
 }
+/* 대화 화면일 때 Footer 숨김 (Footer 루트에 id="site-footer" 가정) */
+.chat-active #site-footer { display: none; }

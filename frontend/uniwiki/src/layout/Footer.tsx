@@ -2,7 +2,9 @@ import React from "react";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-gray-200 bg-gray-50 py-10 text-sm text-gray-600">
+    <footer 
+    id="site-footer"
+    className="border-t border-gray-200 bg-gray-50 py-10 text-sm text-gray-600">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 md:grid-cols-4">
         <div>
           <div className="mb-2 font-semibold">UniWiki 소개</div>

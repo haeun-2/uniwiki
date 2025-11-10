@@ -172,10 +172,7 @@ export default function UnivMainPage() {
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              (id: {univId ?? "미전달"}) {univ ? "매핑 완료" : ""}
-            </p>
-          </div>
+             </div>
         </div>
         <button 
           onClick={() => {
