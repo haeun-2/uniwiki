@@ -46,7 +46,7 @@ public class SearchController {
     @GetMapping("/rag")
     @Operation(summary = "자연어 검색", description = "RAG로 문서 검색합니다. 질문, 답변, 관련 문서 정보가 반환됩니다.")
     public ResponseEntity<SearchResponse.Rag> searchByRag(
-            @RequestBody SearchRequest.Rag request
+            @ModelAttribute SearchRequest.Rag request
     ) {
         SearchResponse.Rag response = ragService.searchByRag(request.getQuestion());
         return ResponseEntity.ok(response);
