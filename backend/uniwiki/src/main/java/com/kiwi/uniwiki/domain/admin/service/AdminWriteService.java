@@ -17,6 +17,7 @@ import com.kiwi.uniwiki.domain.report.entity.DiscussionReport;
 import com.kiwi.uniwiki.domain.report.entity.UserReport;
 import com.kiwi.uniwiki.domain.report.repository.DiscussionReportRepository;
 import com.kiwi.uniwiki.domain.report.repository.UserReportRepository;
+import com.kiwi.uniwiki.domain.search.service.IndexService;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import com.kiwi.uniwiki.domain.user.entity.UserBan;
 import com.kiwi.uniwiki.domain.user.repository.UserBanRepository;
@@ -44,6 +45,7 @@ public class AdminWriteService {
     private final DocumentRepository documentRepository;
 
     private final DiscussionContentService discussionContentService;
+    private final IndexService indexService;
     private final PopularDocumentService popularDocumentService;
 
     @Transactional
@@ -171,7 +173,10 @@ public class AdminWriteService {
 
         // 제목 업데이트
         String deletionTitle = "[uniwiki][deleted] " + UUID.randomUUID();
-        document.deleteDocument(request.getReason(), deletionTitle);
+        document.deleteDocument(deletionTitle, request.getReason());
+
+        // elasticsearch 인덱싱 삭제
+        indexService.deleteIndex(documentId);
     }
 
     //토론 종료
