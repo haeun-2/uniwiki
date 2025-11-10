@@ -1,13 +1,13 @@
 package com.kiwi.uniwiki.domain.admin.service;
 
 import com.kiwi.uniwiki.common.page.PageResponse;
+import com.kiwi.uniwiki.domain.admin.dto.DocumentSearchFilterDTO;
 import com.kiwi.uniwiki.domain.admin.dto.response.AdminResponseDTO;
 import com.kiwi.uniwiki.domain.discussion.entity.Discussion;
 import com.kiwi.uniwiki.domain.discussion.entity.DiscussionContent;
 import com.kiwi.uniwiki.domain.discussion.repository.DiscussionContentRepository;
 import com.kiwi.uniwiki.domain.discussion.repository.DiscussionRepository;
-import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
-import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
+import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
 import com.kiwi.uniwiki.domain.report.entity.DiscussionReport;
 import com.kiwi.uniwiki.domain.report.entity.UserReport;
 import com.kiwi.uniwiki.domain.report.repository.DiscussionReportRepository;
@@ -33,7 +33,7 @@ public class AdminReadService {
 
     private final UserReportRepository userReportRepository;
     private final DiscussionReportRepository discussionReportRepository;
-    private final DocumentVersionRepository documentVersionRepository;
+    private final DocumentRepository documentRepository;
     private final DiscussionRepository discussionRepository;
     private final UserBanRepository userBanRepository;
     private final DiscussionContentRepository discussionContentRepository;
@@ -169,24 +169,6 @@ public class AdminReadService {
         return PageResponse.from(resultPage);
     }
 
-    public PageResponse<AdminResponseDTO.DocumentVersionList> getDocumentAllVersions(int page, int size){
-        Pageable pageable = PageRequest.of(page, size);
-        Page<DocumentVersion> documentVersions = documentVersionRepository.findAllDocumentVersion(pageable);
-
-        Page<AdminResponseDTO.DocumentVersionList> resultPage = documentVersions.map(dv ->
-                new AdminResponseDTO.DocumentVersionList(
-                        dv.getDocument().getUniversity().getName(),
-                        dv.getDocument().getCategory().getName(),
-                        dv.getDocument().getTitle(),
-                        dv.getCreatedAt(),
-                        dv.getPlusCount(),
-                        dv.getMinusCount()
-                )
-        );
-
-        return PageResponse.from(resultPage);
-    }
-
     public PageResponse<AdminResponseDTO.DiscussionList> getAllDiscussion(int page, int size){
         Pageable pageable = PageRequest.of(page, size);
         Page<Discussion> discussions = discussionRepository.findAllDiscussion(pageable);
@@ -219,5 +201,22 @@ public class AdminReadService {
 
         return result;
 
+    }
+
+    /**
+     * 모든 문서 버전 조회 (필터링 검색)
+     */
+    public PageResponse<AdminResponseDTO.DocumentSearchResult> getDocumentAllVersions(DocumentSearchFilterDTO filter, Integer page, Integer size, String direction) {
+        Sort sort = Sort.by(
+                direction.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC,
+                "createdAt"
+        );
+
+        Page<AdminResponseDTO.DocumentSearchResult> results = documentRepository.searchDocuments(
+                filter,
+                PageRequest.of(page, size, sort)
+        );
+
+        return PageResponse.from(results);
     }
 }

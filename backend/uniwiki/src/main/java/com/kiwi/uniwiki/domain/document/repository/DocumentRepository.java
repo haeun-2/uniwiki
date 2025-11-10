@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
-public interface DocumentRepository extends JpaRepository<Document, Integer> {
+public interface DocumentRepository extends JpaRepository<Document, Integer>, CustomDocumentRepository {
 
     /**
      * 아이디로 삭제되지 않은 문서 조회

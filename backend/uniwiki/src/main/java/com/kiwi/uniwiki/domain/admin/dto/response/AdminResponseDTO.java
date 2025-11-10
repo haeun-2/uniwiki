@@ -95,7 +95,21 @@ public class AdminResponseDTO {
         private String discussionTitle;
         private String discussionContent;
         private LocalDateTime createdAt;
+    }
 
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DocumentSearchResult {
 
+        private Integer documentId;
+        private LocalDateTime createdAt;
+        private String universityName;
+        private String categoryName;
+        private String documentTitle;
+        private String nickname;
+        private Integer plusCount;
+        private Integer minusCount;
     }
 }
