@@ -4,10 +4,11 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import MDEditor, { ICommand, TextAreaTextApi, TextState } from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 const API_BASE = 'https://k13d104.p.ssafy.io/api';
 const PRESIGN_API = `${API_BASE}/v1/s3/presigned-urls`;
-const REFRESH_URL = `${API_BASE}/v1/auth/refresh`; // 실제 경로 다르면 수정
+const REFRESH_URL = `${API_BASE}/v1/auth/refresh`;
 
 /** ===================== Auth utils ===================== */
 function decodeJwtPayload(token: string): any | null {
@@ -20,7 +21,6 @@ function decodeJwtPayload(token: string): any | null {
     return null;
   }
 }
-
 function getAccessToken(): string {
   try {
     const t = localStorage.getItem('accessToken');
@@ -38,16 +38,11 @@ function getAccessToken(): string {
     return '';
   }
 }
-
-function setAccessToken(t: string) {
-  try { localStorage.setItem('accessToken', t); } catch {}
-}
-
+function setAccessToken(t: string) { try { localStorage.setItem('accessToken', t); } catch {} }
 function authHeaders(extra: HeadersInit = {}) {
   const token = getAccessToken();
   return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
 }
-
 // 401 → refresh 1회 후 재시도
 async function refreshAccessToken(): Promise<string | null> {
   try {
@@ -66,26 +61,65 @@ async function refreshAccessToken(): Promise<string | null> {
     return null;
   }
 }
-
 async function fetchWithAuth(input: RequestInfo, init: RequestInit = {}) {
-  const first = await fetch(input, {
-    ...init,
-    headers: authHeaders(init.headers || {}),
-  });
+  const first = await fetch(input, { ...init, headers: authHeaders(init.headers || {}) });
   if (first.status !== 401) return first;
-
   const newTok = await refreshAccessToken();
   if (!newTok) return first;
+  return fetch(input, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${newTok}` } });
+}
+/** ===================================================== */
 
-  return fetch(input, {
-    ...init,
-    headers: { ...(init.headers || {}), Authorization: `Bearer ${newTok}` },
-  });
+/** ===================== 레일 토글 도우미 ===================== */
+// 접힘 상태 저장 키(생성/편집 공유)
+const RAIL_KEY = 'uniwiki.railCollapsed';
+const loadRailCollapsed = () => { try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; } };
+const saveRailCollapsed = (v: boolean) => { try { localStorage.setItem(RAIL_KEY, v ? '1' : '0'); } catch {} };
+
+type Snap = { grid?: string; content?: string; aside?: string };
+let SNAPSHOT: Snap = {};
+
+function getLayoutEls() {
+  const grid = document.querySelector('main .grid') as HTMLElement | null;
+  const content = grid?.children?.[0] as HTMLElement | null; // Outlet 래퍼
+  const aside = grid?.querySelector('aside') as HTMLElement | null;
+  return { grid, content, aside };
+}
+function takeSnapshotOnce() {
+  const { grid, content, aside } = getLayoutEls();
+  if (!grid || !content) return;
+  if (!SNAPSHOT.grid) SNAPSHOT.grid = grid.className;
+  if (!SNAPSHOT.content) SNAPSHOT.content = content.className;
+  if (!SNAPSHOT.aside && aside) SNAPSHOT.aside = aside.className;
+}
+function collapseLayout() {
+  const { grid, content, aside } = getLayoutEls();
+  if (!grid || !content) return;
+  takeSnapshotOnce();
+  grid.classList.remove('lg:grid-cols-3');
+  grid.classList.add('lg:grid-cols-1');
+  content.classList.remove('lg:col-span-2');
+  if (aside) {
+    aside.classList.add('hidden');
+    aside.classList.remove('lg:block');
+  }
+}
+function restoreLayout() {
+  const { grid, content, aside } = getLayoutEls();
+  if (!grid || !content) return;
+  if (SNAPSHOT.grid) grid.className = SNAPSHOT.grid;
+  if (SNAPSHOT.content) content.className = SNAPSHOT.content;
+  if (aside) {
+    if (SNAPSHOT.aside) aside.className = SNAPSHOT.aside;
+    else {
+      aside.classList.remove('hidden');
+      if (!aside.classList.contains('lg:block')) aside.classList.add('lg:block');
+    }
+  }
 }
 /** ===================================================== */
 
 type Status = 'loading' | 'ok' | 'notfound' | 'error';
-
 type DocumentDto = {
   universityId: number;
   universityName: string;
@@ -98,7 +132,7 @@ type DocumentDto = {
   updatedAt: string;
 };
 
-// ✅ 카테고리 하드코딩
+// 카테고리(라디오)
 const CATEGORY_OPTIONS = [
   { id: 1, name: '학교' },
   { id: 2, name: '학과' },
@@ -119,23 +153,19 @@ async function getPresignedUrl(): Promise<string> {
     headers: { Accept: 'application/json' },
     credentials: 'include',
   });
-
   if (r.status === 401) throw Object.assign(new Error('E401'), { code: 401 });
   if (r.status === 403) {
     const msg = await r.text().catch(() => '');
     throw Object.assign(new Error(`E403:${msg || ''}`), { code: 403 });
   }
   if (!r.ok) throw new Error((await r.text().catch(() => '')) || 'presigned URL 발급 실패');
-
   const j = await r.json();
   if (!j?.presignedUrl) throw new Error('presignedUrl 없음');
   return j.presignedUrl as string;
 }
-
 async function uploadToS3ViaPresign(file: File): Promise<string> {
   const presignedUrl = await getPresignedUrl();
   const fileUrl = presignedUrl.split('?')[0];
-
   let put = await fetch(presignedUrl, {
     method: 'PUT',
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
@@ -143,7 +173,6 @@ async function uploadToS3ViaPresign(file: File): Promise<string> {
   });
   if (!put.ok) put = await fetch(presignedUrl, { method: 'PUT', body: file });
   if (!put.ok) throw new Error((await put.text().catch(() => '')) || 'S3 업로드 실패');
-
   return fileUrl;
 }
 
@@ -155,12 +184,12 @@ async function getSavedTitleFromResponse(res: Response, fallbackTitle: string) {
       const j: any = await res.json();
       const v = (j?.documentTitle || j?.title || '').toString().trim();
       if (v) return v;
-    } catch { /* ignore */ }
+    } catch {}
   }
   try {
     const t = (await res.text()).trim();
     if (t) return t.replace(/^"+|"+$/g, '');
-  } catch { /* ignore */ }
+  } catch {}
   return fallbackTitle;
 }
 
@@ -168,30 +197,28 @@ export default function DocumentEditPage() {
   const navigate = useNavigate();
   const location = useLocation() as any;
   const { documentTitle = '문서 제목' } = useParams();
-
   const enc = (s: string) => encodeURIComponent(s || '');
-  const [universityName, setUniversityName] = useState<string>(''); // ✅ univ 경로에 필요
-  const [categoryName, setCategoryName] = useState<string>('');     // 표시용 유지
 
-  // 상태
+  const [universityName, setUniversityName] = useState<string>('');
+  const [categoryName, setCategoryName] = useState<string>('');
+
   const [status, setStatus] = useState<Status>('loading');
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // 편집값
   const [value, setValue] = useState<string>('');
-  const [summary, setSummary] = useState<string>(''); // editMemo
+  const [summary, setSummary] = useState<string>('');
   const [agree, setAgree] = useState<boolean>(true);
 
-  // 메타(저장에 필요)
   const [docId, setDocId] = useState<number | null>(null);
   const [baseVersionNumber, setBaseVersionNumber] = useState<number | null>(null);
   const [categoryId, setCategoryId] = useState<number | null>(null);
 
-  // 진행 상태
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 변경 여부(카테고리 포함)
+  // 레일 접힘 상태 (이 페이지 전용)
+  const [railCollapsed, setRailCollapsed] = useState<boolean>(loadRailCollapsed());
+
   const initialRef = useRef<{ value: string; summary: string; categoryId: number | null }>({
     value: '',
     summary: '',
@@ -274,7 +301,7 @@ export default function DocumentEditPage() {
         setBaseVersionNumber(data.versionNumber);
         setCategoryId(data.categoryId);
         setCategoryName(data.categoryName || '');
-        setUniversityName(data.universityName || ''); // ✅ univ 경로 사용
+        setUniversityName(data.universityName || '');
 
         initialRef.current = {
           value: data.documentContent || '',
@@ -291,6 +318,21 @@ export default function DocumentEditPage() {
     return () => controller.abort();
   }, [documentTitle]);
 
+  /* ---------- 레일 토글 적용/복원 ---------- */
+  useEffect(() => {
+    takeSnapshotOnce();
+    if (railCollapsed) collapseLayout(); else restoreLayout();
+    return () => {
+      restoreLayout();
+      SNAPSHOT = {};
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    saveRailCollapsed(railCollapsed);
+    if (railCollapsed) collapseLayout(); else restoreLayout();
+  }, [railCollapsed]);
+
   /* ---------- 붙여넣기/드롭 업로드 ---------- */
   async function handleFiles(files: FileList | null, appendAtEnd = true) {
     if (!files || files.length === 0) return;
@@ -298,10 +340,7 @@ export default function DocumentEditPage() {
     if (images.length === 0) return;
 
     const big = images.find(overLimit);
-    if (big) {
-      alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`);
-      return;
-    }
+    if (big) { alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`); return; }
 
     try {
       setBusy(true);
@@ -337,10 +376,7 @@ export default function DocumentEditPage() {
       input.onchange = async () => {
         const file = input.files?.[0];
         if (!isImage(file)) return;
-        if (file && overLimit(file)) {
-          alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`);
-          return;
-        }
+        if (file && overLimit(file)) { alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`); return; }
         try {
           setBusy(true);
           const url = await uploadToS3ViaPresign(file!);
@@ -364,7 +400,7 @@ export default function DocumentEditPage() {
     },
   };
 
-  /* ---------- 저장: POST /v1/documents/{document_id} ---------- */
+  /* ---------- 저장 ---------- */
   const onSave = async () => {
     if (!canSave) return;
 
@@ -379,10 +415,10 @@ export default function DocumentEditPage() {
       setSaving(true);
       const id = docId!;
       const body = {
-        baseVersionNumber: baseVersionNumber!, // 충돌 방지
-        categoryId: categoryId!,               // 선택한 카테고리
-        documentContent: value,                // 본문(MD)
-        editMemo: summary,                     // 편집 요약
+        baseVersionNumber: baseVersionNumber!,
+        categoryId: categoryId!,
+        documentContent: value,
+        editMemo: summary,
       };
 
       const res = await fetchWithAuth(`${API_BASE}/v1/documents/${id}`, {
@@ -410,9 +446,8 @@ export default function DocumentEditPage() {
       }
 
       const nextTitle = await getSavedTitleFromResponse(res, documentTitle);
-      const univ = universityName || '대학교'; // 안전장치
+      const univ = universityName || '대학교';
 
-      // ✅ 저장 후: /univ/:univName/docs/:documentTitle 로 이동
       navigate(`/univ/${enc(univ)}/docs/${enc(nextTitle)}`, {
         state: { flash: { type: 'success', msg: '저장되었습니다.' } },
         replace: false,
@@ -424,15 +459,45 @@ export default function DocumentEditPage() {
     }
   };
 
-  // 현재 선택된 카테고리 이름(표시용)
-  const selectedCatName =
-    CATEGORY_OPTIONS.find((c) => c.id === categoryId)?.name || categoryName || '—';
-
-  // ✅ 취소/문서보기 경로 (univ 하위)
+  // 취소/문서보기 경로
   const docHref = `/univ/${enc(universityName || '대학교')}/docs/${enc(documentTitle)}`;
 
   return (
     <div className="bg-white">
+      {/* 상단: 브레드크럼 + 레일 토글 */}
+      <div className="mx-auto w-full max-w-6xl px-4 pt-3">
+        <div className="flex items-center justify-between">
+          <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
+            <ol className="flex items-center gap-1">
+              <li>
+                <Link to={`/univ/${enc(universityName || '대학교')}`} className="text-[#2C80A0] hover:underline">
+                  {universityName || '대학교'}
+                </Link>
+              </li>
+            </ol>
+          </nav>
+          <button
+            onClick={() => setRailCollapsed((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            aria-pressed={railCollapsed}
+            aria-label={railCollapsed ? '우측 레일 펼치기' : '우측 레일 접기'}
+            title={railCollapsed ? '우측 레일 펼치기' : '우측 레일 접기'}
+          >
+            {railCollapsed ? (
+              <>
+                <ChevronsRight size={16} />
+                <span className="hidden sm:inline">펼치기</span>
+              </>
+            ) : (
+              <>
+                <ChevronsLeft size={16} />
+                <span className="hidden sm:inline">접기</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
       <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         {/* 좌측 메인 */}
         <div className="lg:col-span-8">
@@ -494,7 +559,7 @@ export default function DocumentEditPage() {
             )}
           </div>
 
-          {/* 카테고리(라디오 단일 선택) */}
+          {/* 카테고리(라디오) */}
           <div className="mt-6">
             <p className="mb-2 text-gray-900 font-medium">카테고리</p>
             <div className="flex flex-wrap gap-x-10 gap-y-2 text-[15px]">
@@ -510,9 +575,6 @@ export default function DocumentEditPage() {
                 </label>
               ))}
             </div>
-            <p className="mt-2 text-sm text-gray-500">
-              현재 선택: <span className="font-medium text-gray-800">{selectedCatName}</span>
-            </p>
           </div>
 
           {/* 편집 요약 */}

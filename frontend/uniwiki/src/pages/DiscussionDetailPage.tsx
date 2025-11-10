@@ -124,18 +124,29 @@ export default function DiscussionDetailPage() {
   useEffect(() => setStatus(data.status), [data.status]);
 
   // ---- 시간 포맷(KST) ----
-  const formatKST = useMemo(
-    () => (iso: string) => {
-      const norm = iso.replace(/(\.\d{3})\d+$/, "$1");
+  // 서버가 보내는 시간이 "항상 서울 기준(KST)"이라는 전제에 맞춰 수정.
+  // TZ 미표기 값을 KST로 해석한 뒤 표시도 KST로 고정.
+  const formatKST = useMemo(() => {
+    const parseKST = (iso: string): Date => {
+      const norm = iso.replace(/(\.\d{3})\d+$/, "$1"); // ms 과잉자릿수 정리
       const hasTZ = /Z$|[+\-]\d{2}:\d{2}$/.test(norm);
-      const utcIso = hasTZ ? norm : norm + "Z";
-      return new Date(utcIso).toLocaleString("sv-SE", {
+      if (hasTZ) return new Date(norm); // 이미 TZ 포함이면 그대로
+      // 미표기 → KST 시각으로 들어왔다고 가정, UTC = KST - 9h
+      const m = norm.match(
+        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(\.\d+)?$/
+      );
+      if (!m) return new Date(norm + "Z"); // 파싱 실패 시 안전폴백
+      const [, y, mo, d, h, mi, s, ms] = m;
+      const sec = s ? +s : 0;
+      const milli = ms ? Math.round(parseFloat(ms) * 1000) : 0;
+      return new Date(Date.UTC(+y, +mo - 1, +d, +h - 9, +mi, sec, milli));
+    };
+    return (iso: string) =>
+      parseKST(iso).toLocaleString("sv-SE", {
         timeZone: "Asia/Seoul",
         hour12: false,
       }); // YYYY-MM-DD HH:mm:ss
-    },
-    []
-  );
+  }, []);
 
   // 플래시 자동 닫힘(오류/실패/에러는 고정)
   useEffect(() => {
@@ -210,7 +221,6 @@ export default function DiscussionDetailPage() {
   };
   useEffect(() => {
     if (id) void loadDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, documentTitle, univName]);
 
   // ===== SSE: 실시간 스트림 (열림 상태에서만) =====
@@ -329,7 +339,6 @@ export default function DiscussionDetailPage() {
     if (status === "open") openStream();
     else closeStream();
     return () => closeStream();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, status]);
 
   // ----- 개설자 == 현재 사용자 ? 종료 버튼 -----
