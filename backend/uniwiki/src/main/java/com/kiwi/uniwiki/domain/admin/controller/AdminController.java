@@ -1,11 +1,11 @@
 package com.kiwi.uniwiki.domain.admin.controller;
 
 import com.kiwi.uniwiki.common.page.PageResponse;
+import com.kiwi.uniwiki.domain.admin.dto.DocumentSearchFilterDTO;
 import com.kiwi.uniwiki.domain.admin.dto.request.AdminRequestDTO;
 import com.kiwi.uniwiki.domain.admin.dto.response.AdminResponseDTO;
 import com.kiwi.uniwiki.domain.admin.service.AdminReadService;
 import com.kiwi.uniwiki.domain.admin.service.AdminWriteService;
-import com.kiwi.uniwiki.domain.report.dto.request.ReportRequestDTO;
 import com.kiwi.uniwiki.security.dto.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -87,16 +87,6 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/document-revisions")
-    @Operation(summary = "문서 변경 이력 조회", description = "관리자가 쿤서 버전의 전체 이력을 조회합니다")
-    public ResponseEntity<PageResponse<AdminResponseDTO.DocumentVersionList>> getDocumentAllVersions(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        PageResponse<AdminResponseDTO.DocumentVersionList> response=  adminReadService.getDocumentAllVersions(page,size);
-        return ResponseEntity.ok(response);
-    }
-
     @DeleteMapping("/documents/{documentId}")
     @Operation(summary = "문서 삭제", description = "관리자가 문서를 삭제합니다.")
     public ResponseEntity<Void> deleteDocument(
@@ -146,5 +136,19 @@ public class AdminController {
     ) {
         adminWriteService.changeDiscussionContent(discussionContentId, request);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/document-revisions")
+    @Operation(summary = "관리자용 문서(모든 버전) 목록 조회", description = "모든 문서의 모든 버전에 대해 필터링 조건으로 검색합니다.")
+    public ResponseEntity<PageResponse<AdminResponseDTO.DocumentSearchResult>> searchDocuments(
+            @ModelAttribute DocumentSearchFilterDTO filter,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+
+        PageResponse<AdminResponseDTO.DocumentSearchResult> responses = adminReadService.getDocumentAllVersions(filter, page, size, direction);
+
+        return ResponseEntity.ok(responses);
     }
 }
