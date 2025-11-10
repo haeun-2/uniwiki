@@ -234,7 +234,7 @@ export default function UnivMainPage() {
               <div className="text-3xl mb-2">{cat.icon}</div>
               <div className="font-medium text-gray-900">{cat.title}</div>
               <p className="text-xs text-gray-500">{cat.desc}</p>
-              <div className="text-[11px] text-gray-400 mt-1">{cat.count}개 문서</div>
+              
             </div>
           ))}
         </div>
