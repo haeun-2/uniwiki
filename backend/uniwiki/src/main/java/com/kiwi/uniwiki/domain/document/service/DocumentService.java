@@ -12,11 +12,13 @@ import com.kiwi.uniwiki.domain.document.dto.response.DocumentSimpleResponseDTO;
 import com.kiwi.uniwiki.domain.document.entity.Category;
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
+import com.kiwi.uniwiki.domain.document.event.DocumentCreatedEvent;
 import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
 import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -40,6 +42,8 @@ public class DocumentService {
 
     private final AsyncUserActivityService asyncUserActivityService;
     private final PopularDocumentService popularDocumentService;
+
+    private final ApplicationEventPublisher publisher;
 
     /**
      * 새 문서 생성
@@ -78,6 +82,9 @@ public class DocumentService {
 
         // CREATE_DOCUMENT 활동 내역 저장
         asyncUserActivityService.createDocumentActivity(user, documentVersion, "CREATE_DOCUMENT");
+
+        // 인덱싱 이번트 발행
+        publisher.publishEvent(new DocumentCreatedEvent(document.getId()));
 
         return document.getTitle();
     }
