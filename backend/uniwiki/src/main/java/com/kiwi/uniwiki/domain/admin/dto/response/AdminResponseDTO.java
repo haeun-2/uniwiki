@@ -78,6 +78,8 @@ public class AdminResponseDTO {
         private Integer discussionId;
         private String discussionTitle;
         private String code;
+        private String universityName;
+        private String documentTitle;
         private LocalDateTime createdAt;
     }
 

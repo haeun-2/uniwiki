@@ -196,6 +196,8 @@ public class AdminReadService {
                         d.getId(),
                         d.getTitle(),
                         d.getCode().getName(),
+                        d.getDocument().getUniversity().getName(),
+                        d.getDocument().getTitle(),
                         d.getUpdatedAt()
                 )
         );
