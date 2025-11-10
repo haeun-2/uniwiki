@@ -64,29 +64,15 @@ type DocumentDto = {
 };
 
 type RawDiffItem = { lineNumber: number; content: string; type: string };
-type DiffApiResponse = { plusCount: number; minusCount: number; diffs: string };
-
-type VersionsApiItem = {
-  createdAt: string;
-  versionNumber: number;
-  plusCount: number;
-  minusCount: number;
+type DiffApiResponse = {
+  oldCreatedAt: string;
+  newCreatedAt: string;
+  editorId: number | string;
   editorNickname: string;
   editMemo: string;
-  editorId?: string | number;
-  editorUserId?: string | number;
-  editorMemberId?: string | number;
-};
-type VersionsApiResponse = { content: VersionsApiItem[] };
-
-type VersionDetail = {
-  versionNumber: number;
-  createdAt?: string;
-  editorNickname?: string;
-  editMemo?: string;
-  editorId?: string | number;
-  editorUserId?: string | number;
-  editorMemberId?: string | number;
+  plusCount: number;
+  minusCount: number;
+  diffs: string | RawDiffItem[];
 };
 
 type Row = { left?: RawDiffItem; right?: RawDiffItem };
@@ -94,17 +80,29 @@ type Row = { left?: RawDiffItem; right?: RawDiffItem };
 /* ===== 시간 포맷 ===== */
 function parseServerUtc(iso: string): Date {
   const hasTZ = /Z$|[+-]\d\d:\d\d$/.test(iso);
-  return new Date(hasTZ ? iso : iso + "Z");
+  if (hasTZ) return new Date(iso);
+  const m = iso.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(\.\d+)?$/
+  );
+  if (!m) return new Date(iso + "Z");
+  const [, y, mo, d, h, mi, s, ms] = m;
+  const sec = s ? +s : 0;
+  const milli = ms ? Math.round(parseFloat(ms) * 1000) : 0;
+  return new Date(Date.UTC(+y, +mo - 1, +d, +h - 9, +mi, sec, milli)); // KST→UTC
 }
 function formatYmdHmKST(iso?: string) {
   if (!iso) return "";
   const d = parseServerUtc(iso);
   const parts = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   }).formatToParts(d);
-  const get = (t: string) => parts.find(p => p.type === t)?.value || "";
+  const get = (t: string) => parts.find((p) => p.type === t)?.value || "";
   return `${get("year")}.${get("month")}.${get("day")} ${get("hour")}:${get("minute")}`;
 }
 
@@ -126,6 +124,13 @@ export default function DocumentDiffPage() {
   const [currEditor, setCurrEditor] = useState<string | undefined>();
   const [currEditorId, setCurrEditorId] = useState<string | number | undefined>();
   const [currEditMemo, setCurrEditMemo] = useState<string>("");
+
+  // 플래시 배너 (문서 조회 화면과 동일 스타일)
+  const [flashMsg, setFlashMsg] = useState<string | null>(null);
+  const showFlash = (msg: string) => {
+    setFlashMsg(msg);
+    window.setTimeout(() => setFlashMsg(null), 3000);
+  };
 
   // 신고 모달 상태
   const [userReportOpen, setUserReportOpen] = useState(false);
@@ -164,7 +169,7 @@ export default function DocumentDiffPage() {
     return () => { cancelled = true; };
   }, [documentTitle]);
 
-  // diff 호출 (r(N-1) vs rN)
+  // diff 조회
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -178,26 +183,41 @@ export default function DocumentDiffPage() {
         if (!r.ok) throw new Error(`diff 조회 실패: ${r.status}`);
         const data: DiffApiResponse = await r.json();
 
+        // 헤더 메타 채우기
+        setPrevCreatedAt(data.oldCreatedAt);
+        setCurrCreatedAt(data.newCreatedAt);
+        setCurrEditor(data.editorNickname);
+        setCurrEditorId(data.editorId);
+        setCurrEditMemo(data.editMemo ?? "");
+
+        // diffs 파싱
         let list: RawDiffItem[] = [];
         try {
-          const parsed = JSON.parse(data.diffs);
-          if (Array.isArray(parsed)) list = parsed as RawDiffItem[];
-        } catch {
-          if (Array.isArray((data as any).diffs)) list = (data as any).diffs as RawDiffItem[];
-        }
+          if (typeof data.diffs === "string") {
+            const parsed = JSON.parse(data.diffs);
+            if (Array.isArray(parsed)) list = parsed as RawDiffItem[];
+          } else if (Array.isArray(data.diffs)) {
+            list = data.diffs as RawDiffItem[];
+          }
+        } catch {}
 
-        const norm = (s: string) => (s || "").toUpperCase().replace("-", "_").replace("CHAGNE", "CHANGE");
+        const norm = (s: string) =>
+          (s || "").toUpperCase().replace("-", "_").replace("CHAGNE", "CHANGE");
         const tmp: Row[] = [];
         list.forEach((it) => {
           const t = norm(it.type);
-          const isLeft = t === "DELETE" || t === "CHANGE_OLD" || t === "CHANGEOLD";
-          const isRight = t === "INSERT" || t === "CHANGE_NEW" || t === "CHANGENEW";
+          const isLeft =
+            t === "DELETE" || t === "CHANGE_OLD" || t === "CHANGEOLD";
+          const isRight =
+            t === "INSERT" || t === "CHANGE_NEW" || t === "CHANGENEW";
           if (isLeft) {
             const last = tmp[tmp.length - 1];
-            if (last && !last.left) last.left = it; else tmp.push({ left: it });
+            if (last && !last.left) last.left = it;
+            else tmp.push({ left: it });
           } else if (isRight) {
             const last = tmp[tmp.length - 1];
-            if (last && !last.right) last.right = it; else tmp.push({ right: it });
+            if (last && !last.right) last.right = it;
+            else tmp.push({ right: it });
           } else {
             tmp.push({ right: it });
           }
@@ -211,50 +231,6 @@ export default function DocumentDiffPage() {
     return () => { cancelled = true; };
   }, [meta?.documentId, versionId]);
 
-  // 버전 목록에서 보조 메타(시간/수정자/요약) + 상세로 editorId 보강
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!meta?.documentId || !Number.isFinite(versionId)) return;
-      try {
-        const url = `${API_BASE}/v1/documents/${meta.documentId}/versions?page=0&size=200`;
-        const res = await fetch(url, { headers: { ...authHeaders() } });
-        if (!res.ok) throw new Error(`버전 목록 조회 실패(${res.status})`);
-        const data: VersionsApiResponse = await res.json();
-
-        const prev = data.content.find(v => v.versionNumber === prevVersion);
-        const curr = data.content.find(v => v.versionNumber === versionId);
-        if (cancelled) return;
-
-        setPrevCreatedAt(prev?.createdAt);
-        setCurrCreatedAt(curr?.createdAt);
-        setCurrEditor(curr?.editorNickname);
-        setCurrEditMemo(curr?.editMemo || "");
-        const eid = curr?.editorId ?? curr?.editorMemberId ?? curr?.editorUserId;
-        if (eid != null) setCurrEditorId(eid);
-
-        // 상세로 editorId/createdAt/닉네임 보강
-        try {
-          const dres = await fetch(
-            `${API_BASE}/v1/documents/${meta.documentId}/versions/${versionId}`,
-            { headers: { Accept: "application/json", ...authHeaders() } }
-          );
-          if (dres.ok) {
-            const det: VersionDetail = await dres.json();
-            if (!cancelled) {
-              if (det.createdAt) setCurrCreatedAt(det.createdAt);
-              if (det.editorNickname) setCurrEditor(det.editorNickname);
-              if (det.editMemo) setCurrEditMemo(det.editMemo);
-              const did = det.editorId ?? det.editorMemberId ?? det.editorUserId;
-              if (did != null) setCurrEditorId(did);
-            }
-          }
-        } catch {}
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [meta?.documentId, versionId, prevVersion]);
-
   /* === 신고 모달 로직 === */
   const isMine = (targetId?: string | number | null, targetNick?: string) => {
     const vid = viewerId ? String(viewerId) : null;
@@ -265,7 +241,7 @@ export default function DocumentDiffPage() {
   };
   const openUserReport = () => {
     if (isMine(currEditorId ?? null, currEditor)) {
-      alert("본인은 신고할 수 없습니다.");
+      showFlash("본인은 신고할 수 없습니다.");
       return;
     }
     setUserReportReason("");
@@ -289,10 +265,10 @@ export default function DocumentDiffPage() {
         body: JSON.stringify({ targetId: currEditorId, reason }),
       });
       if (!res.ok) throw new Error(`사용자 신고 실패 (${res.status})`);
-      alert("사용자 신고가 접수되었습니다.");
       setUserReportOpen(false);
+      showFlash("사용자 신고가 접수되었습니다.");
     } catch (e: any) {
-      alert(e?.message || "사용자 신고에 실패했습니다.");
+      showFlash(String(e?.message || "사용자 신고에 실패했습니다."));
     } finally {
       setUserReportPosting(false);
     }
@@ -325,6 +301,21 @@ export default function DocumentDiffPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
+      {/* 플래시 배너 (문서 조회 화면과 동일) */}
+      {flashMsg && (
+        <div
+          role="status"
+          className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
+        >
+          <span className="text-[15px]">{flashMsg}</span>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 브레드크럼 */}
       <div className="mb-2 text-[18px] leading-tight">
         <ol className="flex items-center gap-1">
@@ -345,7 +336,6 @@ export default function DocumentDiffPage() {
           </span>
         </h1>
 
-        {/* 👇 같은 줄: (편집 내용 요약 …)  |  돌아가기 */}
         <div className="mt-1 mb-1 flex items-center gap-4">
           <p className="text-[18px] leading-tight text-gray-800">
             (편집 내용 요약 : {currEditMemo?.trim() || "없음"})
@@ -366,7 +356,7 @@ export default function DocumentDiffPage() {
           </div>
         </div>
 
-        {/* 그 아래 줄: 수정자 */}
+        {/* 수정자 */}
         <div className="mb-3 text-[18px] leading-tight text-gray-800">
           수정자 :
           {currEditor ? (
@@ -387,7 +377,9 @@ export default function DocumentDiffPage() {
       {/* 표: 상단 헤더 */}
       <div className="rounded-2xl border border-[#B3B3B3] overflow-hidden">
         <div className="grid grid-cols-[84px_1fr_1fr] border-b border-[#B3B3B3] bg-gray-50">
-          <div className="px-0 py-0" aria-hidden />
+          <div className="px-3 py-3 border-r border-[#B3B3B3] text-sm text-gray-800 text-center">
+            line
+          </div>
           <div className="px-4 py-3 text-sm text-gray-800">
             비교 대상 버전 : r{Number.isFinite(prevVersion) ? prevVersion : "—"}
             {prevCreatedAt && <span className="ml-2 text-gray-500">({formatYmdHmKST(prevCreatedAt)})</span>}

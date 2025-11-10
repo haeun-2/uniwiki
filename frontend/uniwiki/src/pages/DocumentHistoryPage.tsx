@@ -7,7 +7,7 @@ type Revision = {
   id: number;          // = versionNumber
   delta: number;       // = plusCount + minusCount
   author: string;      // = editorNickname
-  createdAt: string;   // ISO (서버: UTC)
+  createdAt: string;   // ISO (서버 기준 시각)
   summary: string;     // = editMemo
 };
 
@@ -49,7 +49,7 @@ function authHeaders() {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-/** 서버 시간이 UTC일 때 안전 파서: timezone 표기 없으면 'Z' 추가해 UTC로 파싱 */
+/** timezone 표기 없으면 'Z' 추가해 UTC로 파싱(상대시간 계산용 안전 파서) */
 function parseServerUtc(iso: string): Date {
   const hasTZ = /Z$|[+-]\d\d:\d\d$/.test(iso);
   return new Date(hasTZ ? iso : iso + "Z");
@@ -165,6 +165,12 @@ export default function DocumentHistoryPage() {
     return () => { aborted = true; };
   }, [docId]);
 
+  // 최신 버전 id
+  const latestId = useMemo(
+    () => (revisions.length ? Math.max(...revisions.map(r => r.id)) : null),
+    [revisions]
+  );
+
   // ===== UI 상태 =====
   const [page, setPage] = useState(1);
   const pageSize = 15;
@@ -213,25 +219,26 @@ export default function DocumentHistoryPage() {
   const [rollbackingId, setRollbackingId] = useState<number | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
 
-  // 특정 버전으로 되돌리기
+  // ✅ 특정 버전으로 되돌리기 (POST, 빈 바디)
   const doRollback = async (versionNumber: number) => {
     if (!docId) return;
     const token = getAccessToken();
     if (!token) {
-      navigate('/login', { replace: true, state: { from: location.pathname } });
+      navigate('/login', { replace: true, state: { from: location as any }.pathname });
       return;
     }
     try {
       setRollbackingId(versionNumber);
       const url = `${API_BASE}/v1/documents/${docId}/versions/${versionNumber}/rollback`;
       const res = await fetch(url, {
-        method: 'GET',
-        headers: authHeaders(),
+        method: 'POST',
+        headers: { Accept: '*/*', ...authHeaders() },
         credentials: 'include',
+        body: '' // Swagger와 동일하게 빈 바디
       });
 
       if (res.status === 401) {
-        navigate('/login', { replace: true, state: { from: location.pathname } });
+        navigate('/login', { replace: true, state: { from: location as any }.pathname });
         return;
       }
       if (res.status === 403) {
@@ -329,14 +336,10 @@ export default function DocumentHistoryPage() {
               {pageItems.map((rev) => {
                 const asking = confirmId === rev.id;
                 const working = rollbackingId === rev.id;
+                const isLatest = latestId != null && rev.id === latestId;
+
                 return (
                   <li key={rev.id} id={`rev-${rev.id}`} className="relative block w-full">
-                    {highlightId === rev.id && (
-                      <div
-                        className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-300"
-                        style={{ backgroundColor: "rgba(44, 128, 160, 0.12)" }}
-                      />
-                    )}
                     <div className="relative z-10 px-2 py-3">
                       <div className="flex w-full items-center">
                         <div className="min-w-0 flex-1 text-sm">
@@ -366,7 +369,6 @@ export default function DocumentHistoryPage() {
                         </div>
 
                         <div className="ml-4 shrink-0 text-right text-sm">
-                          {/* 전용 버전 보기 페이지 */}
                           <Link
                             to={`${docBase}/versions/${rev.id}`}
                             className="text-[#2C80A0] hover:underline"
@@ -375,8 +377,18 @@ export default function DocumentHistoryPage() {
                           </Link>
                           <span className="mx-2 text-gray-400">|</span>
 
-                          {/* 2단계 확인 UI */}
-                          {!asking ? (
+                          {/* 최신 버전은 되돌리기 금지 */}
+                          {isLatest ? (
+                            <button
+                              type="button"
+                              className="text-gray-400 cursor-not-allowed"
+                              disabled
+                              title="최신 버전은 되돌릴 수 없습니다."
+                              aria-disabled="true"
+                            >
+                              이 버전으로 되돌리기
+                            </button>
+                          ) : !asking ? (
                             <button
                               type="button"
                               className="text-[#2C80A0] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
@@ -413,7 +425,7 @@ export default function DocumentHistoryPage() {
                           </Link>
                           <span className="mx-2 text-gray-400">|</span>
 
-                          {/* ✅ 최신본과 비교: diff 페이지로 이동 (docId를 쿼리로 전달) */}
+                          {/* 최신본과 비교: diff 페이지로 이동 */}
                           <Link
                             to={`${docBase}/versions/${rev.id}/diff${docId ? `?docId=${docId}` : ""}`}
                             className="text-[#2C80A0] hover:underline"
@@ -424,8 +436,7 @@ export default function DocumentHistoryPage() {
                         </div>
                       </div>
 
-                      {/* 핑크 톤 경고 바 */}
-                      {asking && (
+                      {!isLatest && asking && (
                         <div className="mt-2 rounded-md bg-[#FFE6EE] px-3 py-2 text-[13px] text-[#7A1240] border border-[#F5A3C0]">
                           현재 최신 내용이 <b>r{rev.id}</b> 기준으로 덮어씌워집니다. 실행 후 되돌릴 수 없습니다.
                         </div>
@@ -437,14 +448,12 @@ export default function DocumentHistoryPage() {
             </ul>
           )}
 
-          {/* 하단 페이저 */}
           {!loading && !err && (
             <div className="pt-2"><Pager /></div>
           )}
         </div>
       </div>
 
-      {/* 상단 이동 버튼 */}
       {showTop && (
         <button
           onClick={scrollTop}
