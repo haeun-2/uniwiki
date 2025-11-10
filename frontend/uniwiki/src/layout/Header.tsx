@@ -1,6 +1,6 @@
-import React, { useEffect,  useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Search, UserRound, LogOut } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Search, UserRound, LogOut, Sparkles } from "lucide-react";
 
 interface HeaderProps {
   showSearch?: boolean;
@@ -9,7 +9,7 @@ interface HeaderProps {
 
 const AUTH_KEYS = [
   "accessToken",
-  "refreshToken",      // 쓰지 않으면 남겨두셔도 무방
+  "refreshToken",
   "nickName",
   "role",
   "universityId",
@@ -23,7 +23,8 @@ export default function Header({
   showSearch = true,
   showUserButton = true,
 }: HeaderProps) {
-  const location = useLocation()
+  const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -31,18 +32,12 @@ export default function Header({
 
   // accessToken 존재 여부로 로그인 상태 판단
   useEffect(() => {
-    // 최초 1회
     setIsLoggedIn(!!getAccessToken());
 
     const refreshAuth = () => setIsLoggedIn(!!getAccessToken());
 
-    // 같은 탭에서 로그인/로그아웃 시 커스텀 이벤트로 갱신
     window.addEventListener("uniwiki:auth-changed", refreshAuth);
-
-    // 다른 탭에서 바뀐 경우 동기화
     window.addEventListener("storage", refreshAuth);
-
-    // 탭 전환/새로 포커스 시에도 재확인
     window.addEventListener("focus", refreshAuth);
     document.addEventListener("visibilitychange", refreshAuth);
 
@@ -81,10 +76,6 @@ export default function Header({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  useEffect(() => {
-    setIsLoggedIn(!!getAccessToken());
-  }, []);
-
   const handleLogout = () => {
     AUTH_KEYS.forEach((k) => {
       localStorage.removeItem(k);
@@ -98,7 +89,7 @@ export default function Header({
 
     window.location.reload();
   };
-  
+
   return (
     <header className="top-0 z-30 w-full border-b border-gray-200 bg-uniwikicolor backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
@@ -116,17 +107,46 @@ export default function Header({
 
         {/* 검색창 */}
         {showSearch && (
-          <div className="mx-3 flex-1">
-            <label className="relative block">
+          <div className="mx-3 flex-1 flex items-center gap-2">
+            <label className="relative block flex-1">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
                 <Search size={18} className="text-gray-400" />
               </span>
               <input
-                type="text"
-                placeholder="학교, 학과, 강의 검색…"
-                className="w-full rounded-full border border-gray-300 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none ring-0 placeholder:text-gray-400 focus:border-gray-400"
-              />
+  type="text"
+  placeholder="학교, 학과, 강의 검색…"
+  className="w-full rounded-full border border-gray-300 bg-gray-50 py-2 pl-9 pr-4 text-sm outline-none ring-0 placeholder:text-gray-400 focus:border-gray-400"
+  onKeyPress={(e) => {
+    if (e.key === "Enter") {
+      const query = (e.target as HTMLInputElement).value;
+      if (query.trim()) {
+        navigate(`/search?q=${encodeURIComponent(query)}`);
+      }
+    }
+  }}
+/>
             </label>
+
+          
+<button
+  onClick={() => navigate("/ai-search")}
+  className="
+    relative flex items-center gap-1.5 rounded-full
+    px-3 py-2 text-sm font-medium text-gray-900
+    bg-white/95 border border-white/60
+    shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_20px_rgba(0,0,0,0.06)]
+    supports-[backdrop-filter]:backdrop-blur-md
+    hover:bg-white hover:border-white/70
+    focus:outline-none focus:ring-2 focus:ring-uniwikicolor/30
+    transition-all
+  "
+  title="AI 자연어 검색"
+>
+  <Sparkles size={16} className="text-uniwikicolor" />
+  <span className="hidden sm:inline">AI 모드</span>
+</button>
+
+
           </div>
         )}
 
@@ -159,19 +179,20 @@ export default function Header({
                         localStorage.getItem("role") || sessionStorage.getItem("role");
                       if (role === "ADMIN") {
                         return (
-                          <Link
-                            to="/admin"
-                            role="menuitem"
-                            className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            onClick={() => setOpen(false)}
-                          >
-                            관리자 페이지로
-                          </Link>
+                          <>
+                            <Link
+                              to="/admin"
+                              role="menuitem"
+                              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              onClick={() => setOpen(false)}
+                            >
+                              관리자 페이지로
+                            </Link>
+                            <div className="my-1 h-px bg-gray-100" />
+                          </>
                         );
                       }
                       return null;
-
-                      <div className="my-1 h-px bg-gray-100" />
                     })()}
 
                     <Link
@@ -184,7 +205,7 @@ export default function Header({
                     </Link>
 
                     <div className="my-1 h-px bg-gray-100" />
-                    
+
                     <Link
                       to="/user/contributions"
                       role="menuitem"
