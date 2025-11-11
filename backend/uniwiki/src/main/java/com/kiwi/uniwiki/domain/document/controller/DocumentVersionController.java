@@ -32,7 +32,7 @@ public class DocumentVersionController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/{versionId}")
+    @GetMapping("/{versionId}")
     @Operation(summary = "특정 버전 문서 내용 조회", description = "특정 버전의 문서 내용을 조회합니다.")
     public ResponseEntity<DocumentDetailResponseDTO> getVersionOfDocument(
             @PathVariable Integer documentId,
