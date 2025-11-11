@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
 
     try {
       const response = await fetch(
-        "http://k13d104.p.ssafy.io/api/v1/auth/login",
+        "https://k13d104.p.ssafy.io/api/v1/auth/login",
         {
           method: "POST",
           headers: {

@@ -53,7 +53,7 @@ function sortReports(list: ReportValue[]) {
   });
 }
 
-const API_BASE = "http://k13d104.p.ssafy.io/api/v1";
+const API_BASE = "https://k13d104.p.ssafy.io/api/v1";
 
 function getToken() {
   return localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || "";
@@ -304,7 +304,7 @@ export default function AdminUserReportPageGrouped() {
   async function refetchList() {
     try {
       const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
-      const res = await fetch(`http://k13d104.p.ssafy.io/api/v1/admin/user-reports?page=${page}&size=${size}`, {
+      const res = await fetch(`https://k13d104.p.ssafy.io/api/v1/admin/user-reports?page=${page}&size=${size}`, {
         headers: {
           Accept: "*/*",
           Authorization: token ? `Bearer ${token}` : "",

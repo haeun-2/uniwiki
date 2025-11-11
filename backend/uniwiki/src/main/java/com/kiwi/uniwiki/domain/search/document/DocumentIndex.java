@@ -9,13 +9,14 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 import org.springframework.data.elasticsearch.annotations.Mapping;
 import org.springframework.data.elasticsearch.annotations.Setting;
 
-@org.springframework.data.elasticsearch.annotations.Document(indexName = "document_index")
+@org.springframework.data.elasticsearch.annotations.Document(indexName = "document-index")
 @Getter
 @Setting(settingPath = "elasticsearch/document-setting.json")
 @Mapping(mappingPath = "elasticsearch/document-mapping.json")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@ToString
 public class DocumentIndex {
 
     @Id
@@ -40,15 +41,19 @@ public class DocumentIndex {
     @Field(type = FieldType.Keyword)
     private String categoryName;
 
-    public static DocumentIndex from(Document document, DocumentVersion documentVersion) {
+    @Field(type = FieldType.Integer)
+    private Integer versionNumber;
+
+    public static DocumentIndex of(Document document, DocumentVersion documentVersion, String content) {
         return DocumentIndex.builder()
                 .id(document.getId())
                 .title(document.getTitle())
-                .content(documentVersion.getContent())
+                .content(content)
                 .universityId(document.getUniversity().getId())
                 .categoryId(document.getCategory().getId())
                 .universityName(document.getUniversity().getName())
                 .categoryName(document.getCategory().getName())
+                .versionNumber(documentVersion.getVersionNumber())
                 .build();
     }
 

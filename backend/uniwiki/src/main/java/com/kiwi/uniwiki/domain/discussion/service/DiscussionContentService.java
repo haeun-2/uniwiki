@@ -46,8 +46,8 @@ public class DiscussionContentService {
             throw new CustomException(ErrorCode.DISCUSSION_NOT_OPEN);
         }
 
-        // 토론 문서의 대학생인지 확인
-        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), discussion.getDocument().getUniversity().getId())) {
+        // 토론 문서의 대학생 혹은 관리자 확인
+        if (!isUniversityStudent(user, discussion) && user.getRole() != User.Role.ADMIN) {
             throw new CustomException(ErrorCode.DISCUSSION_ACCESS_DENIED);
         }
 
@@ -59,6 +59,10 @@ public class DiscussionContentService {
 
         // REPLY_DISCUSSION 활동 내역 저장
         asyncUserActivityService.createDiscussionActivity(user, discussionContent, "REPLY_DISCUSSION");
+    }
+
+    private boolean isUniversityStudent(User user, Discussion discussion) {
+        return user.getIsUniversityVerified() && Objects.equals(user.getUniversity().getId(), discussion.getDocument().getUniversity().getId());
     }
 
     public void updateDiscussionStatus(Integer discussionId, User user, String status) {

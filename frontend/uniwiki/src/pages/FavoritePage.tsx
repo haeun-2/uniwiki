@@ -67,7 +67,7 @@ export default function FavoritePage() {
     setDocLoading(true);
     try {
       const resp = await fetch(
-        "http://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents",
+        "https://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents",
         {
           method: "GET",
           headers: {
@@ -103,7 +103,7 @@ export default function FavoritePage() {
     setUnivLoading(true);
     try {
       const resp = await fetch(
-        "http://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities",
+        "https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities",
         {
           method: "GET",
           headers: {
@@ -154,7 +154,7 @@ export default function FavoritePage() {
 
     try {
       const resp = await fetch(
-        `http://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents/${documentId}`,
+        `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents/${documentId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

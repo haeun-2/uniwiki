@@ -78,6 +78,8 @@ public class AdminResponseDTO {
         private Integer discussionId;
         private String discussionTitle;
         private String code;
+        private String universityName;
+        private String documentTitle;
         private LocalDateTime createdAt;
     }
 
@@ -93,7 +95,21 @@ public class AdminResponseDTO {
         private String discussionTitle;
         private String discussionContent;
         private LocalDateTime createdAt;
+    }
 
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DocumentSearchResult {
 
+        private Integer documentId;
+        private LocalDateTime createdAt;
+        private String universityName;
+        private String categoryName;
+        private String documentTitle;
+        private String nickname;
+        private Integer plusCount;
+        private Integer minusCount;
     }
 }

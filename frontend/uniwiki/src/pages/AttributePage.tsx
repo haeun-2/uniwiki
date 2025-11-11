@@ -50,7 +50,7 @@ export default function AttributePage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `http://k13d104.p.ssafy.io/api/v1/users/me/documents?page=${page}&size=15`,
+        `https://k13d104.p.ssafy.io/api/v1/users/me/documents?page=${page}&size=15`,
         {
           method: "GET",
           headers: {

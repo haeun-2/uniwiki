@@ -55,7 +55,7 @@ export default function CategoryPage() {
       try {
         console.log("=== 카테고리 조회 시작 ===");
         console.log("요청한 categoryName:", categoryName);
-        const response = await fetch("http://k13d104.p.ssafy.io/api/v1/categories", {
+        const response = await fetch("https://k13d104.p.ssafy.io/api/v1/categories", {
           method: "GET",
           headers: {
             "Accept": "application/json",
@@ -93,8 +93,8 @@ export default function CategoryPage() {
     setIsLoading(true);
     try {
       const url = universityId 
-        ? `http://k13d104.p.ssafy.io/api/v1/categories/${currentCategoryId}?universityId=${universityId}&page=${page}&size=20`
-        : `http://k13d104.p.ssafy.io/api/v1/categories/${currentCategoryId}?page=${page}&size=20`;
+        ? `https://k13d104.p.ssafy.io/api/v1/categories/${currentCategoryId}?universityId=${universityId}&page=${page}&size=20`
+        : `https://k13d104.p.ssafy.io/api/v1/categories/${currentCategoryId}?page=${page}&size=20`;
 
       const response = await fetch(url, {
         method: "GET",

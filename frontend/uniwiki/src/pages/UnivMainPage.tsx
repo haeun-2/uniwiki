@@ -53,7 +53,7 @@ export default function UnivMainPage() {
     (async () => {
       try {
         setErr(null);
-        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/universities", {
+        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
           headers: { accept: "*/*" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -91,7 +91,7 @@ export default function UnivMainPage() {
         setLoading(true);
         setErr(null);
         // (임시) 목록 재사용. 백엔드에 /universities/:id 가 생기면 교체 권장
-        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/universities", {
+        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
           headers: { accept: "*/*" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -129,7 +129,7 @@ export default function UnivMainPage() {
       try {
         setPopularLoading(true);
         const resp = await fetch(
-          `http://k13d104.p.ssafy.io/api/v1/documents/popular?universityId=${univId}`,
+          `https://k13d104.p.ssafy.io/api/v1/documents/popular?universityId=${univId}`,
           {
             method: "GET",
             headers: { Accept: "*/*" },
@@ -172,10 +172,7 @@ export default function UnivMainPage() {
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              (id: {univId ?? "미전달"}) {univ ? "매핑 완료" : ""}
-            </p>
-          </div>
+             </div>
         </div>
         <button 
           onClick={() => {
@@ -234,7 +231,7 @@ export default function UnivMainPage() {
               <div className="text-3xl mb-2">{cat.icon}</div>
               <div className="font-medium text-gray-900">{cat.title}</div>
               <p className="text-xs text-gray-500">{cat.desc}</p>
-              <div className="text-[11px] text-gray-400 mt-1">{cat.count}개 문서</div>
+              
             </div>
           ))}
         </div>

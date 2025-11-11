@@ -58,6 +58,28 @@ spring:
     socket-timeout: 3s
     connection-request-timeout: 2s
 
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+  ai:
+    openai:
+      api-key: ${AI_API_KEY}
+      base-url: ${AI_API_URL}
+      embedding:
+        options:
+          model: text-embedding-3-small
+      chat:
+        options:
+          model: gpt-4o-mini
+    chat:
+      client:
+        enabled: true
+    vectorstore:
+      elasticsearch:
+        initialize-schema: true
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000

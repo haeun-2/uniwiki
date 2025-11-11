@@ -1,5 +1,5 @@
-// src/pages/admin/AdminDocumentPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom"
 
 type AdminDocumentRevision = {
   universityName: string;
@@ -20,7 +20,7 @@ type AdminDocumentResponse = {
   content: AdminDocumentRevision[];
 };
 
-const API_BASE = "http://k13d104.p.ssafy.io/api/v1";
+const API_BASE = "https://k13d104.p.ssafy.io/api/v1";
 const FIXED_SIZE = 10;
 
 function getToken() {
@@ -65,7 +65,14 @@ function buildPageItems(cur: number, total: number) {
   return items;
 }
 
+function buildDocumentHref(universityName: string, documentName: string) {
+  const univ = encodeURIComponent(universityName);
+  const doc = encodeURIComponent(documentName);
+  return `/univ/${univ}/docs/${doc}`;
+}
+
 export default function AdminDocumentPage() {
+  const navigate = useNavigate()
   const [page, setPage] = useState(0);               // 0-based
   const size = FIXED_SIZE;                            // 고정 사이즈(10)
   const [data, setData] = useState<AdminDocumentResponse | null>(null);
@@ -177,45 +184,43 @@ export default function AdminDocumentPage() {
             </tr>
           </thead>
           <tbody>
-              {filtered.map((d, idx) => (
+            {filtered.map((d, idx) => {
+              const href = buildDocumentHref(d.universityName, d.documentTitle);
+              return (
                 <tr
                   key={`${d.documentTitle}-${d.createdAt}-${idx}`}
-                  className="group border-b hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => {
-                    // TODO: 상세 경로 연결
-                  }}
-                  role="link"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      (e.currentTarget as HTMLTableRowElement).click();
-                    }
-                  }}
+                  className="group border-b hover:bg-gray-50 transition-colors"
                 >
-                  <td className="py-3 w-52 text-gray-700">{fmt(d.createdAt)}</td>
-                  <td className="py-3 w-40 truncate">{d.universityName}</td>
-                  <td className="py-3 w-32 truncate">{d.categoryName}</td>
-                <td className="py-3">
-                    <span className="inline-block max-w-full truncate group-hover:underline">
-                      {d.documentTitle}
-                    </span>
-                </td>
-                  <td className="py-3 w-36 text-center">
-                    <span className="font-medium">
-                      <span className="text-blue-600">+{d.plusCount}</span>
-                      <span className="mx-1 text-gray-400">/</span>
-                      <span className="text-rose-600">{d.minusCount}</span>
-                    </span>
-                </td>
-              </tr>
-            ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-10 text-center text-sm text-gray-500">
-                    표시할 문서 내역이 없습니다.
+                  <td colSpan={5} className="p-0">
+                    <Link
+                      to={href}
+                      className="flex items-center justify-between w-full px-3 py-3 text-left"
+                      target="_blank" // 새 창으로 열고 싶다면 추가
+                      rel="noopener noreferrer"
+                    >
+                      <div className="flex w-full">
+                        <div className="w-52 text-gray-700">{fmt(d.createdAt)}</div>
+                        <div className="w-40 truncate">{d.universityName}</div>
+                        <div className="w-32 truncate">{d.categoryName}</div>
+                        <div className="flex-1 truncate">{d.documentTitle}</div>
+                        <div className="w-36 text-center font-medium">
+                          <span className="text-blue-600">+{d.plusCount}</span>
+                          <span className="mx-1 text-gray-400">/</span>
+                          <span className="text-rose-600">{d.minusCount}</span>
+                        </div>
+                      </div>
+                    </Link>
                   </td>
                 </tr>
-              )}
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-10 text-center text-sm text-gray-500">
+                  표시할 문서 내역이 없습니다.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -1,15 +1,16 @@
 // src/pages/ProfilePage.tsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const [nickname, setNickname] = useState("김코드");
-  const [email] = useState("psh406014@gmail.com");
-  const [role] = useState("User");
+  const [nickname, setNickname] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // 닉네임 변경 모달 상태
   const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
@@ -25,6 +26,51 @@ export default function ProfilePage() {
   // 계정 삭제 모달 상태
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // ✅ 사용자 정보 조회
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      const accessToken = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+      
+      if (!accessToken) {
+        alert("로그인이 필요합니다.");
+        navigate("/login");
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await fetch("https://k13d104.p.ssafy.io/api/v1/users/me", {
+          method: "GET",
+          headers: {
+            "Accept": "*/*",
+            "Authorization": `Bearer ${accessToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setNickname(data.nickname);
+          setEmail(data.email);
+          setRole(data.role === "USER" ? "사용자" : data.role === "ADMIN" ? "관리자" : data.role);
+        } else if (response.status === 401) {
+          alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
+          localStorage.removeItem("accessToken");
+          sessionStorage.removeItem("accessToken");
+          navigate("/login");
+        } else {
+          alert("사용자 정보를 불러오는데 실패했습니다.");
+        }
+      } catch (error) {
+        console.error("Fetch user info error:", error);
+        alert("서버와의 연결에 실패했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserInfo();
+  }, [navigate]);
 
   const handleSave = () => {
     console.log("Save profile:", { nickname });
@@ -89,7 +135,7 @@ export default function ProfilePage() {
     setIsPasswordLoading(true);
     
     try {
-      const response = await fetch("http://k13d104.p.ssafy.io/api/v1/users/password/reset", {
+      const response = await fetch("https://k13d104.p.ssafy.io/api/v1/users/password/reset", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,7 +144,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           currentPassword: currentPassword,
           newPassword: newPassword,
-          confirmPassword: confirmPassword,  // ✅ 추가!
+          confirmPassword: confirmPassword,
         }),
       });
 
@@ -125,13 +171,23 @@ export default function ProfilePage() {
   };
 
   const isNicknameValid = newNickname.length >= 2;
-  // 모든 특수문자 허용
   const isPasswordValid = 
     newPassword.length >= 8 && 
     /[A-Za-z]/.test(newPassword) && 
     /\d/.test(newPassword) && 
     /[^A-Za-z\d]/.test(newPassword);
   const isPasswordMatch = newPassword === confirmPassword && confirmPassword !== "";
+
+  // ✅ 로딩 중 UI
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-12">
+        <div className="flex justify-center items-center min-h-[50vh]">
+          <div className="text-gray-500">로딩 중...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -161,22 +217,22 @@ export default function ProfilePage() {
             <span className="text-gray-900">{email}</span>
           </div>
 
-         {/* 비밀번호 */}
-<div className="flex items-center justify-between border-b border-gray-200 pb-6">
-  <label className="text-lg font-medium text-gray-900">비밀번호</label>
-  <div className="flex items-center gap-4">
-    {isEditing ? (
-      <button 
-        onClick={() => setIsPasswordModalOpen(true)}
-        className="text-gray-600 hover:text-gray-900 underline"
-      >
-        비밀번호 변경
-      </button>
-    ) : (
-      <span className="text-gray-900">••••••••</span>
-    )}
-  </div>
-</div>
+          {/* 비밀번호 */}
+          <div className="flex items-center justify-between border-b border-gray-200 pb-6">
+            <label className="text-lg font-medium text-gray-900">비밀번호</label>
+            <div className="flex items-center gap-4">
+              {isEditing ? (
+                <button 
+                  onClick={() => setIsPasswordModalOpen(true)}
+                  className="text-gray-600 hover:text-gray-900 underline"
+                >
+                  비밀번호 변경
+                </button>
+              ) : (
+                <span className="text-gray-900">••••••••</span>
+              )}
+            </div>
+          </div>
 
           {/* 권한 */}
           <div className="flex items-center justify-between border-b border-gray-200 pb-6">

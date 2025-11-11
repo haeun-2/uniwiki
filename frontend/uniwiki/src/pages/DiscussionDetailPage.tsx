@@ -1,9 +1,9 @@
 // src/pages/DiscussionDetailPage.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
-const API_BASE = "http://k13d104.p.ssafy.io/api";
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 const FLASH_AUTO_MS = 3200;
 
 // 로컬 디버깅용(콘솔 로그만): localStorage.setItem('debugSSE','1')
@@ -90,6 +90,7 @@ type TalkDetail = {
 
 export default function DiscussionDetailPage() {
   const { univName = "대학교", documentTitle = "문서 제목", id = "" } = useParams();
+  const { search, hash } = useLocation();
 
   // UI 상태
   const [loading, setLoading] = useState(true);
@@ -124,18 +125,29 @@ export default function DiscussionDetailPage() {
   useEffect(() => setStatus(data.status), [data.status]);
 
   // ---- 시간 포맷(KST) ----
-  const formatKST = useMemo(
-    () => (iso: string) => {
-      const norm = iso.replace(/(\.\d{3})\d+$/, "$1");
+  // 서버가 보내는 시간이 "항상 서울 기준(KST)"이라는 전제에 맞춰 수정.
+  // TZ 미표기 값을 KST로 해석한 뒤 표시도 KST로 고정.
+  const formatKST = useMemo(() => {
+    const parseKST = (iso: string): Date => {
+      const norm = iso.replace(/(\.\d{3})\d+$/, "$1"); // ms 과잉자릿수 정리
       const hasTZ = /Z$|[+\-]\d{2}:\d{2}$/.test(norm);
-      const utcIso = hasTZ ? norm : norm + "Z";
-      return new Date(utcIso).toLocaleString("sv-SE", {
+      if (hasTZ) return new Date(norm); // 이미 TZ 포함이면 그대로
+      // 미표기 → KST 시각으로 들어왔다고 가정, UTC = KST - 9h
+      const m = norm.match(
+        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(\.\d+)?$/
+      );
+      if (!m) return new Date(norm + "Z"); // 파싱 실패 시 안전폴백
+      const [, y, mo, d, h, mi, s, ms] = m;
+      const sec = s ? +s : 0;
+      const milli = ms ? Math.round(parseFloat(ms) * 1000) : 0;
+      return new Date(Date.UTC(+y, +mo - 1, +d, +h - 9, +mi, sec, milli));
+    };
+    return (iso: string) =>
+      parseKST(iso).toLocaleString("sv-SE", {
         timeZone: "Asia/Seoul",
         hour12: false,
       }); // YYYY-MM-DD HH:mm:ss
-    },
-    []
-  );
+  }, []);
 
   // 플래시 자동 닫힘(오류/실패/에러는 고정)
   useEffect(() => {
@@ -146,8 +158,96 @@ export default function DiscussionDetailPage() {
     return () => clearTimeout(t);
   }, [flash]);
 
-  // 스크롤
+   // ===== 댓글 DOM 참조 & 하이라이트 대상 파싱 =====
   const panelRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  const [blinkId, setBlinkId] = useState<string | null>(null);
+
+  function getTargetContentId(): string | null {
+    const params = new URLSearchParams(search);
+    const byQuery = params.get("contentId");
+    if (byQuery) return byQuery;
+    if (hash) {
+      const h = hash.replace(/^#/, "");
+      const m1 = h.match(/contentId=(\d+)/);
+      if (m1) return m1[1];
+      const m2 = h.match(/^c-(\d+)$/);
+      if (m2) return m2[1];
+      if (/^\d+$/.test(h)) return h;
+    }
+    return null;
+  }
+
+  // 대상 요소가 container 뷰포트 안에 충분히 들어오면 resolve
+  function waitUntilVisible(
+    el: HTMLElement,
+    container: HTMLElement | Window,
+    ratio = 0.8,            // 80% 이상 보일 때
+    timeoutMs = 2000        // 최대 대기시간
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+
+      // 1) IntersectionObserver 지원 시: 정확/가볍게
+      if ("IntersectionObserver" in window && container instanceof HTMLElement) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            const e = entries[0];
+            if (e && e.isIntersecting && e.intersectionRatio >= Math.min(Math.max(ratio, 0.05), 1)) {
+              io.disconnect();
+              finish();
+            }
+          },
+          { root: container, threshold: Array.from({ length: 20 }, (_, i) => (i + 1) / 20) } // 0.05~1.0
+        );
+        io.observe(el);
+        setTimeout(() => { io.disconnect(); finish(); }, timeoutMs);
+        return;
+      }
+
+      // 2) 폴백: requestAnimationFrame으로 위치 근접 확인
+      const root = container instanceof HTMLElement ? container : document.documentElement;
+      const start = performance.now();
+      const tick = () => {
+        const now = performance.now();
+        if (now - start >= timeoutMs) return finish();
+
+        const rootRect = container instanceof HTMLElement
+          ? container.getBoundingClientRect()
+          : { top: 0, bottom: window.innerHeight, height: window.innerHeight } as any;
+
+        const r = el.getBoundingClientRect();
+        const h = Math.max(r.height, 1);
+        const visible =
+          Math.max(0, Math.min(r.bottom, rootRect.bottom) - Math.max(r.top, rootRect.top)) / h;
+
+        if (visible >= ratio) return finish();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function scrollMessageIntoPanel(targetEl: HTMLElement): Promise<void> {
+    const panel = panelRef.current;
+    if (!panel) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      // 윈도우 기준 가시화 감지
+      return waitUntilVisible(targetEl, window, 0.8, 2000);
+    }
+
+    const panelTop = panel.getBoundingClientRect().top;
+    const targetTop = targetEl.getBoundingClientRect().top;
+    const current = panel.scrollTop;
+    const delta = targetTop - panelTop - 24; // 상단 여유
+    panel.scrollTo({ top: current + delta, behavior: "smooth" });
+
+    // 패널 기준 가시화 감지
+    return waitUntilVisible(targetEl, panel, 0.8, 2000);
+  }
+
+  // 스크롤 TOP 버튼 상태
   const [showTopPage, setShowTopPage] = useState(false);
   const [showTopPanel, setShowTopPanel] = useState(false);
   useEffect(() => {
@@ -210,7 +310,6 @@ export default function DiscussionDetailPage() {
   };
   useEffect(() => {
     if (id) void loadDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, documentTitle, univName]);
 
   // ===== SSE: 실시간 스트림 (열림 상태에서만) =====
@@ -329,7 +428,6 @@ export default function DiscussionDetailPage() {
     if (status === "open") openStream();
     else closeStream();
     return () => closeStream();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, status]);
 
   // ----- 개설자 == 현재 사용자 ? 종료 버튼 -----
@@ -560,6 +658,44 @@ export default function DiscussionDetailPage() {
     }
   };
 
+  // ===== Admin에서 넘어온 contentId로 해당 댓글로 스크롤 + 깜빡 =====
+  useEffect(() => {
+    if (!data.messages.length) return;
+    const targetId = getTargetContentId();
+    if (!targetId) return;
+
+    // 메시지에서 id 또는 no와 매칭
+    const targetMsg = data.messages.find(
+      (m) => String(m.id) === String(targetId) || String(m.no) === String(targetId)
+    );
+    if (!targetMsg) return;
+
+    // 참조된 DOM 찾기
+    const el = messageRefs.current.get(String(targetMsg.id));
+    if (!el) return;
+
+  let cancelled = false;
+  let timer: number | null = null;
+
+  (async () => {
+    // 스크롤 → 보일 때까지 대기
+    await scrollMessageIntoPanel(el);
+    if (cancelled) return;
+
+    // 여기서부터 깜빡임 시작
+    setBlinkId(String(targetMsg.id));
+    timer = window.setTimeout(() => {
+      setBlinkId(null);
+    }, 700); // 필요 시 1000~1200ms로 늘리세요
+  })();
+
+  return () => {
+    cancelled = true;
+    if (timer) window.clearTimeout(timer);
+  };
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [data.messages]);
+
   // 상태 네모
   const StatusRect = (
     <span
@@ -577,6 +713,10 @@ export default function DiscussionDetailPage() {
 
   return (
     <div className="bg-white">
+      {/* 깜빡 애니메이션 키프레임 */}
+      <style>
+        {`@keyframes flashOnce { 0% { background-color:#FFEDD5; } 50% { background-color:#FFFFFF; } 100% { background-color:#FFEDD5; } }`}
+      </style>
       <div className="mx-auto w-full max-w-6xl px-4 gap-6">
         {/* Left */}
         <div className="lg:col-span-8 space-y-6">
@@ -652,8 +792,19 @@ export default function DiscussionDetailPage() {
                   <div className="px-3 py-2 text-[18px] text-[#7F7F7F]">불러오는 중…</div>
                 ) : (
                   <ul className="space-y-3">
-                    {data.messages.map((m) => (
-                      <li key={m.id} className="rounded-lg border border-[#B3B3B3]">
+                    {data.messages.map((m) => {
+                      const isBlink = blinkId === String(m.id);
+                      return (
+                      <li
+                        key={m.id}
+                        ref={(el) => {
+                          const map = messageRefs.current;
+                          if (el) map.set(String(m.id), el);
+                          else map.delete(String(m.id));
+                        }}
+                        className={`rounded-lg border border-[#B3B3B3] ${isBlink ? "ring-2 ring-orange-300" : ""
+                        }`}
+                      >
                         <div
                           className={
                             "flex items-center justify-between rounded-t-lg px-3 py-2 text-sm " +
@@ -681,6 +832,7 @@ export default function DiscussionDetailPage() {
                         {/* 본문 클릭 -> 콘텐츠 신고 */}
                         <div
                           className="whitespace-pre-wrap rounded-b-lg bg-white px-3 py-3 text-gray-800 cursor-pointer"
+                          style={isBlink ? { animation: "flashOnce 0.7s ease-in-out 1", backgroundColor: "#FFEDD5" } : undefined}
                           onClick={() => openReport(m)}
                           role="button"
                           tabIndex={0}
@@ -695,7 +847,8 @@ export default function DiscussionDetailPage() {
                           {m.body}
                         </div>
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 )}
               </div>

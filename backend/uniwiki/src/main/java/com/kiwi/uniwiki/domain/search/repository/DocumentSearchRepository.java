@@ -12,7 +12,7 @@ public interface DocumentSearchRepository extends ElasticsearchRepository<Docume
     {
         "multi_match": {
             "query": "?0",
-            "fields": ["title^2", "content^1", "universityName.ngram^1.5", "categoryName^1"],
+            "fields": ["title^2", "content", "universityName.ngram", "categoryName"],
             "type": "best_fields"
         }
     }

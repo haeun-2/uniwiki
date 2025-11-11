@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 /** ===== 타입 (API 스키마 기반) ===== */
-export type ReportCode = "PENDING" | "RESOLVED" | "REJECTED";
+type ReportCode = "PENDING" | "RESOLVED" | "REJECTED";
 
-export type DiscussionReportValue = {
+type DiscussionReportValue = {
   reportId: number;
   reporterName: string;
   reason: string;
@@ -12,7 +12,7 @@ export type DiscussionReportValue = {
   createdAt: string; // ISO
 };
 
-export type ReportedDiscussion = {
+type ReportedDiscussion = {
   discussionId: number;
   discussionContentId: number;
   documentName: string;
@@ -20,7 +20,7 @@ export type ReportedDiscussion = {
   discussionValueList: DiscussionReportValue[];
 };
 
-export type AdminDiscussionReportResponse = {
+type AdminDiscussionReportResponse = {
   page: number;
   size: number;
   totalPages: number;
@@ -30,8 +30,16 @@ export type AdminDiscussionReportResponse = {
   content: ReportedDiscussion[];
 };
 
+type DiscussionContentDetail = {
+  discussionContentId: number;
+  discussionId: number;
+  discussionTitle: string;
+  discussionContent: string;
+  createdAt: string;
+};
+
 /** ===== 유틸 ===== */
-const API_BASE = "http://k13d104.p.ssafy.io/api/v1";
+const API_BASE = "https://k13d104.p.ssafy.io/api/v1";
 
 const fmt = (iso: string) => new Date(iso).toLocaleString();
 const codeBadge: Record<ReportCode, string> = {
@@ -52,18 +60,12 @@ function sortReports(list: DiscussionReportValue[]) {
   });
 }
 
-/** 토론 상세로 가는 링크 빌더
- * 기본: /univ/:univName/docs/:documentTitle/discussions/:id
- * 만약 프로젝트 라우트가 /docs/:documentTitle/discussions/:id 라면 아래 return 문을 주석의 대안으로 교체하세요.
- */
-function buildDiscussionHref(universityName: string, documentName: string, discussionContentId: number) {
+function buildDiscussionHref(universityName: string, documentName: string, discussionContentId: number, contentId?: number) {
   const univ = encodeURIComponent(universityName);
   const doc = encodeURIComponent(documentName);
   const id = encodeURIComponent(String(discussionContentId));
-  return `/univ/${univ}/docs/${doc}/discussions/${id}`;
-
-  // (대안) 라우트가 /docs/:documentTitle/discussions/:id 인 경우:
-  // return `/docs/${doc}/discussions/${id}`;
+  const q = contentId ? `?contentId=${encodeURIComponent(String(contentId))}` : "";
+  return `/univ/${univ}/docs/${doc}/discussions/${id}${q}`;
 }
 
 /* ===== API ===== */
@@ -91,6 +93,33 @@ async function apiResolveDiscussion(discussionId: number, reason: string) {
     body: JSON.stringify({ reason }),
   });
   if (!res.ok) throw new Error(`Resolve HTTP ${res.status}`);
+}
+
+/** ===== 댓글 상세 조회 ===== */
+async function apiFetchDiscussionContent(discussionContentId: number): Promise<DiscussionContentDetail> {
+  const res = await fetch(`${API_BASE}/admin/discussion/content/${discussionContentId}`, {
+    method: "GET",
+    headers: {
+      Accept: "*/*",
+      Authorization: `Bearer ${getToken()}`,
+    },
+  });
+  if (!res.ok) throw new Error(`GET content HTTP ${res.status}`);
+  return res.json();
+}
+
+/** ===== 댓글 내용 변경(삭제: "###") ===== */
+async function apiSoftDeleteDiscussionContent(discussionContentId: number) {
+  const res = await fetch(`${API_BASE}/admin/discussion/content/${discussionContentId}`, {
+    method: "POST",
+    headers: {
+      Accept: "*/*",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ changeValue: "###" }),
+  });
+  if (!res.ok) throw new Error(`POST content HTTP ${res.status}`);
 }
 
 /** ===== 공용 모달 ===== */
@@ -147,6 +176,127 @@ function ReasonModal({
   );
 }
 
+/** ===== 처리 모달(내용 표시/수정/삭제) ===== */
+function EditDiscussionModal({
+  discussionContentId,
+  onClose,
+  onChanged,
+}: {
+  discussionContentId: number;
+  onClose: () => void;
+  onChanged: () => void; // 삭제 성공 시 목록 재조회 등
+}) {
+  const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<DiscussionContentDetail | null>(null);
+  const [editable, setEditable] = useState(false);
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const d = await apiFetchDiscussionContent(discussionContentId);
+        if (!alive) return;
+        setDetail(d);
+        setText(d.discussionContent ?? "");
+      } catch (e) {
+        console.error(e);
+        alert("댓글 내용을 불러오지 못했습니다.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [discussionContentId]);
+
+  const handleSoftDelete = async () => {
+    if (!confirm('해당 댓글을 삭제하시겠습니까?')) return;
+    try {
+      await apiSoftDeleteDiscussionContent(discussionContentId);
+      setText("###");
+      alert('댓글이 삭제되었습니다.');
+      onChanged();
+      onClose();
+    } catch (e) {
+      console.error(e);
+      alert("댓글 삭제에 실패했습니다.");
+    }
+  };
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl p-6 w-[480px] max-h-[80vh] flex flex-col shadow-xl"
+      >
+        {/* 헤더 */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold">댓글 내용 확인/수정</h3>
+            <p className="text-xs text-gray-500">
+              ID {discussionContentId}
+              {detail?.discussionTitle ? ` · ${detail.discussionTitle}` : ""}
+              {detail?.createdAt ? ` · ${new Date(detail.createdAt).toLocaleString()}` : ""}
+            </p>
+          </div>
+          <button
+            className="text-gray-400 text-xl leading-none hover:text-gray-600"
+            onClick={onClose}
+            aria-label="닫기"
+            title="닫기"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* 바디 */}
+        <div className="flex-1 overflow-auto">
+          {loading ? (
+            <div className="space-y-3">
+              <div className="h-5 w-44 bg-gray-200 rounded animate-pulse" />
+              <div className="h-28 w-full bg-gray-100 rounded animate-pulse" />
+            </div>
+          ) : (
+            <>
+              <textarea
+                className="w-full h-64 border rounded-lg px-3 py-2 text-sm whitespace-pre-wrap"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                readOnly={!editable}
+              />
+            </>
+          )}
+        </div>
+
+        {/* 푸터 */}
+        <div className="mt-4 flex gap-2 justify-between">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="px-3 py-2 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+              onClick={handleSoftDelete}
+            >
+              내용 삭제
+            </button>
+          </div>
+          <div>
+            <button
+              type="button"
+              className="px-3 py-2 text-sm rounded-lg border border-black-200 text-black-600 hover:bg-gray-200"
+              onClick={onClose}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** ===== 섹션(토론 1건) ===== */
 function ReportedDiscussionSection({
   item,
@@ -171,7 +321,7 @@ function ReportedDiscussionSection({
   }, [item.discussionValueList]);
   const hasPending = item.discussionValueList.some((r) => r.code === "PENDING");
 
-  const href = buildDiscussionHref(item.universityName, item.documentName, item.discussionId);
+  const href = buildDiscussionHref(item.universityName, item.documentName, item.discussionId, item.discussionContentId);
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
@@ -214,6 +364,7 @@ function ReportedDiscussionSection({
           <span className="px-2 py-1 me-5 rounded-full ring-1 ring-rose-200 bg-rose-50 text-rose-700">기각 {counts.REJECTED}</span>
 
           <Link
+            target="_blank"
             to={href}
             onClick={(e) => e.stopPropagation()}
             className="px-3 py-2 text-sm rounded-lg border hover:bg-gray-200"
@@ -378,6 +529,7 @@ export default function AdminDiscussionReportPageGrouped() {
   // 모달 상태
   const [openReject, setOpenReject] = useState<null | ReportedDiscussion>(null);
   const [openResolve, setOpenResolve] = useState<null | ReportedDiscussion>(null);
+  const [openEditTargetId, setOpenEditTargetId] = useState<number | null>(null);
 
   return (
     <div className="space-y-4">
@@ -424,7 +576,7 @@ export default function AdminDiscussionReportPageGrouped() {
               key={d.discussionContentId}
               item={d}
               onOpenReject={(discussion) => setOpenReject(discussion)}
-              onOpenResolve={(discussion) => setOpenResolve(discussion)}
+              onOpenResolve={(discussion) => setOpenEditTargetId(discussion.discussionContentId)}
             />
           ))}
           {sortedDiscussions.length === 0 && (
@@ -476,22 +628,13 @@ export default function AdminDiscussionReportPageGrouped() {
         />
       )}
 
-      {/* 모달: 처리(해결) */}
-      {openResolve && (
-        <ReasonModal
-          title={`토론 #${openResolve.discussionContentId} 신고 처리`}
-          confirmText="처리하기"
-          placeholder="처리 사유를 입력하세요"
-          onClose={() => setOpenResolve(null)}
-          onConfirm={async (reason) => {
-            try {
-              await apiResolveDiscussion(openResolve.discussionContentId, reason);
-              await refetchList();
-            } catch (e: any) {
-              alert(`처리 중 오류가 발생했습니다: ${e?.message ?? "Unknown"}`);
-            } finally {
-              setOpenResolve(null);
-            }
+      {/* 모달: 처리(내용 확인/수정/삭제) */}
+      {openEditTargetId !== null && (
+        <EditDiscussionModal
+          discussionContentId={openEditTargetId}
+          onClose={() => setOpenEditTargetId(null)}
+          onChanged={async () => {
+            await refetchList();
           }}
         />
       )}

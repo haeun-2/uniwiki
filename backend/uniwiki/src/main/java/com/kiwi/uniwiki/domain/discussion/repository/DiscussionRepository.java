@@ -52,7 +52,7 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Integer>
     Optional<Discussion> findWithContentsById(@Param("id") Integer id);
 
     //종료가 안된것만 댓글이 최신에 달린 순으로
-    @EntityGraph( attributePaths = {"code"})
+    @EntityGraph(attributePaths = {"code", "document", "document.university"})
     @Query("SELECT d FROM Discussion d WHERE d.code.id = 1 ORDER BY d.updatedAt ASC")
     Page<Discussion> findAllDiscussion(Pageable pageable);
 

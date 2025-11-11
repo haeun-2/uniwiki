@@ -58,6 +58,10 @@ import AttributePage from './pages/AttributePage'
 // 카테고리
 import CategoryPage from './pages/CategoryPage'
 
+//검색
+import AiSearchPage from './pages/AiSearchPage'
+import SearchResultPage from './pages/SearchResultPage'
+
 /** 🔁 레거시 경로 호환:
  *   /univ/:univName/docs/:documentTitle → /docs/:documentTitle 로 리다이렉트
  *   (한글 타이틀 포함, 안전하게 encodeURIComponent 적용)
@@ -81,6 +85,8 @@ const router = createBrowserRouter([
       { path: 'signup', element: <SignupPage /> },
       { path: 'signup/complete', element: <SignupCompletePage /> },
       { path: 'profile', element: <ProfilePage /> },
+       { path: 'ai-search', element: <AiSearchPage /> },
+       { path: 'search', element: <SearchResultPage /> },
     ],
   },
 

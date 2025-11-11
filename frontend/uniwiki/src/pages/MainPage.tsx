@@ -112,7 +112,7 @@ export default function MainPage() {
       try {
         setLoadingRegions(true);
         setRegionError(null);
-        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/regions", { method: "GET" });
+        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/regions", { method: "GET" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: Region[] = await res.json();
         if (mounted) setRegions(data);
@@ -145,8 +145,8 @@ export default function MainPage() {
         setLoadingUniversities(true);
         setUnivError(null);
         const url = selectedRegionId === 0
-          ? `http://k13d104.p.ssafy.io/api/v1/universities`
-          : `http://k13d104.p.ssafy.io/api/v1/universities?region=${selectedRegionId}`;
+          ? `https://k13d104.p.ssafy.io/api/v1/universities`
+          : `https://k13d104.p.ssafy.io/api/v1/universities?region=${selectedRegionId}`;
         const res = await fetch(url, { headers: { accept: "*/*" } });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: University[] = await res.json();
@@ -173,7 +173,7 @@ export default function MainPage() {
       try {
         setLoadingPopular(true);
         setPopularError(null);
-        const res = await fetch("http://k13d104.p.ssafy.io/api/v1/universities/popular", {
+        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities/popular", {
           headers: { accept: "*/*" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -207,7 +207,7 @@ export default function MainPage() {
 
         // 보통은 /universities/{id}가 있을 확률이 높습니다.
         // 없으면 주석의 fallback을 사용하세요.
-        const res = await fetch(`http://k13d104.p.ssafy.io/api/v1/universities/${universityId}`, {
+        const res = await fetch(`https://k13d104.p.ssafy.io/api/v1/universities/${universityId}`, {
           headers: { accept: "*/*" },
         });
 
@@ -218,7 +218,7 @@ export default function MainPage() {
         setMyUnivError(e?.message ?? "내 학교 정보를 불러오지 못했습니다.");
         // 🔁 Fallback (만약 단건 API가 없다면 주석 해제해서 전체 목록에서 찾아도 됩니다)
         // try {
-        //   const all = await fetch("http://k13d104.p.ssafy.io/api/v1/universities", { headers: { accept: "*/*" }});
+        //   const all = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", { headers: { accept: "*/*" }});
         //   const list: University[] = await all.json();
         //   const found = list.find(u => u.universityId === universityId) || null;
         //   if (mounted) setMyUniv(found);
@@ -245,7 +245,7 @@ export default function MainPage() {
           setLoadingFavs(true);
           setFavError(null);
           const res = await fetch(
-            "http://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities",
+            "https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities",
             {
               method: "GET",
               headers: {
@@ -300,7 +300,7 @@ export default function MainPage() {
         setLoadingFavDocs(true);
         setFavDocsError(null);
         const res = await fetch(
-          "http://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents",
+          "https://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents",
           {
             method: "GET",
             headers: {
