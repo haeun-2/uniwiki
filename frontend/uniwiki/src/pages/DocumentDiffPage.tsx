@@ -53,6 +53,18 @@ function getViewerNicknameFromStorage(): string | null {
   } catch {}
   return null;
 }
+/** 차단 판별(403 + 메시지 코드/문구) */
+function looksBanned(status: number, text: string) {
+  if (status === 403 && /USER_BANNED|banned|차단/i.test(text || "")) return true;
+  try {
+    const j = JSON.parse(text || "{}");
+    const code = String(j?.code || j?.error || "").toUpperCase();
+    const msg = String(j?.message || "");
+    if (code.includes("USER_BANNED")) return true;
+    if (/차단/i.test(msg)) return true;
+  } catch {}
+  return false;
+}
 
 /* ===== 타입 ===== */
 type DocumentDto = {
@@ -125,11 +137,11 @@ export default function DocumentDiffPage() {
   const [currEditorId, setCurrEditorId] = useState<string | number | undefined>();
   const [currEditMemo, setCurrEditMemo] = useState<string>("");
 
-  // 플래시 배너 (문서 조회 화면과 동일 스타일)
+  // 플래시 배너(닫기 버튼 + 자동 사라짐)
   const [flashMsg, setFlashMsg] = useState<string | null>(null);
-  const showFlash = (msg: string) => {
+  const showFlash = (msg: string, ms = 3200) => {
     setFlashMsg(msg);
-    window.setTimeout(() => setFlashMsg(null), 3000);
+    window.setTimeout(() => setFlashMsg(null), ms);
   };
 
   // 신고 모달 상태
@@ -144,7 +156,7 @@ export default function DocumentDiffPage() {
   // 상단 버튼
   const [showTop, setShowTop] = useState(false);
   useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 400);
+    const onScroll = () => setShowTop(window.scrollY > 300);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -183,14 +195,12 @@ export default function DocumentDiffPage() {
         if (!r.ok) throw new Error(`diff 조회 실패: ${r.status}`);
         const data: DiffApiResponse = await r.json();
 
-        // 헤더 메타 채우기
         setPrevCreatedAt(data.oldCreatedAt);
         setCurrCreatedAt(data.newCreatedAt);
         setCurrEditor(data.editorNickname);
         setCurrEditorId(data.editorId);
         setCurrEditMemo(data.editMemo ?? "");
 
-        // diffs 파싱
         let list: RawDiffItem[] = [];
         try {
           if (typeof data.diffs === "string") {
@@ -264,7 +274,22 @@ export default function DocumentDiffPage() {
         credentials: "include",
         body: JSON.stringify({ targetId: currEditorId, reason }),
       });
-      if (!res.ok) throw new Error(`사용자 신고 실패 (${res.status})`);
+
+      const txt = await res.clone().text().catch(() => "");
+
+      // ✅ 차단 사용자: 플래시 띄우고 모달 자동 닫기
+      if (looksBanned(res.status, txt)) {
+        setUserReportOpen(false);
+        setUserReportPosting(false);
+        showFlash("차단된 사용자입니다.");
+        return;
+      }
+
+      if (!res.ok) {
+        showFlash(`사용자 신고 실패 (${res.status})`);
+        return;
+      }
+
       setUserReportOpen(false);
       showFlash("사용자 신고가 접수되었습니다.");
     } catch (e: any) {
@@ -301,7 +326,7 @@ export default function DocumentDiffPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
-      {/* 플래시 배너 (문서 조회 화면과 동일) */}
+      {/* 플래시 배너(닫기 버튼 포함) */}
       {flashMsg && (
         <div
           role="status"
@@ -426,7 +451,7 @@ export default function DocumentDiffPage() {
                   ) : (<div className="text-[12px] text-gray-300 italic">—</div>)}
                 </div>
 
-                {/* RIGHT */}
+                {/* RIGHT — 가운데 세로선 표시 */}
                 <div className="px-4 py-3 border-l border-[#B3B3B3]">
                   {R ? (
                     <div className="text-[13px] leading-6 text-gray-900 whitespace-pre-wrap break-words">
@@ -446,11 +471,11 @@ export default function DocumentDiffPage() {
       {showTop && (
         <button
           onClick={scrollTop}
-          className="fixed bottom-8 right-8 z-20 rounded-2xl border-2 border-[#5C5C5C] px-3 py-2 shadow-sm text-sm text-[#5C5C5C] bg-white hover:bg-gray-50"
-          aria-label="상단으로"
+          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
+          aria-label="문서 상단으로 이동"
+          title="문서 상단으로 이동"
         >
-          <ChevronUp className="inline-block mr-1" size={16} />
-          상단으로
+          <ChevronUp className="h-5 w-5" strokeWidth={3} />
         </button>
       )}
 

@@ -70,6 +70,20 @@ async function fetchWithAuth(input: RequestInfo, init: RequestInit = {}) {
 }
 /** ===================================================== */
 
+/** ===================== 차단 유틸(공통) ===================== */
+function looksBanned(status: number, bodyText: string): boolean {
+  if (status === 403 && /USER_BANNED|banned|차단/i.test(bodyText || '')) return true;
+  try {
+    const j = JSON.parse(bodyText || '{}');
+    const code = String(j?.code || j?.error || '').toUpperCase();
+    const msg  = String(j?.message || '');
+    if (code.includes('USER_BANNED')) return true;
+    if (/차단/i.test(msg)) return true;
+  } catch {}
+  return false;
+}
+/** ===================================================== */
+
 /** ===================== 레일 토글 도우미 ===================== */
 // 접힘 상태 저장 키(생성/편집 공유)
 const RAIL_KEY = 'uniwiki.railCollapsed';
@@ -153,13 +167,14 @@ async function getPresignedUrl(): Promise<string> {
     headers: { Accept: 'application/json' },
     credentials: 'include',
   });
-  if (r.status === 401) throw Object.assign(new Error('E401'), { code: 401 });
-  if (r.status === 403) {
-    const msg = await r.text().catch(() => '');
-    throw Object.assign(new Error(`E403:${msg || ''}`), { code: 403 });
+  const txt = await r.clone().text().catch(() => '');
+  if (looksBanned(r.status, txt)) {
+    throw Object.assign(new Error('E_BANNED'), { code: 403, raw: txt });
   }
-  if (!r.ok) throw new Error((await r.text().catch(() => '')) || 'presigned URL 발급 실패');
-  const j = await r.json();
+  if (r.status === 401) throw Object.assign(new Error('E401'), { code: 401 });
+  if (r.status === 403) throw Object.assign(new Error(`E403:${txt || ''}`), { code: 403 });
+  if (!r.ok) throw new Error(txt || 'presigned URL 발급 실패');
+  const j = JSON.parse(txt || '{}');
   if (!j?.presignedUrl) throw new Error('presignedUrl 없음');
   return j.presignedUrl as string;
 }
@@ -233,6 +248,40 @@ export default function DocumentEditPage() {
     agree && isDirty && !busy && !saving &&
     docId !== null && baseVersionNumber !== null && categoryId !== null;
 
+  // ===== 차단 사용자 접근 차단: 마운트 즉시 검사 → 뷰로 리다이렉트 + 플래시 =====
+  const safeViewHref = `/univ/${enc(universityName || '대학교')}/docs/${enc(documentTitle)}`;
+  useEffect(() => {
+    (async () => {
+      const tok = getAccessToken();
+      if (!tok) {
+        navigate('/login', { replace: true, state: { from: location.pathname } });
+        return;
+      }
+      try {
+        const r = await fetch(`${API_BASE}/v1/users/me`, {
+          method: 'GET',
+          headers: authHeaders({ Accept: 'application/json' }),
+          credentials: 'include',
+        });
+        const txt = await r.clone().text().catch(() => '');
+        if (r.status === 401) {
+          navigate('/login', { replace: true, state: { from: location.pathname } });
+          return;
+        }
+        if (looksBanned(r.status, txt)) {
+          navigate(safeViewHref, {
+            replace: true,
+            state: { flash: { msg: '차단된 사용자입니다.' } },
+          });
+          return;
+        }
+      } catch {
+        // 네트워크 오류 시에는 이후 API에서 다시 걸러짐
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Ctrl/Cmd + S → 저장
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -277,14 +326,23 @@ export default function DocumentEditPage() {
           credentials: 'include',
         });
 
+        const txt = await r.clone().text().catch(() => '');
+
         if (r.status === 401) {
           navigate('/login', { replace: true, state: { from: location.pathname } });
           return;
         }
+        // 서버가 차단을 403으로 알릴 경우: 즉시 뷰로 되돌리며 플래시
+        if (looksBanned(r.status, txt)) {
+          navigate(safeViewHref, {
+            replace: true,
+            state: { flash: { msg: '차단된 사용자입니다.' } },
+          });
+          return;
+        }
         if (r.status === 403) {
-          const msg = await r.text().catch(() => '');
           setStatus('error');
-          setApiError(msg || '편집 권한이 없습니다.');
+          setApiError(txt || '편집 권한이 없습니다.');
           return;
         }
         if (r.status === 404) {
@@ -295,7 +353,8 @@ export default function DocumentEditPage() {
         }
         if (!r.ok) throw new Error('문서를 불러오는 중 오류가 발생했습니다.');
 
-        const data: DocumentDto = await r.json();
+        // JSON은 이미 clone했으므로 다시 파싱
+        const data: DocumentDto = JSON.parse(txt || '{}');
         setValue(data.documentContent || '');
         setDocId(data.documentId);
         setBaseVersionNumber(data.versionNumber);
@@ -316,6 +375,7 @@ export default function DocumentEditPage() {
       }
     })();
     return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentTitle]);
 
   /* ---------- 레일 토글 적용/복원 ---------- */
@@ -326,11 +386,10 @@ export default function DocumentEditPage() {
       restoreLayout();
       SNAPSHOT = {};
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [railCollapsed]);
+
   useEffect(() => {
     saveRailCollapsed(railCollapsed);
-    if (railCollapsed) collapseLayout(); else restoreLayout();
   }, [railCollapsed]);
 
   /* ---------- 붙여넣기/드롭 업로드 ---------- */
@@ -349,6 +408,13 @@ export default function DocumentEditPage() {
       setValue((prev) => (appendAtEnd ? `${prev.trimEnd()}\n\n${md}\n` : `${md}\n${prev}`));
     } catch (e: any) {
       const msg = String(e?.message || '');
+      if (msg === 'E_BANNED') {
+        navigate(safeViewHref, {
+          replace: true,
+          state: { flash: { msg: '차단된 사용자입니다.' } },
+        });
+        return;
+      }
       if (msg.startsWith('E401')) {
         navigate('/login', { replace: true, state: { from: location.pathname } });
         return;
@@ -383,6 +449,13 @@ export default function DocumentEditPage() {
           api.replaceSelection(`![${file!.name}](${url} "${file!.name}")`);
         } catch (e: any) {
           const msg = String(e?.message || '');
+          if (msg === 'E_BANNED') {
+            navigate(safeViewHref, {
+              replace: true,
+              state: { flash: { msg: '차단된 사용자입니다.' } },
+            });
+            return;
+          }
           if (msg.startsWith('E401')) {
             navigate('/login', { replace: true, state: { from: location.pathname } });
             return;
@@ -431,17 +504,26 @@ export default function DocumentEditPage() {
         body: JSON.stringify(body),
       });
 
+      const txt = await res.clone().text().catch(() => '');
+
       if (res.status === 401) {
         navigate('/login', { replace: true, state: { from: location.pathname } });
         return;
       }
+      // 저장 시 차단
+      if (looksBanned(res.status, txt)) {
+        navigate(safeViewHref, {
+          replace: true,
+          state: { flash: { msg: '차단된 사용자입니다.' } },
+        });
+        return;
+      }
       if (res.status === 403) {
-        const msg = await res.text().catch(() => '');
-        alert(msg || '편집 권한이 없습니다.');
+        alert(txt || '편집 권한이 없습니다.');
         return;
       }
       if (!res.ok) {
-        const t = await res.text().catch(() => '');
+        const t = txt;
         throw new Error(t || '문서 저장 실패');
       }
 

@@ -91,7 +91,11 @@ export default function DocumentVersionViewPage() {
         setLatestVersion(baseData.versionNumber ?? null);
 
         const verUrl = `${API_BASE}/v1/documents/${baseData.documentId}/versions/${versionNumber}`;
-        const verRes = await fetch(verUrl, { method: 'POST', headers: authHeaders({ Accept: 'application/json' }) });
+        // ✅ GET으로 변경
+        const verRes = await fetch(verUrl, {
+          method: 'GET',
+          headers: authHeaders({ Accept: 'application/json' }),
+        });
         if (aborted) return;
         if (verRes.status === 404) throw new Error('존재하지 않는 버전입니다.');
         if (!verRes.ok) throw new Error(`버전 조회 실패(${verRes.status})`);

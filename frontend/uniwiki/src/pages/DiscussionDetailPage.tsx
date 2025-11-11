@@ -15,6 +15,19 @@ const DEBUG_SSE = (() => {
   }
 })();
 
+/* ===== 공통 유틸: 차단 판별 ===== */
+function looksBanned(status: number, text: string) {
+  if (status === 403 && /USER_BANNED|banned|차단/i.test(text || "")) return true;
+  try {
+    const j = JSON.parse(text || "{}");
+    const code = String(j?.code || j?.error || "").toUpperCase();
+    const msg = String(j?.message || "");
+    if (code.includes("USER_BANNED")) return true;
+    if (/차단/i.test(msg)) return true;
+  } catch {}
+  return false;
+}
+
 // ===== 토큰/유저 =====
 function getAccessToken() {
   try {
@@ -95,7 +108,22 @@ export default function DiscussionDetailPage() {
   // UI 상태
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // 통일된 플래시(자동 닫힘 + '닫기' 버튼)
   const [flash, setFlash] = useState("");
+  const flashTimerRef = useRef<number | null>(null);
+  const showFlash = (msg: string, ms = FLASH_AUTO_MS) => {
+    setFlash(msg);
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    if (!/오류|실패|에러/.test(msg)) {
+      flashTimerRef.current = window.setTimeout(() => setFlash(""), ms);
+    }
+  };
+  const closeFlash = () => {
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    setFlash("");
+  };
+  useEffect(() => () => { if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current); }, []);
 
   // 데이터
   const [data, setData] = useState<TalkDetail>({
@@ -108,7 +136,7 @@ export default function DiscussionDetailPage() {
     messages: [],
   });
 
-  // ---- 경로(중요): /univ/:univName/docs/:documentTitle 기준 ----
+  // ---- 경로 ----
   const univNameDec = decodeURIComponent(univName);
   const univSeg = encodeURIComponent(univNameDec);
   const docTitleEnc = encodeURIComponent(data.documentTitle);
@@ -125,40 +153,23 @@ export default function DiscussionDetailPage() {
   useEffect(() => setStatus(data.status), [data.status]);
 
   // ---- 시간 포맷(KST) ----
-  // 서버가 보내는 시간이 "항상 서울 기준(KST)"이라는 전제에 맞춰 수정.
-  // TZ 미표기 값을 KST로 해석한 뒤 표시도 KST로 고정.
   const formatKST = useMemo(() => {
     const parseKST = (iso: string): Date => {
-      const norm = iso.replace(/(\.\d{3})\d+$/, "$1"); // ms 과잉자릿수 정리
+      const norm = iso.replace(/(\.\d{3})\d+$/, "$1");
       const hasTZ = /Z$|[+\-]\d{2}:\d{2}$/.test(norm);
-      if (hasTZ) return new Date(norm); // 이미 TZ 포함이면 그대로
-      // 미표기 → KST 시각으로 들어왔다고 가정, UTC = KST - 9h
-      const m = norm.match(
-        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(\.\d+)?$/
-      );
-      if (!m) return new Date(norm + "Z"); // 파싱 실패 시 안전폴백
+      if (hasTZ) return new Date(norm);
+      const m = norm.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(\.\d+)?$/);
+      if (!m) return new Date(norm + "Z");
       const [, y, mo, d, h, mi, s, ms] = m;
       const sec = s ? +s : 0;
       const milli = ms ? Math.round(parseFloat(ms) * 1000) : 0;
       return new Date(Date.UTC(+y, +mo - 1, +d, +h - 9, +mi, sec, milli));
     };
     return (iso: string) =>
-      parseKST(iso).toLocaleString("sv-SE", {
-        timeZone: "Asia/Seoul",
-        hour12: false,
-      }); // YYYY-MM-DD HH:mm:ss
+      parseKST(iso).toLocaleString("sv-SE", { timeZone: "Asia/Seoul", hour12: false });
   }, []);
 
-  // 플래시 자동 닫힘(오류/실패/에러는 고정)
-  useEffect(() => {
-    if (!flash) return;
-    const isSticky = /오류|실패|에러/.test(flash);
-    if (isSticky) return;
-    const t = setTimeout(() => setFlash(""), FLASH_AUTO_MS);
-    return () => clearTimeout(t);
-  }, [flash]);
-
-   // ===== 댓글 DOM 참조 & 하이라이트 대상 파싱 =====
+  // ===== 댓글 DOM 참조 & 하이라이트 대상 파싱 =====
   const panelRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const [blinkId, setBlinkId] = useState<string | null>(null);
@@ -178,18 +189,16 @@ export default function DiscussionDetailPage() {
     return null;
   }
 
-  // 대상 요소가 container 뷰포트 안에 충분히 들어오면 resolve
   function waitUntilVisible(
     el: HTMLElement,
     container: HTMLElement | Window,
-    ratio = 0.8,            // 80% 이상 보일 때
-    timeoutMs = 2000        // 최대 대기시간
+    ratio = 0.8,
+    timeoutMs = 2000
   ): Promise<void> {
     return new Promise((resolve) => {
       let done = false;
       const finish = () => { if (!done) { done = true; resolve(); } };
 
-      // 1) IntersectionObserver 지원 시: 정확/가볍게
       if ("IntersectionObserver" in window && container instanceof HTMLElement) {
         const io = new IntersectionObserver(
           (entries) => {
@@ -199,14 +208,13 @@ export default function DiscussionDetailPage() {
               finish();
             }
           },
-          { root: container, threshold: Array.from({ length: 20 }, (_, i) => (i + 1) / 20) } // 0.05~1.0
+          { root: container, threshold: Array.from({ length: 20 }, (_, i) => (i + 1) / 20) }
         );
         io.observe(el);
         setTimeout(() => { io.disconnect(); finish(); }, timeoutMs);
         return;
       }
 
-      // 2) 폴백: requestAnimationFrame으로 위치 근접 확인
       const root = container instanceof HTMLElement ? container : document.documentElement;
       const start = performance.now();
       const tick = () => {
@@ -219,8 +227,7 @@ export default function DiscussionDetailPage() {
 
         const r = el.getBoundingClientRect();
         const h = Math.max(r.height, 1);
-        const visible =
-          Math.max(0, Math.min(r.bottom, rootRect.bottom) - Math.max(r.top, rootRect.top)) / h;
+        const visible = Math.max(0, Math.min(r.bottom, rootRect.bottom) - Math.max(r.top, rootRect.top)) / h;
 
         if (visible >= ratio) return finish();
         requestAnimationFrame(tick);
@@ -233,17 +240,15 @@ export default function DiscussionDetailPage() {
     const panel = panelRef.current;
     if (!panel) {
       targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      // 윈도우 기준 가시화 감지
       return waitUntilVisible(targetEl, window, 0.8, 2000);
     }
 
     const panelTop = panel.getBoundingClientRect().top;
     const targetTop = targetEl.getBoundingClientRect().top;
     const current = panel.scrollTop;
-    const delta = targetTop - panelTop - 24; // 상단 여유
+    const delta = targetTop - panelTop - 24;
     panel.scrollTo({ top: current + delta, behavior: "smooth" });
 
-    // 패널 기준 가시화 감지
     return waitUntilVisible(targetEl, panel, 0.8, 2000);
   }
 
@@ -274,8 +279,14 @@ export default function DiscussionDetailPage() {
         headers: { Accept: "application/json", ...authHeaders() },
         credentials: "include",
       });
+      const txt = await res.clone().text().catch(() => "");
+      if (looksBanned(res.status, txt)) {
+        showFlash("차단된 사용자입니다.");
+        setLoading(false);
+        return;
+      }
       if (!res.ok) throw new Error(`상세 조회 실패 (${res.status})`);
-      const j = await res.json();
+      const j = JSON.parse(txt || "{}");
 
       const mapped: TalkDetail = {
         id: String(j.discussionId),
@@ -316,7 +327,7 @@ export default function DiscussionDetailPage() {
   const evtSrcRef = useRef<EventSource | null>(null);
   const retryTimerRef = useRef<number | null>(null);
   const retryAttemptRef = useRef(0);
-  const [sseState, setSseState] = useState<0 | 1 | 2>(2); // 0=CONNECTING,1=OPEN,2=CLOSED
+  const [sseState, setSseState] = useState<0 | 1 | 2>(2);
 
   const mapIncoming = (c: any): TalkMessage => ({
     id: String(c.discussionContentId ?? c.id ?? crypto.randomUUID()),
@@ -339,9 +350,7 @@ export default function DiscussionDetailPage() {
       retryTimerRef.current = null;
     }
     if (evtSrcRef.current) {
-      try {
-        evtSrcRef.current.close();
-      } catch {}
+      try { evtSrcRef.current.close(); } catch {}
       evtSrcRef.current = null;
     }
     setSseState(2);
@@ -370,7 +379,6 @@ export default function DiscussionDetailPage() {
       if (DEBUG_SSE) console.debug("[SSE] open");
     });
 
-    // 서버 이벤트명에 맞춰 수신
     es.addEventListener("new-content", (ev: MessageEvent) => {
       try {
         const payload = JSON.parse(ev.data);
@@ -391,26 +399,24 @@ export default function DiscussionDetailPage() {
 
     es.addEventListener("status-change", (ev: MessageEvent) => {
       try {
-        const payload = JSON.parse(ev.data); // {status:"OPEN"|"CLOSED"}
+        const payload = JSON.parse(ev.data);
         const next = (String(payload.status || "").toUpperCase() === "OPEN" ? "open" : "closed") as
           | "open"
           | "closed";
         setStatus(next);
         setData((prev) => ({ ...prev, status: next }));
         if (next === "closed") {
-          setFlash("토론이 종료되었습니다.");
+          showFlash("토론이 종료되었습니다.");
           closeStream();
         } else {
-          setFlash("토론이 다시 열렸습니다.");
+          showFlash("토론이 다시 열렸습니다.");
         }
       } catch {}
     });
 
     es.onerror = () => {
       if (DEBUG_SSE) console.debug("[SSE] error, will retry…");
-      try {
-        es.close();
-      } catch {}
+      try { es.close(); } catch {}
       evtSrcRef.current = null;
       setSseState(2);
 
@@ -423,7 +429,6 @@ export default function DiscussionDetailPage() {
     };
   }
 
-  // 열림 상태일 때만 연결, 페이지 나갈 때/닫힘일 때 해제
   useEffect(() => {
     if (status === "open") openStream();
     else closeStream();
@@ -440,20 +445,25 @@ export default function DiscussionDetailPage() {
   const onCloseDiscussion = async () => {
     if (!isCreator || status !== "open" || closing) return;
     setClosing(true);
-    setFlash("");
+    setErrorMsg("");
     try {
       const res = await fetch(`${API_BASE}/v1/discussions/${id}/close`, {
         method: "PATCH",
         headers: { Accept: "application/json", ...authHeaders() },
         credentials: "include",
       });
+      const txt = await res.clone().text().catch(() => "");
+      if (looksBanned(res.status, txt)) {
+        showFlash("차단된 사용자입니다.");
+        return;
+      }
       if (!res.ok) throw new Error(`토론 종료 실패 (${res.status})`);
       setStatus("closed");
       setData((p) => ({ ...p, status: "closed" }));
-      setFlash("토론이 종료되었습니다.");
+      showFlash("토론이 종료되었습니다.");
       closeStream();
     } catch (e: any) {
-      setFlash(e?.message || "토론 종료에 실패했습니다.");
+      showFlash(e?.message || "토론 종료에 실패했습니다.");
     } finally {
       setClosing(false);
     }
@@ -468,12 +478,11 @@ export default function DiscussionDetailPage() {
     if (!body || status === "closed" || posting) return;
 
     if (!getAccessToken()) {
-      setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+      showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
       return;
     }
 
     setPosting(true);
-    setFlash("");
     try {
       const res = await fetch(`${API_BASE}/v1/discussions/${id}/contents`, {
         method: "POST",
@@ -486,29 +495,35 @@ export default function DiscussionDetailPage() {
         body: JSON.stringify({ discussionContent: body }),
       });
 
+      const txt = await res.clone().text().catch(() => "");
+
       if (res.status === 401) {
-        setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        return;
+      }
+      if (looksBanned(res.status, txt)) {
+        showFlash("차단된 사용자입니다.");
         return;
       }
       if (res.status === 403) {
-        setFlash("해당 학교 소속 학생만 의견을 작성할 수 있습니다.");
+        showFlash("해당 학교 소속 학생만 의견을 작성할 수 있습니다.");
         return;
       }
       if (!res.ok) {
-        setFlash(`의견 생성 실패 (${res.status})`);
+        showFlash(`의견 생성 실패 (${res.status})`);
         return;
       }
 
       setInput("");
-      setFlash("의견이 등록되었습니다.");
+      showFlash("의견이 등록되었습니다.");
     } catch {
-      setFlash("네트워크 오류로 의견을 등록하지 못했습니다.");
+      showFlash("네트워크 오류로 의견을 등록하지 못했습니다.");
     } finally {
       setPosting(false);
     }
   };
 
-  // ====== 콘텐츠 신고(본문) 모달 상태 ======
+  // ====== 콘텐츠 신고 모달 상태 ======
   const [reportOpen, setReportOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<TalkMessage | null>(null);
   const [reportReason, setReportReason] = useState("");
@@ -532,7 +547,7 @@ export default function DiscussionDetailPage() {
   // 본문 클릭 → 콘텐츠 신고
   const openReport = (m: TalkMessage) => {
     if (isMineBy(m)) {
-      setFlash("내가 작성한 내용은 신고할 수 없습니다.");
+      showFlash("내가 작성한 내용은 신고할 수 없습니다.");
       return;
     }
     setReportTarget(m);
@@ -544,12 +559,12 @@ export default function DiscussionDetailPage() {
     setReportOpen(false);
   };
 
-  // ✅ 토론 내용 신고: POST /v1/reports/discussion-contents { targetId, reason }
+  // ✅ 토론 내용 신고
   const submitReport = async () => {
     if (!reportTarget) return;
 
     if (isMineBy(reportTarget)) {
-      setFlash("내가 작성한 내용은 신고할 수 없습니다.");
+      showFlash("내가 작성한 내용은 신고할 수 없습니다.");
       setReportOpen(false);
       return;
     }
@@ -558,7 +573,6 @@ export default function DiscussionDetailPage() {
     if (!reason) return;
 
     setReportPosting(true);
-    setFlash("");
     try {
       const res = await fetch(`${API_BASE}/v1/reports/discussion-contents`, {
         method: "POST",
@@ -571,28 +585,34 @@ export default function DiscussionDetailPage() {
         body: JSON.stringify({ targetId: reportTarget.id, reason }),
       });
 
+      const txt = await res.clone().text().catch(() => "");
+
       if (res.status === 401) {
-        setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        return;
+      }
+      if (looksBanned(res.status, txt)) {
+        // ✅ 차단 시: 플래시 후 모달 자동 닫기
+        showFlash("차단된 사용자입니다.");
+        setReportOpen(false);
+        setReportPosting(false);
         return;
       }
       if (res.status === 403) {
-        setFlash("신고 권한이 없습니다.");
+        showFlash("신고 권한이 없습니다.");
         return;
       }
       if (!res.ok) {
         let msg = `신고 실패 (${res.status})`;
-        try {
-          const txt = await res.text();
-          if (txt) msg = `${msg} — ${txt.substring(0, 200)}`;
-        } catch {}
-        setFlash(msg);
+        if (txt) msg = `${msg} — ${txt.substring(0, 200)}`;
+        showFlash(msg);
         return;
       }
 
-      setFlash("신고가 접수되었습니다.");
+      showFlash("신고가 접수되었습니다.");
       setReportOpen(false);
     } catch (e: any) {
-      setFlash(e?.message || "네트워크 오류로 신고하지 못했습니다.");
+      showFlash(e?.message || "네트워크 오류로 신고하지 못했습니다.");
     } finally {
       setReportPosting(false);
     }
@@ -601,11 +621,11 @@ export default function DiscussionDetailPage() {
   // 작성자 이름 클릭 → 사용자 신고
   const openUserReport = (m: TalkMessage) => {
     if (isMineBy(m)) {
-      setFlash("본인은 신고할 수 없습니다.");
+      showFlash("본인은 신고할 수 없습니다.");
       return;
     }
     if (m.writerId == null || m.writerId === "") {
-      setFlash("이 사용자의 ID를 알 수 없어 신고할 수 없습니다.");
+      showFlash("이 사용자의 ID를 알 수 없어 신고할 수 없습니다.");
       return;
     }
     setUserReportTarget({ id: m.writerId, nickname: m.author });
@@ -617,18 +637,18 @@ export default function DiscussionDetailPage() {
     setUserReportOpen(false);
   };
 
-  // ✅ 사용자 신고: POST /v1/reports/users { targetId, reason }
+  // ✅ 사용자 신고
   const submitUserReport = async () => {
     if (!userReportTarget) return;
 
     const targetId = userReportTarget.id;
     if (targetId == null || targetId === "") {
-      setFlash("이 사용자의 ID를 알 수 없어 신고할 수 없습니다.");
+      showFlash("이 사용자의 ID를 알 수 없어 신고할 수 없습니다.");
       setUserReportOpen(false);
       return;
     }
     if (isMineBy({ writerId: targetId, author: userReportTarget.nickname })) {
-      setFlash("본인은 신고할 수 없습니다.");
+      showFlash("본인은 신고할 수 없습니다.");
       setUserReportOpen(false);
       return;
     }
@@ -636,7 +656,6 @@ export default function DiscussionDetailPage() {
     if (!reason) return;
 
     setUserReportPosting(true);
-    setFlash("");
     try {
       const res = await fetch(`${API_BASE}/v1/reports/users`, {
         method: "POST",
@@ -648,11 +667,29 @@ export default function DiscussionDetailPage() {
         credentials: "include",
         body: JSON.stringify({ targetId, reason }),
       });
-      if (!res.ok) throw new Error(`사용자 신고 실패 (${res.status})`);
-      setFlash("사용자 신고가 접수되었습니다.");
+
+      const txt = await res.clone().text().catch(() => "");
+
+      if (res.status === 401) {
+        showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        return;
+      }
+      if (looksBanned(res.status, txt)) {
+        // ✅ 차단 시: 플래시 후 모달 자동 닫기
+        showFlash("차단된 사용자입니다.");
+        setUserReportOpen(false);
+        setUserReportPosting(false);
+        return;
+      }
+      if (!res.ok) {
+        showFlash(`사용자 신고 실패 (${res.status})`);
+        return;
+      }
+
+      showFlash("사용자 신고가 접수되었습니다.");
       setUserReportOpen(false);
     } catch (e: any) {
-      setFlash(e?.message || "사용자 신고에 실패했습니다.");
+      showFlash(e?.message || "사용자 신고에 실패했습니다.");
     } finally {
       setUserReportPosting(false);
     }
@@ -664,37 +701,32 @@ export default function DiscussionDetailPage() {
     const targetId = getTargetContentId();
     if (!targetId) return;
 
-    // 메시지에서 id 또는 no와 매칭
     const targetMsg = data.messages.find(
       (m) => String(m.id) === String(targetId) || String(m.no) === String(targetId)
     );
     if (!targetMsg) return;
 
-    // 참조된 DOM 찾기
     const el = messageRefs.current.get(String(targetMsg.id));
     if (!el) return;
 
-  let cancelled = false;
-  let timer: number | null = null;
+    let cancelled = false;
+    let timer: number | null = null;
 
-  (async () => {
-    // 스크롤 → 보일 때까지 대기
-    await scrollMessageIntoPanel(el);
-    if (cancelled) return;
+    (async () => {
+      await scrollMessageIntoPanel(el);
+      if (cancelled) return;
+      setBlinkId(String(targetMsg.id));
+      timer = window.setTimeout(() => {
+        setBlinkId(null);
+      }, 700);
+    })();
 
-    // 여기서부터 깜빡임 시작
-    setBlinkId(String(targetMsg.id));
-    timer = window.setTimeout(() => {
-      setBlinkId(null);
-    }, 700); // 필요 시 1000~1200ms로 늘리세요
-  })();
-
-  return () => {
-    cancelled = true;
-    if (timer) window.clearTimeout(timer);
-  };
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [data.messages]);
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.messages]);
 
   // 상태 네모
   const StatusRect = (
@@ -722,15 +754,16 @@ export default function DiscussionDetailPage() {
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 헤더 + 액션바 + 패널 */}
           <section className="rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
-            {/* 배너 */}
-            {errorMsg && (
-              <div className="mb-4 rounded-xl bg-[#2C80A0] text-white px-4 py-3 text-[16px]">
-                {errorMsg}
-              </div>
-            )}
-            {flash && !errorMsg && (
-              <div className="mb-4 rounded-xl bg-[#2C80A0] text-white px-4 py-3 text-[16px]">
-                {flash}
+            {/* 통일된 플래시 배너 (닫기 버튼 + 자동 사라짐) */}
+            {(errorMsg || flash) && (
+              <div
+                role="status"
+                className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
+              >
+                <span className="text-[16px]">{errorMsg || flash}</span>
+                <button onClick={closeFlash} className="hover:opacity-80">
+                  닫기
+                </button>
               </div>
             )}
 
@@ -795,59 +828,60 @@ export default function DiscussionDetailPage() {
                     {data.messages.map((m) => {
                       const isBlink = blinkId === String(m.id);
                       return (
-                      <li
-                        key={m.id}
-                        ref={(el) => {
-                          const map = messageRefs.current;
-                          if (el) map.set(String(m.id), el);
-                          else map.delete(String(m.id));
-                        }}
-                        className={`rounded-lg border border-[#B3B3B3] ${isBlink ? "ring-2 ring-orange-300" : ""
-                        }`}
-                      >
-                        <div
-                          className={
-                            "flex items-center justify-between rounded-t-lg px-3 py-2 text-sm " +
-                            (m.isCreator
-                              ? "bg-[color:var(--uniwikicolor,#2c80a0)] text-white"
-                              : "bg-gray-200 text-gray-700")
-                          }
-                        >
-                          <div className="font-semibold flex items-center gap-2">
-                            <span>#{m.no}</span>
-                            {/* 작성자 이름 클릭 → 사용자 신고 */}
-                            <button
-                              type="button"
-                              onClick={() => openUserReport(m)}
-                              className="underline-offset-2 hover:underline focus:underline outline-none"
-                              title="작성자 신고하기"
-                              aria-label={`${m.author} 사용자 신고`}
-                            >
-                              {m.author}
-                            </button>
-                          </div>
-                          <div className="opacity-80">{formatKST(m.createdAt)}</div>
-                        </div>
-
-                        {/* 본문 클릭 -> 콘텐츠 신고 */}
-                        <div
-                          className="whitespace-pre-wrap rounded-b-lg bg-white px-3 py-3 text-gray-800 cursor-pointer"
-                          style={isBlink ? { animation: "flashOnce 0.7s ease-in-out 1", backgroundColor: "#FFEDD5" } : undefined}
-                          onClick={() => openReport(m)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              openReport(m);
-                            }
+                        <li
+                          key={m.id}
+                          ref={(el) => {
+                            const map = messageRefs.current;
+                            if (el) map.set(String(m.id), el);
+                            else map.delete(String(m.id));
                           }}
-                          title="클릭하여 콘텐츠 신고"
+                          className={`rounded-lg border border-[#B3B3B3] ${isBlink ? "ring-2 ring-orange-300" : ""}`}
                         >
-                          {m.body}
-                        </div>
-                      </li>
-                      )
+                          <div
+                            className={
+                              "flex items-center justify-between rounded-t-lg px-3 py-2 text-sm " +
+                              (m.isCreator
+                                ? "bg-[color:var(--uniwikicolor,#2c80a0)] text-white"
+                                : "bg-gray-200 text-gray-700")
+                            }
+                          >
+                            <div className="font-semibold flex items-center gap-2">
+                              <span>#{m.no}</span>
+                              <button
+                                type="button"
+                                onClick={() => openUserReport(m)}
+                                className="underline-offset-2 hover:underline focus:underline outline-none"
+                                title="작성자 신고하기"
+                                aria-label={`${m.author} 사용자 신고`}
+                              >
+                                {m.author}
+                              </button>
+                            </div>
+                            <div className="opacity-80">{formatKST(m.createdAt)}</div>
+                          </div>
+
+                          <div
+                            className="whitespace-pre-wrap rounded-b-lg bg-white px-3 py-3 text-gray-800 cursor-pointer"
+                            style={
+                              isBlink
+                                ? { animation: "flashOnce 0.7s ease-in-out 1", backgroundColor: "#FFEDD5" }
+                                : undefined
+                            }
+                            onClick={() => openReport(m)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openReport(m);
+                              }
+                            }}
+                            title="클릭하여 콘텐츠 신고"
+                          >
+                            {m.body}
+                          </div>
+                        </li>
+                      );
                     })}
                   </ul>
                 )}

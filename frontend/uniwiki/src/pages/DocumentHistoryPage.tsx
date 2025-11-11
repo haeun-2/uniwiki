@@ -4,11 +4,11 @@ import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronUp, ChevronRight } from "lucide-react";
 
 type Revision = {
-  id: number;          // = versionNumber
-  delta: number;       // = plusCount + minusCount
-  author: string;      // = editorNickname
-  createdAt: string;   // ISO (서버 기준 시각)
-  summary: string;     // = editMemo
+  id: number;
+  delta: number;
+  author: string;
+  createdAt: string;
+  summary: string;
 };
 
 type VersionsApiItem = {
@@ -49,13 +49,12 @@ function authHeaders() {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-/** timezone 표기 없으면 'Z' 추가해 UTC로 파싱(상대시간 계산용 안전 파서) */
+/** timezone 표기 없으면 'Z' 추가해 UTC로 파싱 */
 function parseServerUtc(iso: string): Date {
   const hasTZ = /Z$|[+-]\d\d:\d\d$/.test(iso);
   return new Date(hasTZ ? iso : iso + "Z");
 }
-
-/** KST(Asia/Seoul)로 YYYY.MM.DD */
+/** KST YYYY.MM.DD */
 function formatYmdKST(date: Date): string {
   const parts = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
@@ -66,13 +65,11 @@ function formatYmdKST(date: Date): string {
   const get = (t: string) => parts.find(p => p.type === t)?.value || "";
   return `${get("year")}.${get("month")}.${get("day")}`;
 }
-
-/** 조회 시각(nowMs) 기준 상대시간. 24h 이내면 초/분/시간 전, 그 밖엔 KST 날짜 */
+/** 상대시간 */
 function fmtDateSmart(isoUtc: string, nowMs: number) {
   const tUtc = parseServerUtc(isoUtc).getTime();
   const diffMs = nowMs - tUtc;
   const DAY = 24 * 60 * 60 * 1000;
-
   if (diffMs >= 0 && diffMs < DAY) {
     const sec = Math.max(1, Math.floor(diffMs / 1000));
     if (sec < 60) return `${sec}초 전`;
@@ -104,6 +101,14 @@ export default function DocumentHistoryPage() {
   // 상대시간용 "조회 시각" 스냅샷
   const [loadedAtMs, setLoadedAtMs] = useState<number>(Date.now());
 
+  // ===== 플래시 배너 =====
+  const [flashMsg, setFlashMsg] = useState<string | null>(null);
+  const showFlash = (msg: string, ms = 3000) => {
+    setFlashMsg(msg);
+    window.clearTimeout((showFlash as any)._t);
+    (showFlash as any)._t = window.setTimeout(() => setFlashMsg(null), ms);
+  };
+
   // 제목 → 문서 정보
   useEffect(() => {
     let aborted = false;
@@ -122,7 +127,9 @@ export default function DocumentHistoryPage() {
         setCategoryName(data.categoryName);
       } catch (e: any) {
         if (aborted) return;
-        setErr(e.message || "문서 조회 중 오류가 발생했습니다.");
+        const msg = e?.message || "문서 조회 중 오류가 발생했습니다.";
+        setErr(msg);
+        showFlash(msg);
         setLoading(false);
       }
     }
@@ -157,7 +164,9 @@ export default function DocumentHistoryPage() {
         setLoading(false);
       } catch (e: any) {
         if (aborted) return;
-        setErr(e.message || "버전 목록 조회 중 오류가 발생했습니다.");
+        const msg = e?.message || "버전 목록 조회 중 오류가 발생했습니다.";
+        setErr(msg);
+        showFlash(msg);
         setLoading(false);
       }
     }
@@ -219,12 +228,12 @@ export default function DocumentHistoryPage() {
   const [rollbackingId, setRollbackingId] = useState<number | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
 
-  // ✅ 특정 버전으로 되돌리기 (POST, 빈 바디)
+  // ✅ 특정 버전으로 되돌리기
   const doRollback = async (versionNumber: number) => {
     if (!docId) return;
     const token = getAccessToken();
     if (!token) {
-      navigate('/login', { replace: true, state: { from: location as any }.pathname });
+      navigate('/login', { replace: true, state: { from: (location as any).pathname } });
       return;
     }
     try {
@@ -234,20 +243,38 @@ export default function DocumentHistoryPage() {
         method: 'POST',
         headers: { Accept: '*/*', ...authHeaders() },
         credentials: 'include',
-        body: '' // Swagger와 동일하게 빈 바디
+        body: ''
       });
 
+      // 401: 로그인 필요
       if (res.status === 401) {
-        navigate('/login', { replace: true, state: { from: location as any }.pathname });
+        navigate('/login', { replace: true, state: { from: (location as any).pathname } });
         return;
       }
-      if (res.status === 403) {
-        alert('해당 학교 소속만 되돌릴 수 있습니다.');
+
+      // 본문을 미리 확보(텍스트 또는 JSON) — 메시지 판단에 사용
+      let bodyText = "";
+      try { bodyText = await res.clone().text(); } catch {}
+
+      // 차단 사용자 판단: 상태코드(423/451) 혹은 본문 키워드
+      const lower = (bodyText || "").toLowerCase();
+      const looksBlocked =
+        res.status === 423 || res.status === 451 ||
+        lower.includes("blocked") || lower.includes("block") || lower.includes("차단");
+
+      if (res.status === 403 && !looksBlocked) {
+        showFlash('해당 학교 소속만 되돌릴 수 있습니다.');
         return;
       }
+
       if (!res.ok) {
-        const t = await res.text().catch(() => '');
-        throw new Error(t || `되돌리기 실패(${res.status})`);
+        if (looksBlocked) {
+          showFlash('차단된 사용자입니다.');
+          return;
+        }
+        // 그 외 상태는 서버 메시지 또는 기본 실패 문구
+        showFlash(bodyText || `되돌리기 실패(${res.status})`);
+        return;
       }
 
       const univ = univName || "대학교";
@@ -256,7 +283,7 @@ export default function DocumentHistoryPage() {
         state: { flash: { msg: `r${versionNumber} 버전으로 되돌렸습니다.` } },
       });
     } catch (e: any) {
-      alert(e?.message || '되돌리기 중 오류가 발생했습니다.');
+      showFlash(e?.message || '되돌리기 중 오류가 발생했습니다.');
     } finally {
       setRollbackingId(null);
       setConfirmId(null);
@@ -281,7 +308,6 @@ export default function DocumentHistoryPage() {
   const safeUniv = univName || "대학교";
   const safeCate = categoryName || "카테고리";
 
-  // ✅ 경로들(모두 univ 하위로 정규화)
   const univHref = `/univ/${enc(safeUniv)}`;
   const cateHref = `/univ/${enc(safeUniv)}/category/${enc(safeCate)}`;
   const docBase = `/univ/${enc(safeUniv)}/docs/${enc(documentTitle)}`;
@@ -289,6 +315,19 @@ export default function DocumentHistoryPage() {
   return (
     <div className="bg-white">
       <div className="mx-auto w-full max-w-6xl px-4 gap-6">
+        {/* 상단 플래시 배너 */}
+        {flashMsg && (
+          <div
+            role="status"
+            className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
+          >
+            <span className="text-[15px]">{flashMsg}</span>
+            <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+              닫기
+            </button>
+          </div>
+        )}
+
         {/* 좌측 본문 */}
         <div className="lg:col-span-8 space-y-4 lg:pr-10 xl:pr-12">
           {/* 브레드크럼 & 제목 */}
@@ -326,7 +365,7 @@ export default function DocumentHistoryPage() {
             </div>
           </div>
 
-          {/* 로딩/에러 */}
+          {/* 로딩/에러 표시 */}
           {loading && <div className="text-sm text-gray-600">버전 목록을 불러오는 중…</div>}
           {err && !loading && <div className="text-sm text-rose-600">오류: {err}</div>}
 
@@ -337,6 +376,7 @@ export default function DocumentHistoryPage() {
                 const asking = confirmId === rev.id;
                 const working = rollbackingId === rev.id;
                 const isLatest = latestId != null && rev.id === latestId;
+                const isVersion1 = rev.id === 1; // r1은 비교 비활성화
 
                 return (
                   <li key={rev.id} id={`rev-${rev.id}`} className="relative block w-full">
@@ -351,13 +391,8 @@ export default function DocumentHistoryPage() {
                             <span className="mr-3 text-gray-700">{fmtDateSmart(rev.createdAt, loadedAtMs)}</span>
 
                             <span className="mr-3 text-gray-400">|</span>
-                            <Link
-                              to={`/user/contributions?user=${encodeURIComponent(rev.author)}`}
-                              className="mr-3 text-gray-700 hover:underline"
-                              title={`${rev.author}의 문서 기여 목록`}
-                            >
-                              {rev.author}
-                            </Link>
+                            {/* 작성자: 링크 제거, 텍스트만 */}
+                            <span className="mr-3 text-gray-700">{rev.author}</span>
 
                             <span className="mr-3 text-gray-400">|</span>
                             <span className={`mr-3 font-semibold ${rev.delta >= 0 ? "text-sky-600" : "text-rose-600"}`}>
@@ -420,19 +455,25 @@ export default function DocumentHistoryPage() {
                           )}
 
                           <span className="mx-2 text-gray-400">|</span>
-                          <Link to={`${docBase}/discussions`} className="text-[#2C80A0] hover:underline">
-                            토론
-                          </Link>
-                          <span className="mx-2 text-gray-400">|</span>
 
-                          {/* 최신본과 비교: diff 페이지로 이동 */}
-                          <Link
-                            to={`${docBase}/versions/${rev.id}/diff${docId ? `?docId=${docId}` : ""}`}
-                            className="text-[#2C80A0] hover:underline"
-                            title="이 버전을 최신본과 비교"
-                          >
-                            비교
-                          </Link>
+                          {/* r1 비교 비활성화 */}
+                          {isVersion1 ? (
+                            <span
+                              className="text-gray-400 cursor-not-allowed"
+                              title="r1은 비교할 수 없습니다."
+                              aria-disabled="true"
+                            >
+                              비교
+                            </span>
+                          ) : (
+                            <Link
+                              to={`${docBase}/versions/${rev.id}/diff${docId ? `?docId=${docId}` : ""}`}
+                              className="text-[#2C80A0] hover:underline"
+                              title="이 버전을 최신본과 비교"
+                            >
+                              비교
+                            </Link>
+                          )}
                         </div>
                       </div>
 
