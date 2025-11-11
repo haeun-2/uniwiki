@@ -12,6 +12,8 @@ import com.kiwi.uniwiki.security.dto.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -103,11 +105,15 @@ public class DiscussionController {
 
     @GetMapping(value = "/{discussionId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "토론 SSE 연결", description = "토론 SSE에 연결합니다. 연결 후 새 토론 내용을 전달받을 수 있습니다.")
-    public ResponseEntity<SseEmitter> connect(
-            @PathVariable Integer discussionId
-    ) {
+    public ResponseEntity<SseEmitter> connect(@PathVariable Integer discussionId) {
         SseEmitter emitter = discussionSseService.connect(discussionId);
-        return ResponseEntity.ok(emitter);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CACHE_CONTROL, "no-cache");
+        headers.add(HttpHeaders.CONNECTION, "keep-alive");
+        headers.add("X-Accel-Buffering", "no"); // Nginx 버퍼링 방지
+
+        return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
     }
 
 }
