@@ -1,7 +1,7 @@
 // src/pages/FavoritePage.tsx
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 /** 문서 즐겨찾기 */
 interface DocumentFavorite {
@@ -21,10 +21,12 @@ interface UniversityFavorite {
 type ViewMode = "documents" | "universities";
 
 export default function FavoritePage() {
+  const location = useLocation() as { state? : {tab?: ViewMode} };
+  const initialView: ViewMode = location.state?.tab ?? "documents";
   const navigate = useNavigate();
 
   // 탭 상태
-  const [view, setView] = useState<ViewMode>("documents");
+  const [view, setView] = useState<ViewMode>(initialView);
 
   // 문서 즐겨찾기
   const [docFavs, setDocFavs] = useState<DocumentFavorite[]>([]);
