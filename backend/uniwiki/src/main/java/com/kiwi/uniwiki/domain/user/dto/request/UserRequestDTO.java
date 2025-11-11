@@ -20,4 +20,9 @@ public class UserRequestDTO {
         private Boolean pushAgree;
     }
 
+    @Getter
+    @AllArgsConstructor
+    public static class NicknameChangeRequest{
+        private String nickname;
+    }
 }
