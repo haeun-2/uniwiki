@@ -396,169 +396,171 @@ export default function MainPage() {
           </section>
         ) : (
           // 로그인: 기존 2열 구성 유지
-          <section className="mb-12 grid gap-8 md:grid-cols-2">
-            {/* --- 왼쪽: 내 학교 + 즐겨찾기한 학교 --- */}
-            <div>
-              <h2 className="mb-4 text-xl font-semibold">내 학교</h2>
+          <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-gray-50 py-6 mb-12">
+            <div className="mx-auto max-w-6xl px-4 grid gap-8 md:grid-cols-2">
+              {/* --- 왼쪽: 내 학교 + 즐겨찾기한 학교 --- */}
+              <div>
+                <h2 className="mb-4 text-xl font-semibold">내 학교</h2>
 
-              {/* universityId === null → 학교 인증 유도 (기존 그대로) */}
-              {accessToken && universityId === null && (
-                <article className="flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-xs text-amber-700">!</div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 text-sm font-medium text-gray-900">내가 다니는 학교</div>
-                    <p className="text-xs text-amber-700">학교 이메일을 인증해주세요</p>
-                  </div>
-                </article>
-              )}
-
-              {/* universityId 존재 → 내 학교 링크 (기존 그대로) */}
-              {accessToken && universityId !== null && (
-                <Link
-                  to={myUniv ? `/univ/${encodeURIComponent(myUniv.universityName)}` : "#"}
-                  state={myUniv ? { universityId: myUniv.universityId } : undefined}
-                  className="block"
-                >
-                  <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xl">
-                      {myUniv?.logoUrl ? (
-                        <img
-                          src={myUniv.logoUrl}
-                          alt={myUniv.universityName}
-                          className="h-12 w-12 rounded-xl object-cover"
-                        />
-                      ) : (
-                        <span role="img" aria-label="school">🏛️</span>
-                      )}
-                    </div>
+                {/* universityId === null → 학교 인증 유도 (기존 그대로) */}
+                {accessToken && universityId === null && (
+                  <article className="flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-xs text-amber-700">!</div>
                     <div className="min-w-0 flex-1">
-                      <div className="mb-1 text-sm font-medium text-gray-900">
-                        {loadingMyUniv ? "불러오는 중..." : (myUniv?.universityName ?? (myUnivError ? "내 학교 정보 오류" : "학교 정보 준비 중"))}
-                      </div>
+                      <div className="mb-1 text-sm font-medium text-gray-900">내가 다니는 학교</div>
+                      <p className="text-xs text-amber-700">학교 이메일을 인증해주세요</p>
                     </div>
                   </article>
-                </Link>
-              )}
+                )}
 
-              {/* 즐겨찾기한 학교 (기존 로딩/에러/데이터 분기 유지, 비로그인 분기는 더 이상 필요 없음) */}
-              <div className="mt-8">
-                <div className="flex items-center justify-between">
-                  <h3 className="mb-4 text-xl font-semibold">즐겨찾기한 학교</h3>
-                  {favUnivs.length > 0 && (
-                    <Link
-                      to={`/user/favorite`}
-                      state={{ tab: "universities" }}
-                      className="text-sm text-gray-400 hover:text-gray-600 hover:underline"
-                    >
-                      더보기
-                    </Link>
-                  )}
-                </div>
-
-                {loadingFavs && (
-                  <div className="space-y-3">
-                    {[1, 2].map((i) => (
-                      <div key={i} className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <div className="h-12 w-12 rounded-xl bg-gray-100 animate-pulse" />
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-1 h-3 w-28 bg-gray-100 animate-pulse" />
-                          <div className="h-3 w-40 bg-gray-100 animate-pulse" />
+                {/* universityId 존재 → 내 학교 링크 (기존 그대로) */}
+                {accessToken && universityId !== null && (
+                  <Link
+                    to={myUniv ? `/univ/${encodeURIComponent(myUniv.universityName)}` : "#"}
+                    state={myUniv ? { universityId: myUniv.universityId } : undefined}
+                    className="block"
+                  >
+                    <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xl">
+                        {myUniv?.logoUrl ? (
+                          <img
+                            src={myUniv.logoUrl}
+                            alt={myUniv.universityName}
+                            className="h-12 w-12 rounded-xl object-cover"
+                          />
+                        ) : (
+                          <span role="img" aria-label="school">🏛️</span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 text-sm font-medium text-gray-900">
+                          {loadingMyUniv ? "불러오는 중..." : (myUniv?.universityName ?? (myUnivError ? "내 학교 정보 오류" : "학교 정보 준비 중"))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                {!loadingFavs && favError && (
-                  <p className="text-xs text-red-500">즐겨찾기한 학교를 불러오지 못했습니다. 새로고침 해주세요.</p>
-                )}
-
-                {!loadingFavs && !favError && (
-                  favUnivs.length === 0 ? (
-                    <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">☆</div>
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 text-sm font-medium text-gray-900">아직 즐겨찾기가 없어요</div>
-                        <p className="truncate text-xs text-gray-500">관심 있는 학교를 즐겨찾기해 보세요.</p>
-                      </div>
                     </article>
-                  ) : (
+                  </Link>
+                )}
+
+                {/* 즐겨찾기한 학교 (기존 로딩/에러/데이터 분기 유지, 비로그인 분기는 더 이상 필요 없음) */}
+                <div className="mt-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="mb-4 text-xl font-semibold">즐겨찾기한 학교</h3>
+                    {favUnivs.length > 0 && (
+                      <Link
+                        to={`/user/favorite`}
+                        state={{ tab: "universities" }}
+                        className="text-sm text-gray-400 hover:text-gray-600 hover:underline"
+                      >
+                        더보기
+                      </Link>
+                    )}
+                  </div>
+
+                  {loadingFavs && (
                     <div className="space-y-3">
-                      {favUnivs.slice(0, 2).map((u) => (
-                        <Link
-                          key={u.universityId}
-                          to={`/univ/${encodeURIComponent(u.universityName)}`}
-                          state={{ universityId: u.universityId }}
-                          className="block"
-                          title={u.universityName}
-                        >
-                          <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xl">
-                              {u.logoUrl ? (
-                                <img src={u.logoUrl} alt={u.universityName} className="h-12 w-12 rounded-xl object-cover" />
-                              ) : (
-                                <span role="img" aria-label="school">🏛️</span>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-1 truncate text-sm font-medium text-gray-900">{u.universityName}</div>
-                            </div>
-                          </article>
-                        </Link>
+                      {[1, 2].map((i) => (
+                        <div key={i} className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                          <div className="h-12 w-12 rounded-xl bg-gray-100 animate-pulse" />
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 h-3 w-28 bg-gray-100 animate-pulse" />
+                            <div className="h-3 w-40 bg-gray-100 animate-pulse" />
+                          </div>
+                        </div>
                       ))}
                     </div>
+                  )}
+
+                  {!loadingFavs && favError && (
+                    <p className="text-xs text-red-500">즐겨찾기한 학교를 불러오지 못했습니다. 새로고침 해주세요.</p>
+                  )}
+
+                  {!loadingFavs && !favError && (
+                    favUnivs.length === 0 ? (
+                      <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-xs text-gray-500">☆</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 text-sm font-medium text-gray-900">아직 즐겨찾기가 없어요</div>
+                          <p className="truncate text-xs text-gray-500">관심 있는 학교를 즐겨찾기해 보세요.</p>
+                        </div>
+                      </article>
+                    ) : (
+                      <div className="space-y-3">
+                        {favUnivs.slice(0, 2).map((u) => (
+                          <Link
+                            key={u.universityId}
+                            to={`/univ/${encodeURIComponent(u.universityName)}`}
+                            state={{ universityId: u.universityId }}
+                            className="block"
+                            title={u.universityName}
+                          >
+                            <article className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-xl text-xl">
+                                {u.logoUrl ? (
+                                  <img src={u.logoUrl} alt={u.universityName} className="h-12 w-12 rounded-xl object-cover" />
+                                ) : (
+                                  <span role="img" aria-label="school">🏛️</span>
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="mb-1 truncate text-sm font-medium text-gray-900">{u.universityName}</div>
+                              </div>
+                            </article>
+                          </Link>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* --- 오른쪽: 즐겨찾기 문서 --- */}
+              <div className="w-[90%] ml-auto">
+                <div className="w-full flex items-center justify-between">
+                  <h2 className="mb-5 text-xl font-semibold">즐겨찾기 문서</h2>
+                  <Link
+                    to={`/user/favorite`}
+                    state={{ tab: "documents" }}
+                    className="text-sm text-gray-400 hover:text-gray-600 hover:underline"
+                  >
+                    더보기
+                  </Link>
+                </div>
+
+                {loadingFavDocs && (
+                  <ul className="space-y-2">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                      <li key={i} className="h-4 w-3/4 bg-gray-100 animate-pulse rounded" />
+                    ))}
+                  </ul>
+                )}
+
+                {!loadingFavDocs && favDocsError && (
+                  <p className="text-xs text-red-500">
+                    즐겨찾기한 문서를 불러오지 못했습니다. 새로고침 해주세요.
+                  </p>
+                )}
+
+                {!loadingFavDocs && !favDocsError && (
+                  favDocs.length === 0 ? (
+                    <p className="text-sm text-gray-500">아직 즐겨찾기한 문서가 없습니다.</p>
+                  ) : (
+                    <ul className="space-y-6">
+                      {favDocs.slice(0, 8).map((d) => (
+                        <li key={d.documentId}>
+                          <Link
+                            to={`/univ/${encodeURIComponent(d.universityName)}/docs/${encodeURIComponent(d.documentTitle)}`}
+                            className="group block text-sm text-gray-800 hover:text-uniwikicolor"
+                            title={`${d.universityName} · ${d.documentTitle}`}
+                          >
+                            <span className="font-medium group-hover:underline">{d.documentTitle}</span>
+                            <span className="text-gray-400 text-xs ml-2">{d.universityName} · {timeAgo(d.documentUpdateAt)}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
                   )
                 )}
               </div>
-            </div>
-
-            {/* --- 오른쪽: 즐겨찾기 문서 --- */}
-            <div>
-              <div className="flex items-center justify-between">
-                <h2 className="mb-5 text-xl font-semibold">즐겨찾기 문서</h2>
-                <Link
-                  to={`/user/favorite`}
-                  state={{ tab: "documents" }}
-                  className="text-sm text-gray-400 hover:text-gray-600 hover:underline"
-                >
-                  더보기
-                </Link>
-              </div>
-
-              {loadingFavDocs && (
-                <ul className="space-y-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <li key={i} className="h-4 w-3/4 bg-gray-100 animate-pulse rounded" />
-                  ))}
-                </ul>
-              )}
-
-              {!loadingFavDocs && favDocsError && (
-                <p className="text-xs text-red-500">
-                  즐겨찾기한 문서를 불러오지 못했습니다. 새로고침 해주세요.
-                </p>
-              )}
-
-              {!loadingFavDocs && !favDocsError && (
-                favDocs.length === 0 ? (
-                  <p className="text-sm text-gray-500">아직 즐겨찾기한 문서가 없습니다.</p>
-                ) : (
-                  <ul className="space-y-6">
-                    {favDocs.slice(0, 8).map((d) => (
-                      <li key={d.documentId}>
-                        <Link
-                          to={`/univ/${encodeURIComponent(d.universityName)}/docs/${encodeURIComponent(d.documentTitle)}`}
-                          className="group block text-sm text-gray-800 hover:text-uniwikicolor"
-                          title={`${d.universityName} · ${d.documentTitle}`}
-                        >
-                          <span className="font-medium group-hover:underline">{d.documentTitle}</span>
-                          <span className="text-gray-400 text-xs ml-2">{d.universityName} · {timeAgo(d.documentUpdateAt)}</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )
-              )}
             </div>
           </section>
         )}

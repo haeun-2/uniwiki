@@ -235,21 +235,23 @@ export default function CategoryPage() {
       {/* 메인 콘텐츠 */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* 왼쪽: 자음 네비게이션 */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-8">
+        <div className="sticky top-8">
+          <div className="w-full lg:w-[80%] lg:mx-auto">
             <button 
               onClick={handleLanguageToggle}
-              className="w-full lg:w-[80%] lg:mx-auto h-12 flex items-center justify-center border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 transition mb-2"
+              className="w-full h-12 flex items-center justify-center border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 transition mb-2"
             >
               {isEnglish ? "한글 변환 / KR" : "영문 변환 / EN"}
             </button>
 
             <div
-              className={`flex flex-col gap-2 pr-2 ${
-                isEnglish
-                  ? "max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-                  : "overflow-visible"
-              }`}
+              className="
+                flex flex-col gap-2 pr-2
+                max-h-[calc(100vh-250px)]
+                overflow-y-auto
+                scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100
+                [scrollbar-gutter:stable]
+              "
             >
               {letters.map((letter) => {
                 const count = groupedDocuments[letter]?.length || 0;
@@ -257,7 +259,7 @@ export default function CategoryPage() {
                   <button
                     key={letter}
                     onClick={() => setSelectedLetter(letter)}
-                    className={`w-full lg:w-[80%] lg:mx-auto h-12 flex items-center justify-between px-4 border rounded transition font-medium flex-shrink-0 ${
+                    className={`w-full h-12 flex items-center justify-between px-4 border rounded transition font-medium flex-shrink-0 ${
                       selectedLetter === letter
                         ? "bg-[rgba(44,128,160,0.1)] border-uniwikicolor text-uniwikicolor hover:bg-[rgba(44,128,160,0.15)]"
                         : "border-gray-300 text-gray-600 hover:bg-gray-50"

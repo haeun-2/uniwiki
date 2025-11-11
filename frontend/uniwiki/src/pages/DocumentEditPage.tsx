@@ -93,12 +93,25 @@ const saveRailCollapsed = (v: boolean) => { try { localStorage.setItem(RAIL_KEY,
 type Snap = { grid?: string; content?: string; aside?: string };
 let SNAPSHOT: Snap = {};
 
+const GRID_OLD = ['lg:grid-cols-3', 'lg:grid-cols-12'];
+const GRID_NEW = 'lg:[grid-template-columns:minmax(0,2.2fr)_minmax(0,0.8fr)]';
+
+function removeKnownGridClasses(el: HTMLElement) {
+  el.classList.remove(...GRID_OLD);
+  el.classList.remove(GRID_NEW);
+  // 혹시 다른 실험값이 있었다면 대비
+  el.classList.forEach(c => {
+    if (c.startsWith('lg:[grid-template-columns')) el.classList.remove(c);
+  });
+}
+
 function getLayoutEls() {
   const grid = document.querySelector('main .grid') as HTMLElement | null;
-  const content = grid?.children?.[0] as HTMLElement | null; // Outlet 래퍼
+  const content = grid?.children?.[0] as HTMLElement | null;
   const aside = grid?.querySelector('aside') as HTMLElement | null;
   return { grid, content, aside };
 }
+
 function takeSnapshotOnce() {
   const { grid, content, aside } = getLayoutEls();
   if (!grid || !content) return;
@@ -106,29 +119,30 @@ function takeSnapshotOnce() {
   if (!SNAPSHOT.content) SNAPSHOT.content = content.className;
   if (!SNAPSHOT.aside && aside) SNAPSHOT.aside = aside.className;
 }
+
 function collapseLayout() {
   const { grid, content, aside } = getLayoutEls();
   if (!grid || !content) return;
   takeSnapshotOnce();
-  grid.classList.remove('lg:grid-cols-3');
+
+  removeKnownGridClasses(grid);
   grid.classList.add('lg:grid-cols-1');
-  content.classList.remove('lg:col-span-2');
-  if (aside) {
-    aside.classList.add('hidden');
-    aside.classList.remove('lg:block');
-  }
+
+  content.classList.remove('lg:col-span-2','lg:col-span-8','lg:col-span-9','lg:col-span-10');
+
+  if (aside) aside.classList.add('hidden');
 }
+
 function restoreLayout() {
   const { grid, content, aside } = getLayoutEls();
   if (!grid || !content) return;
+
   if (SNAPSHOT.grid) grid.className = SNAPSHOT.grid;
   if (SNAPSHOT.content) content.className = SNAPSHOT.content;
+
   if (aside) {
     if (SNAPSHOT.aside) aside.className = SNAPSHOT.aside;
-    else {
-      aside.classList.remove('hidden');
-      if (!aside.classList.contains('lg:block')) aside.classList.add('lg:block');
-    }
+    else aside.classList.remove('hidden');
   }
 }
 /** ===================================================== */
