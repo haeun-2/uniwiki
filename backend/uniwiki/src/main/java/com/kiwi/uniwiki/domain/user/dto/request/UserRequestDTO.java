@@ -14,4 +14,10 @@ public class UserRequestDTO {
         private String confirmPassword;
     }
 
+    @Getter
+    @AllArgsConstructor
+    public static class PushRequest{
+        private Boolean pushAgree;
+    }
+
 }

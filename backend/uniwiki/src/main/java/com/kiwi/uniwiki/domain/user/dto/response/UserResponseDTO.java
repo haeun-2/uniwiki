@@ -1,8 +1,10 @@
 package com.kiwi.uniwiki.domain.user.dto.response;
 
 import com.kiwi.uniwiki.domain.user.entity.User;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
@@ -32,6 +34,14 @@ public class UserResponseDTO {
         private String universityName;
         //문서의 최근 수정시간
         private LocalDateTime documentUpdateAt;
+    }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PushAgree{
+        private Boolean pushAgree;
     }
 
 }
