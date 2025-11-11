@@ -184,8 +184,10 @@ export default function FavoritePage() {
     );
 
   // 학교 이동(라우팅 규칙에 맞게: /univ/:univName 사용 중이라 가정)
-  const goUniversity = (univName: string) =>
-    navigate(`/univ/${encodeURIComponent(univName)}`);
+   const goUniversity = (u: UniversityFavorite) =>
+   navigate(`/univ/${encodeURIComponent(u.universityName)}`, {
+     state: { universityId: u.universityId, isFavorite: true } // ★ 선지식 전달
+   });
 
   // 로딩 상태
   const isLoading =
@@ -312,7 +314,7 @@ className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
                     <img
                       src={u.logoUrl}
                       alt={`${u.universityName} 로고`}
-                      onClick={() => goUniversity(u.universityName)}
+                      onClick={() => goUniversity(u)}
                       className="h-10 w-auto object-contain cursor-pointer"
                     />
                   ) : (
@@ -321,7 +323,7 @@ className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
                 </div>
                 <div className="col-span-10">
                   <button
-                    onClick={() => goUniversity(u.universityName)}
+                    onClick={() =>goUniversity(u)}
                     className="text-left text-sm text-uniwikicolor hover:underline cursor-pointer"
                   >
                     {u.universityName}

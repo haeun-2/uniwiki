@@ -1,3 +1,4 @@
+// src/pages/UnivMainPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -7,7 +8,10 @@ type University = {
   logoUrl: string | null;
 };
 
-type LocationState = { universityId?: number };
+type LocationState = {
+  universityId?: number;
+  isFavorite?: boolean; // ★ 즐겨찾기 선지식 전달
+};
 
 type PopularDoc = {
   documentTitle: string;
@@ -15,23 +19,20 @@ type PopularDoc = {
 };
 
 const norm = (s: string) =>
-  s
-    .normalize("NFKC")
-    .trim()
-    .toLowerCase();
+  s.normalize("NFKC").trim().toLowerCase();
 
 export default function UnivMainPage() {
   const { univName } = useParams<{ univName: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const passedUnivId = (location.state as LocationState | null)?.universityId ?? null;
+  const passed = (location.state as LocationState) ?? {};
+  const initialId = passed.universityId ?? null;
+  const passedFav = typeof passed.isFavorite === "boolean" ? passed.isFavorite : null; // ★
 
   const inputName = useMemo(
     () => (univName ? decodeURIComponent(univName) : ""),
     [univName]
   );
-
-  const initialId = location.state?.universityId ?? null;
 
   const [univId, setUnivId] = useState<number | null>(initialId);
   const [univ, setUniv] = useState<University | null>(null);
@@ -41,10 +42,11 @@ export default function UnivMainPage() {
   const [popularDocs, setPopularDocs] = useState<PopularDoc[]>([]);
   const [popularLoading, setPopularLoading] = useState(false);
 
-  const [isFavorite, setIsFavorite] = useState(false);
+  // null = 아직 판별 전(초기 깜빡임 방지), true/false = 확정
+  const [isFavorite, setIsFavorite] = useState<boolean | null>(passedFav); // ★
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
-  // 4) state가 없을 때: 이름으로 id 폴백 매핑
+  // 이름으로 id 폴백 매핑(직접 이동 등으로 state가 없을 때만)
   useEffect(() => {
     if (univId || !inputName) return;
     let mounted = true;
@@ -63,8 +65,8 @@ export default function UnivMainPage() {
           list.find(u => norm(u.universityName).replace(/\s+/g, "") === t.replace(/\s+/g, ""));
 
         const partial = exact ? null : list.find(u => norm(u.universityName).includes(t));
-
         const found = exact ?? partial ?? null;
+
         if (mounted) {
           if (found) setUnivId(found.universityId);
           else setErr("해당 이름의 대학교를 찾지 못했습니다.");
@@ -73,12 +75,10 @@ export default function UnivMainPage() {
         if (mounted) setErr(e?.message ?? "대학교를 찾지 못했습니다.");
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [inputName, univId]);
 
-  // 5) 확정된 id로 "공식 이름 포함" 정보 확보
+  // 확정된 id로 상세 정보 확보(공식 이름/로고 등)
   useEffect(() => {
     if (!univId) return;
 
@@ -100,23 +100,24 @@ export default function UnivMainPage() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [univId]);
 
-  // 6) 정규 URL로 교체
+  // 정규 URL로 교체(상태 유지: universityId + 현재 즐겨찾기 표시 상태)
   useEffect(() => {
     if (!univ) return;
     const canonical = `/univ/${encodeURIComponent(univ.universityName)}`;
     if (location.pathname !== canonical) {
-      navigate(canonical, { replace: true, state: { universityId: univ.universityId } });
+      navigate(canonical, {
+        replace: true,
+        state: { universityId: univ.universityId, isFavorite }, // ★ 상태 유지
+      });
     }
-  }, [univ, location.pathname, navigate]);
+  }, [univ, location.pathname, navigate, isFavorite]);
 
   const displayName = univ?.universityName || inputName || "대학교";
 
-  // ⭐ 인기 문서 API 호출
+  // 인기 문서
   useEffect(() => {
     if (!univId) return;
     let mounted = true;
@@ -125,10 +126,7 @@ export default function UnivMainPage() {
         setPopularLoading(true);
         const resp = await fetch(
           `https://k13d104.p.ssafy.io/api/v1/documents/popular?universityId=${univId}`,
-          {
-            method: "GET",
-            headers: { Accept: "*/*" },
-          }
+          { method: "GET", headers: { Accept: "*/*" } }
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data: PopularDoc[] = await resp.json();
@@ -140,18 +138,19 @@ export default function UnivMainPage() {
         if (mounted) setPopularLoading(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [univId]);
 
-  // ✅ 즐겨찾기 상태 확인
+  // 즐겨찾기 상태 확인(전달값이 있으면 UI는 그대로, 서버 결과로만 동기화)
   useEffect(() => {
     if (!univId) return;
 
-    const accessToken = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+    const accessToken =
+      localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+
     if (!accessToken) {
-      setIsFavorite(false);
+      // 로그인 안 된 경우: 전달값이 있으면 유지, 없으면 false로
+      setIsFavorite(prev => (prev ?? false));
       return;
     }
 
@@ -162,40 +161,40 @@ export default function UnivMainPage() {
           "https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities",
           {
             method: "GET",
-            headers: {
-              Accept: "*/*",
-              Authorization: `Bearer ${accessToken}`,
-            },
+            headers: { Accept: "*/*", Authorization: `Bearer ${accessToken}` },
           }
         );
 
         if (res.ok) {
           const data: Array<{ universityId: number }> = await res.json();
+          const serverFav = data.some(fav => fav.universityId === univId);
           if (mounted) {
-            setIsFavorite(data.some(fav => fav.universityId === univId));
+            // prev가 null이면 최초 확정, 값이 있었는데 다르면 동기화
+            setIsFavorite(prev => (prev === null ? serverFav : (prev !== serverFav ? serverFav : prev)));
           }
         } else {
-          if (mounted) setIsFavorite(false);
+          if (mounted && isFavorite === null) setIsFavorite(false);
         }
       } catch (error) {
         console.error("즐겨찾기 상태 확인 실패:", error);
-        if (mounted) setIsFavorite(false);
+        if (mounted && isFavorite === null) setIsFavorite(false);
       }
     })();
 
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
+    // isFavorite는 UI 초기값 보존용이라 의존성에 넣지 않음(불필요 재요청 방지)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [univId]);
 
-  // ⭐ 즐겨찾기 토글
+  // 즐겨찾기 토글
   const handleFavoriteToggle = async () => {
     if (!univId) {
       alert("대학교 정보를 불러오는 중입니다.");
       return;
     }
 
-    const accessToken = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+    const accessToken =
+      localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
     if (!accessToken) {
       alert("로그인이 필요합니다.");
       navigate("/login", { replace: false, state: { from: location.pathname } });
@@ -208,37 +207,17 @@ export default function UnivMainPage() {
       if (isFavorite) {
         const res = await fetch(
           `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities/${univId}`,
-          {
-            method: "DELETE",
-            headers: {
-              Accept: "*/*",
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
+          { method: "DELETE", headers: { Accept: "*/*", Authorization: `Bearer ${accessToken}` } }
         );
-
-        if (res.ok || res.status === 204) {
-          setIsFavorite(false);
-        } else {
-          throw new Error("즐겨찾기 삭제 실패");
-        }
+        if (res.ok || res.status === 204) setIsFavorite(false);
+        else throw new Error("즐겨찾기 삭제 실패");
       } else {
         const res = await fetch(
           `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities/${univId}`,
-          {
-            method: "POST",
-            headers: {
-              Accept: "*/*",
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
+          { method: "POST", headers: { Accept: "*/*", Authorization: `Bearer ${accessToken}` } }
         );
-
-        if (res.ok || res.status === 201) {
-          setIsFavorite(true);
-        } else {
-          throw new Error("즐겨찾기 추가 실패");
-        }
+        if (res.ok || res.status === 201) setIsFavorite(true);
+        else throw new Error("즐겨찾기 추가 실패");
       }
     } catch (error) {
       console.error("즐겨찾기 처리 실패:", error);
@@ -255,8 +234,8 @@ export default function UnivMainPage() {
     { icon: "🏛️", title: "학교", path: "학교", desc: "학교 정보 및 연혁" },
     { icon: "🏫", title: "학과", path: "학과", desc: "학과별 커리큘럼 및 진로 정보" },
     { icon: "📘", title: "강의", path: "강의", desc: "강의 요약 및 후기" },
-    { icon: "🏢", title: "시설", path: "시설", desc: "학교 시설 및 위치 정보"},
-    { icon: "🎉", title: "행사", path: "행사", desc: "축제·세미나 등 행사 정보",  },
+    { icon: "🏢", title: "시설", path: "시설", desc: "학교 시설 및 위치 정보" },
+    { icon: "🎉", title: "행사", path: "행사", desc: "축제·세미나 등 행사 정보" },
     { icon: "🏷️", title: "기타", path: "기타", desc: "장학금·교통·등록금 등 기타 문서" },
   ];
 
@@ -265,11 +244,11 @@ export default function UnivMainPage() {
       {/* 상단 - 학교 개요 카드 */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex items-center justify-between gap-6">
         <div className="flex items-center gap-6">
-          {/* ✅ 로고 표시 */}
+          {/* 로고 */}
           <div className="h-20 w-20 flex-shrink-0 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden">
             {univ?.logoUrl ? (
-              <img 
-                src={univ.logoUrl} 
+              <img
+                src={univ.logoUrl}
                 alt={`${displayName} 로고`}
                 className="h-full w-full object-contain"
               />
@@ -277,53 +256,49 @@ export default function UnivMainPage() {
               <span className="text-3xl">🏫</span>
             )}
           </div>
+
           <div className="flex-1 flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
-            {/* ⭐ 즐겨찾기 버튼 */}
+
+            {/* 즐겨찾기 버튼 */}
             <button
               onClick={handleFavoriteToggle}
-              disabled={favoriteLoading}
-              aria-pressed={isFavorite}
+              disabled={favoriteLoading || isFavorite === null} // ★ 판별 전 잠시 비활성
+              aria-pressed={!!isFavorite}
               title={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
               className={`
-                flex h-9 w-9 items-center justify-center rounded-lg border-2 text-xl
+                flex h-8 w-8 items-center justify-center rounded-lg border-2 text-xl
                 transition-all hover:scale-105
-                ${isFavorite 
-                  ? 'bg-[#2C80A0] text-white border-[#2C80A0]' 
-                  : 'bg-white text-gray-400 border-gray-300 hover:border-[#2C80A0] hover:text-[#2C80A0]'
-                }
-                ${favoriteLoading ? 'opacity-60 cursor-wait' : 'cursor-pointer'}
+                ${isFavorite
+                  ? "bg-[#2C80A0] text-white border-[#2C80A0]"
+                  : "bg-white text-gray-400 border-gray-300 hover:border-[#2C80A0] hover:text-[#2C80A0]"}
+                ${(favoriteLoading || isFavorite === null) ? "opacity-60 cursor-wait" : "cursor-pointer"}
               `}
             >
               ★
             </button>
           </div>
         </div>
-        <button 
+
+        <button
           onClick={() => {
             if (!univId) {
               alert("대학교 정보를 불러오는 중입니다.");
               return;
             }
-
             const accessToken = localStorage.getItem("accessToken");
             if (!accessToken) {
               alert("로그인이 필요합니다.");
-              navigate("/login", { 
-                replace: false, 
-                state: { from: location.pathname } 
-              });
+              navigate("/login", { replace: false, state: { from: location.pathname } });
               return;
             }
-
             const userUnivId = localStorage.getItem("universityId");
             if (!userUnivId || parseInt(userUnivId) !== univId) {
               alert("해당 학교 소속만 문서를 생성할 수 있습니다.");
               return;
             }
-
             navigate(`/univ/${encodeURIComponent(univName!)}/new/docs`, {
-              state: { universityId: univId }
+              state: { universityId: univId },
             });
           }}
           className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition flex-shrink-0"
@@ -345,7 +320,7 @@ export default function UnivMainPage() {
                   return;
                 }
                 navigate(`/univ/${encodeURIComponent(univName!)}/category/${cat.path}`, {
-                  state: { universityId: univId }
+                  state: { universityId: univId },
                 });
               }}
               className="group flex flex-col items-center justify-center rounded-xl border border-gray-300 bg-white p-4 text-center hover:shadow-sm transition cursor-pointer"
@@ -358,9 +333,7 @@ export default function UnivMainPage() {
         </div>
       </div>
 
-
       {/* 하단 - 인기 문서 (2열 리스트 형태) */}
-
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">인기 문서</h2>
 
