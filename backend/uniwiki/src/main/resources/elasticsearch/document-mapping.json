@@ -30,16 +30,15 @@
       "type": "short"
     },
     "universityName": {
-      "type": "keyword",
-      "fields": {
-        "ngram": {
-          "type": "text",
-          "analyzer": "ngram_analyzer"
-        }
-      }
+      "type": "text",
+      "analyzer": "univ_keyword_analyzer",
+      "search_analyzer": "standard"
     },
     "categoryName": {
       "type": "keyword"
+    },
+    "versionNumber": {
+      "type": "integer"
     }
   }
 }
