@@ -62,6 +62,12 @@ function getStoredUniId(): number | null {
 
 const enc = (s: string) => encodeURIComponent(s || '');
 
+/** 차단 응답 여부 판별 */
+function isBanned(status: number, bodyText: string) {
+  const t = (bodyText || '').toLowerCase();
+  return status === 423 || status === 451 || t.includes('user_banned') || t.includes('banned') || t.includes('차단');
+}
+
 export default function DocumentViewPage() {
   const navigate = useNavigate();
   const location = useLocation() as any;
@@ -94,8 +100,13 @@ export default function DocumentViewPage() {
 
   const [hasTalk, setHasTalk] = useState(false);
 
-  // 플래시 배너 (닫기만 표시)
+  // 플래시 배너
   const [flashMsg, setFlashMsg] = useState<string | null>(() => location.state?.flash?.msg || null);
+  const showFlash = (msg: string, ms = 3000) => {
+    setFlashMsg(msg);
+    window.clearTimeout((showFlash as any)._t);
+    (showFlash as any)._t = window.setTimeout(() => setFlashMsg(null), ms);
+  };
   useEffect(() => {
     if (location.state?.flash) {
       navigate(location.pathname + location.search, { replace: true });
@@ -190,13 +201,13 @@ export default function DocumentViewPage() {
     return () => controller.abort();
   }, [documentTitle]);
 
-  // ✅ 즐겨찾기 토글 (누락 복구)
+  // 즐겨찾기 토글
   const toggleFavorite = async () => {
     if (!docId || favBusy) return;
 
     const token = getAccessToken();
     if (!token) {
-      alert('로그인이 필요합니다.');
+      showFlash('로그인이 필요합니다.');
       navigate('/login', { replace: true, state: { from: location.pathname } });
       return;
     }
@@ -210,13 +221,21 @@ export default function DocumentViewPage() {
           headers: authHeaders({ Accept: '*/*' }),
           credentials: 'include',
         });
+
         if (delRes.status === 401) {
           navigate('/login', { replace: true, state: { from: location.pathname } });
           return;
         }
+
+        const text = await delRes.clone().text().catch(() => '');
+        if (isBanned(delRes.status, text)) {
+          showFlash('차단된 사용자입니다.');
+          return;
+        }
+
         if (!delRes.ok && delRes.status !== 204) {
-          const t = await delRes.text().catch(() => '');
-          throw new Error(t || '즐겨찾기 해제 실패');
+          showFlash(text || '즐겨찾기 해제 실패');
+          return;
         }
         setFavOn(false);
       } else {
@@ -226,24 +245,32 @@ export default function DocumentViewPage() {
           credentials: 'include',
           body: '',
         });
+
         if (addRes.status === 401) {
           navigate('/login', { replace: true, state: { from: location.pathname } });
           return;
         }
+
+        const text = await addRes.clone().text().catch(() => '');
+        if (isBanned(addRes.status, text)) {
+          showFlash('차단된 사용자입니다.');
+          return;
+        }
+
         if (!addRes.ok && addRes.status !== 201) {
-          const t = await addRes.text().catch(() => '');
-          throw new Error(t || '즐겨찾기 추가 실패');
+          showFlash(text || '즐겨찾기 추가 실패');
+          return;
         }
         setFavOn(true);
       }
     } catch (e: any) {
-      alert(e?.message || '즐겨찾기 처리 중 오류가 발생했습니다.');
+      showFlash(e?.message || '즐겨찾기 처리 중 오류가 발생했습니다.');
     } finally {
       setFavBusy(false);
     }
   };
 
-  // === 편집 사전 권한 체크: 로컬 universityId로만 비교 ===
+  // 편집 사전 권한 체크: 로컬 universityId로만 비교
   function handleEditClick() {
     const token = getAccessToken();
     if (!token) {
@@ -254,7 +281,6 @@ export default function DocumentViewPage() {
     const base = `/univ/${enc(univName)}/docs/${docTitleParam}`;
 
     if (!docUniId) {
-      // 문서 메타가 없으면 서버에 맡김
       navigate(`${base}/edit`);
       return;
     }
@@ -263,8 +289,7 @@ export default function DocumentViewPage() {
     if (myUniId != null && Number(myUniId) === Number(docUniId)) {
       navigate(`${base}/edit`);
     } else {
-      setFlashMsg('소속 대학생만 문서 작업을 할 수 있습니다.');
-      setTimeout(() => setFlashMsg(null), 3000);
+      showFlash('소속 대학생만 문서 작업을 할 수 있습니다.');
     }
   }
 
@@ -282,7 +307,7 @@ export default function DocumentViewPage() {
     []
   );
 
-  // ✅ 링크 전부 univ 하위로 정규화
+  // 링크 정규화
   const univNameSafe = meta?.universityName || '대학교';
   const cateNameSafe = meta?.categoryName || '카테고리';
   const univHref = `/univ/${enc(univNameSafe)}`;
@@ -362,7 +387,7 @@ export default function DocumentViewPage() {
                     ★
                   </button>
 
-                  {/* 편집: 링크 대신 권한 체크 버튼 */}
+                  {/* 편집 */}
                   <button
                     role="tab"
                     onClick={handleEditClick}

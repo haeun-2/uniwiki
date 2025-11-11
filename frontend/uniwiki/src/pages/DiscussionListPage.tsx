@@ -1,5 +1,5 @@
 // src/pages/DiscussionListPage.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
@@ -26,7 +26,7 @@ type DocumentDto = {
 
 const API_BASE = "https://k13d104.p.ssafy.io/api";
 
-// JWT
+/* ===== JWT ===== */
 function getAccessToken() {
   try {
     return localStorage.getItem("accessToken") || "";
@@ -37,6 +37,19 @@ function getAccessToken() {
 function authHeaders() {
   const t = getAccessToken();
   return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+/* ===== 차단 판별 유틸 ===== */
+function looksBanned(status: number, text: string) {
+  if (status === 403 && /USER_BANNED|banned|차단/i.test(text || "")) return true;
+  try {
+    const j = JSON.parse(text || "{}");
+    const code = String(j?.code || j?.error || "").toUpperCase();
+    const msg = String(j?.message || "");
+    if (code.includes("USER_BANNED")) return true;
+    if (/차단/i.test(msg)) return true;
+  } catch {}
+  return false;
 }
 
 export default function DiscussionListPage() {
@@ -51,8 +64,19 @@ export default function DiscussionListPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // 플래시 배너
+  // 플래시 배너(문서 조회 화면과 동일한 디자인 + 자동 사라짐 + 닫기 버튼)
   const [flash, setFlash] = useState<string>("");
+  const flashTimerRef = useRef<number | null>(null);
+  const showFlash = (msg: string, ms = 3000) => {
+    setFlash(msg);
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlash(""), ms);
+  };
+  const closeFlash = () => {
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    setFlash("");
+  };
+  useEffect(() => () => { if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current); }, []);
 
   // 새 토론 입력
   const [subject, setSubject] = useState("");
@@ -75,8 +99,13 @@ export default function DiscussionListPage() {
       headers: { Accept: "application/json", ...authHeaders() },
       credentials: "include",
     });
+    const txt = await res.clone().text().catch(() => "");
     if (res.status === 401) {
       navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      return null;
+    }
+    if (looksBanned(res.status, txt)) {
+      showFlash("차단된 사용자입니다.");
       return null;
     }
     if (!res.ok) throw new Error(`문서 조회 실패 (${res.status})`);
@@ -91,14 +120,18 @@ export default function DiscussionListPage() {
         credentials: "include",
       }
     );
+    const txt = await res.clone().text().catch(() => "");
     if (res.status === 401) {
       navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      return;
+    }
+    if (looksBanned(res.status, txt)) {
+      showFlash("차단된 사용자입니다.");
       return;
     }
     if (!res.ok) throw new Error(`토론 목록 실패 (${res.status})`);
     const page = await res.json();
 
-    // 서버 최신순이더라도 화면은 오래된→새로 생성된 순으로
     const itemsRaw = (page?.content ?? []).map((x: any) => ({
       id: String(x.discussionId),
       title: x.discussionTitle,
@@ -135,16 +168,15 @@ export default function DiscussionListPage() {
     if (!canSubmit || posting) return;
 
     if (!getAccessToken()) {
-      setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+      showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
       return;
     }
     if (!docMeta) {
-      setFlash("문서 정보를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.");
+      showFlash("문서 정보를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.");
       return;
     }
 
     setPosting(true);
-    setFlash("");
     try {
       const res = await fetch(`${API_BASE}/v1/discussions`, {
         method: "POST",
@@ -162,27 +194,32 @@ export default function DiscussionListPage() {
         }),
       });
 
+      const txt = await res.clone().text().catch(() => "");
+
       if (res.status === 401) {
-        setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        return;
+      }
+      if (looksBanned(res.status, txt)) {
+        showFlash("차단된 사용자입니다.");
         return;
       }
       if (res.status === 403) {
-        setFlash("해당 학교 소속 학생만 토론을 생성할 수 있습니다.");
+        showFlash("해당 학교 소속 학생만 토론을 생성할 수 있습니다.");
         return;
       }
       if (!res.ok) {
-        setFlash(`토론 생성 실패 (${res.status})`);
+        showFlash(`토론 생성 실패 (${res.status})`);
         return;
       }
 
-      // 성공: 입력 초기화 + 목록 재조회
       await res.json();
       setSubject("");
       setContent("");
-      setFlash("토론이 생성되었습니다.");
+      showFlash("토론이 생성되었습니다.");
       await fetchDiscussionList(docMeta.documentId);
-    } catch (e: any) {
-      setFlash("네트워크 오류로 토론을 생성하지 못했습니다.");
+    } catch {
+      showFlash("네트워크 오류로 토론을 생성하지 못했습니다.");
     } finally {
       setPosting(false);
     }
@@ -204,10 +241,16 @@ export default function DiscussionListPage() {
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 문서정보 + 토론 목록 */}
           <section className="rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
-            {/* 플래시 배너 */}
+            {/* 플래시 배너 (문서 조회 화면과 동일) */}
             {flash && (
-              <div className="mb-4 rounded-xl bg-[#2C80A0] text-white px-4 py-3 text-[16px]">
-                {flash}
+              <div
+                role="status"
+                className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
+              >
+                <span className="text-[16px]">{flash}</span>
+                <button onClick={closeFlash} className="hover:opacity-80">
+                  닫기
+                </button>
               </div>
             )}
 
