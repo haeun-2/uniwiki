@@ -10,13 +10,31 @@ public interface DocumentSearchRepository extends ElasticsearchRepository<Docume
 
     @Query("""
     {
-        "multi_match": {
-            "query": "?0",
-            "fields": ["title^2", "content", "universityName.ngram", "categoryName"],
-            "type": "best_fields"
-        }
+      "bool": {
+        "must": [
+          {
+            "multi_match": {
+              "query": "?0",
+              "fields": ["title", "content", "universityName"],
+              "type": "most_fields",
+              "operator": "and",
+              "minimum_should_match": "100%"
+            }
+          }
+        ],
+        "should": [
+          {
+            "match": {
+              "universityName": {
+                "query": "?0"
+              }
+            }
+          }
+        ]
+      }
     }
     """)
     Page<DocumentIndex> searchByKeyword(String keyword, Pageable pageable);
+
 
 }

@@ -27,6 +27,10 @@
           "의", "가", "이", "은", "는", "을", "를",
           "에", "에서", "으로", "로", "와", "과", "그리고"
         ]
+      },
+      "univ_synonym_filter": {
+        "type": "synonym",
+        "synonyms_path": "synonyms.txt"
       }
     },
     "analyzer": {
@@ -39,6 +43,10 @@
         "type": "custom",
         "tokenizer": "ngram_tokenizer_custom",
         "filter": ["lowercase", "trim"]
+      },
+      "univ_keyword_analyzer": {
+        "tokenizer": "keyword",
+        "filter": [ "lowercase", "univ_synonym_filter"]
       }
     }
   }
