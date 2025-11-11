@@ -114,27 +114,27 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/me/documents")
-    @Operation(summary = "내가 기여한 문서", description = "내가 기여한 문서 (작성했거나, 수정한) 문서를 조회합니다.")
+    @GetMapping("/me/documents/{userId}")
+    @Operation(summary = "해당 유저가 기여한 문서", description = "해당 유저가 기여한 문서 (작성했거나, 수정한) 문서를 조회합니다.")
     public ResponseEntity<PageResponse<UserActivityResponseDTO.UserDocumentActivityResponse>> getUserByDocuments(
-            @AuthenticationPrincipal CustomUserDetails user,
+        @PathVariable Integer userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         PageResponse<UserActivityResponseDTO.UserDocumentActivityResponse> response =
-                userActivityService.getUserDocumentActivities(user.getUser().getId(), page, size);
+                userActivityService.getUserDocumentActivities(userId, page, size);
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/me/discussions")
-    @Operation(summary = "내가 기여한 토론" , description = "내가 기여한  토론 (생성, 댓글) 문서를 조회합니다.")
+    @GetMapping("/me/discussions/{userId}")
+    @Operation(summary = "해당 유저가 기여한 토론" , description = "해당 유저가 기여한  토론 (생성, 댓글) 문서를 조회합니다.")
     public ResponseEntity<PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse>> getUserByDiscussion(
-            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable Integer userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
 
-        PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse> response = userActivityService.getUserDiscussionActivities(user.getUser().getId(),page,size);
+        PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse> response = userActivityService.getUserDiscussionActivities(userId,page,size);
 
         return ResponseEntity.ok(response);
     }
