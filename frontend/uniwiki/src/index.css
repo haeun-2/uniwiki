@@ -6,6 +6,9 @@
   font-weight: 45 920;
   font-display: swap;
 }
+html {
+  scrollbar-gutter: stable;
+}
 body {
   font-family: 'Pretendard', sans-serif;
 }

@@ -226,7 +226,7 @@ export default function UnivMainPage() {
                   state: { universityId: univId }
                 });
               }}
-              className="group flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center hover:shadow-sm transition cursor-pointer"
+              className="group flex flex-col items-center justify-center rounded-xl border border-gray-300 bg-white p-4 text-center hover:shadow-sm transition cursor-pointer"
             >
               <div className="text-3xl mb-2">{cat.icon}</div>
               <div className="font-medium text-gray-900">{cat.title}</div>
@@ -237,39 +237,38 @@ export default function UnivMainPage() {
         </div>
       </div>
 
-      {/* 하단 - 인기 문서 (UI 동일, 데이터만 API 연동) */}
+      {/* 하단 - 인기 문서 (2열 리스트 형태) */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">인기 문서</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-6">인기 문서</h2>
 
         {popularLoading ? (
           <div className="text-sm text-gray-500">불러오는 중…</div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {popularDocs.length > 0 ? (
-              popularDocs.map((doc, idx) => (
-                <div
-                  key={`${doc.documentTitle}-${idx}`}
-                  className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition cursor-pointer"
-                  onClick={() => {
-                    if (!univName) {
-                      alert("대학교 정보를 불러오는 중입니다.");
-                      return;
-                    }
-                    navigate(`/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(doc.documentTitle)}`, {
-                      state: { universityId: univId }
-                    });
-                  }}
-                >
-                  <h3 className="font-medium text-gray-900 mb-1">{doc.documentTitle}</h3>
-                  <p className="text-sm text-gray-500">
-                    {displayName} · 조회수 {doc.viewCount.toLocaleString()}회
-                  </p>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-gray-500">인기 문서가 없습니다.</div>
-            )}
+        ) : popularDocs.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4">
+            {popularDocs.map((doc, idx) => (
+              <div
+                key={`${doc.documentTitle}-${idx}`}
+                className="py-1 hover:underline hover:text-uniwikicolor cursor-pointer"
+                onClick={() => {
+                  if (!univName) {
+                    alert("대학교 정보를 불러오는 중입니다.");
+                    return;
+                  }
+                  navigate(
+                    `/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(doc.documentTitle)}`,
+                    { state: { universityId: univId } }
+                  );
+                }}
+              >
+                <h3 className="font-medium mb-1 truncate">{doc.documentTitle}</h3>
+                <p className="text-sm text-gray-500">
+                  {displayName} · 조회수 {doc.viewCount.toLocaleString()}회
+                </p>
+              </div>
+            ))}
           </div>
+        ) : (
+          <div className="text-sm text-gray-500">인기 문서가 없습니다.</div>
         )}
       </div>
     </section>

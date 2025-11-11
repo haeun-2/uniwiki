@@ -363,7 +363,7 @@ export default function DocumentViewPage() {
               </h1>
 
               {/* 날짜 + 액션바 */}
-              <div className="mb-5 flex items-center gap-4">
+              <div className="mb-5 flex items-center gap-4 min-w-0">
                 {lastUpdated && status === 'ok' && (
                   <p className="text-[18px] text-gray-800 whitespace-nowrap">
                     최근 수정 시각 : {lastUpdated}
@@ -373,7 +373,7 @@ export default function DocumentViewPage() {
                 <div
                   role="tablist"
                   aria-label="문서 작업 메뉴"
-                  className="grid grid-cols-4 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(280px,40vw,520px)]"
+                  className="grid grid-cols-4 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(280px,40vw,520px)] max-w-full"
                 >
                   <button
                     onClick={toggleFavorite}
