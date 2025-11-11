@@ -1,5 +1,4 @@
 // src/layout/UserLayout.tsx
-
 import React from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import Header from "@/layout/Header";
@@ -17,36 +16,36 @@ export default function UserLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
-      <main className="flex-1 w-full pb-16 pt-8">
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-16">
-            {/* 왼쪽 : 사용자 페이지 콘텐츠  */}
-            <div className="lg:col-span-3">
-              <Outlet />
-            </div>
+      <main className="flex-1 mx-auto w-full max-w-6xl px-4 pb-16 pt-8">
+        <div className="grid grid-cols-1 lg:[grid-template-columns:minmax(0,2.2fr)_minmax(0,0.8fr)] gap-8">
+          {/* 왼쪽(메인 영역) */}
+          <div className="min-w-0">
+            <Outlet />
+          </div>
 
-            {/* 오른쪽 : 사용자 메뉴  */}
-            <aside className="space-y-6">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm">
-                <ul className="space-y-2 text-sm">
-                  {menuItems.map((item) => (
+          {/* 오른쪽(메뉴 박스) */}
+          <aside className="space-y-6 min-w-0">
+            <nav className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <ul className="space-y-2 text-sm text-gray-700">
+                {menuItems.map((item) => {
+                  const active = location.pathname === item.path;
+                  return (
                     <li key={item.path}>
                       <Link
                         to={item.path}
-                        className={`block hover:text-gray-900 ${
-                          location.pathname === item.path
-                            ? "font-medium text-blue-600"
-                            : "text-gray-600"
+                        className={`block truncate hover:underline ${
+                          active ? "font-medium text-uniwikicolor" : "text-gray-700"
                         }`}
+                        title={item.label}
                       >
                         • {item.label}
                       </Link>
                     </li>
-                  ))}
-                </ul>
-              </div>
-            </aside>
-          </div>
+                  );
+                })}
+              </ul>
+            </nav>
+          </aside>
         </div>
       </main>
       <Footer />

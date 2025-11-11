@@ -75,4 +75,6 @@ public class User {
     public void changeIsPushAgree(Boolean isPushAgree){
         this.isPushAgree = isPushAgree;
     }
+
+    public void changeNickname(String nickname) { this.nickname = nickname; }
 }

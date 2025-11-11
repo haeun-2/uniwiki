@@ -48,18 +48,16 @@ export default function FavoritePage() {
   };
 
   // 날짜 포맷 (예: 2025-11-04T06:26:38.850Z → 2025-11-04 15:26)
-  const formatDate = (iso: string) =>
-    new Date(iso)
-      .toLocaleString("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      })
-      .replace(/\. /g, "-")
-      .replace(".", "");
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+  };
 
   // 문서 즐겨찾기 불러오기
   const fetchDocumentFavorites = async () => {
@@ -210,7 +208,7 @@ export default function FavoritePage() {
         <button
           className={`px-4 py-2 text-sm font-medium ${
             view === "documents"
-              ? "bg-yellow-500 text-white"
+              ? "bg-uniwikicolor text-white"
               : "bg-white text-gray-700 hover:bg-gray-50"
           }`}
           onClick={() => setView("documents")}
@@ -221,7 +219,7 @@ export default function FavoritePage() {
         <button
           className={`px-4 py-2 text-sm font-medium ${
             view === "universities"
-              ? "bg-yellow-500 text-white"
+              ? "bg-uniwikicolor text-white"
               : "bg-white text-gray-700 hover:bg-gray-50"
           }`}
           onClick={() => setView("universities")}
@@ -255,14 +253,15 @@ export default function FavoritePage() {
               >
                 <div className="col-span-3">
                   <button
-                    onClick={() => goDocument(f.universityName, f.documentTitle)}
-                    className="text-left text-sm text-yellow-600 hover:underline"
+onClick={() => goDocument(f.universityName, f.documentTitle)}
+className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
+
                   >
                     {f.documentTitle}
                   </button>
                 </div>
                 <div className="col-span-3">
-                  <span className="text-sm text-yellow-600">
+                  <span className="text-sm">
                     {f.universityName}
                   </span>
                 </div>
@@ -272,12 +271,12 @@ export default function FavoritePage() {
                   </span>
                 </div>
                 <div className="col-span-2 flex justify-end">
-                  <button
+                  <span
                     onClick={() => handleDeleteDocument(f.documentId)}
-                    className="rounded bg-red-500 px-4 py-1 text-sm font-medium text-white hover:bg-red-600"
+                    className="text-red-500 hover:underline cursor-pointer"
                   >
                     삭제
-                  </button>
+                  </span>
                 </div>
               </div>
             ))}
@@ -313,7 +312,8 @@ export default function FavoritePage() {
                     <img
                       src={u.logoUrl}
                       alt={`${u.universityName} 로고`}
-                      className="h-10 w-auto object-contain"
+                      onClick={() => goUniversity(u.universityName)}
+                      className="h-10 w-auto object-contain cursor-pointer"
                     />
                   ) : (
                     <div className="h-10 w-10 rounded bg-gray-100" />
@@ -322,7 +322,7 @@ export default function FavoritePage() {
                 <div className="col-span-10">
                   <button
                     onClick={() => goUniversity(u.universityName)}
-                    className="text-left text-sm text-yellow-600 hover:underline"
+                    className="text-left text-sm text-uniwikicolor hover:underline cursor-pointer"
                   >
                     {u.universityName}
                   </button>

@@ -174,5 +174,15 @@ public class UserController {
                 .status(HttpStatus.CREATED)
                 .build();
     }
+
+    @PatchMapping("/me/nickname/change")
+    @Operation(summary = "닉네임 변경" , description = "로그인한 사용자가 닉네임을 변경합니다.")
+    public ResponseEntity<Void> changeNicknmae(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody UserRequestDTO.NicknameChangeRequest request
+    ) {
+        userService.changeNickname(userDetails.getUser(), request);
+        return ResponseEntity.status(HttpStatus.OK).build();
+    }
 }
 

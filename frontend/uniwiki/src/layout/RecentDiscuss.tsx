@@ -103,12 +103,12 @@ export default function RecentDiscuss({ univName: propUnivName }: Props) {
       <ul className="space-y-2 text-sm text-gray-700">
         {items.slice(0, 10).map((d) => (
           <li key={d.discussionId} className="flex flex-col">
-            {/* 문서 상세/토론 상세 라우팅 규칙에 맞춰 Link 교체 */}
             <Link
-              className="truncate hover:underline"
+              className="truncate flex justify-between hover:underline"
               to={`/univ/${encodeURIComponent(effectiveUnivName)}/docs/${encodeURIComponent(d.documentTitle)}/discussions/${d.discussionId}`}
             >
-              {d.discussionTitle}
+              <span>{d.discussionTitle}</span>
+              <span className="text-xs text-gray-400">{d.documentTitle}</span>
             </Link>
           </li>
         ))}

@@ -79,5 +79,17 @@ public class UserService {
         userRepository.save(user);
     }
 
+    /**
+     * 닉네임 변경
+     */
+    @Transactional
+    public void changeNickname(User user, UserRequestDTO.NicknameChangeRequest request){
 
+        if (userRepository.existsByNickname(request.getNickname())) {
+            throw new CustomException(ErrorCode.NICKNAME_ALREADY_EXISTS);
+        }
+
+        user.changeNickname(request.getNickname());
+        userRepository.save(user);
+    }
 }
