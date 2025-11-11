@@ -60,6 +60,9 @@ public class User {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;
 
+    @Column(name ="is_push_agree")
+    private Boolean isPushAgree;
+
     public enum Role {
         USER,
         ADMIN
@@ -67,5 +70,9 @@ public class User {
 
     public void updatePassword(String newPassword) {
         this.password = newPassword;
+    }
+
+    public void changeIsPushAgree(Boolean isPushAgree){
+        this.isPushAgree = isPushAgree;
     }
 }

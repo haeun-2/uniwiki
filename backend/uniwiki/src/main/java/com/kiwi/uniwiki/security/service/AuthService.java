@@ -61,6 +61,7 @@ public class AuthService {
                 .isUniversityVerified(university== null ? false : true)
                 .lastVerifiedAt(LocalDateTime.now())
                 .isDeleted(false)
+                .isPushAgree(request.getIsPushAgree())
                 .build();
 
 

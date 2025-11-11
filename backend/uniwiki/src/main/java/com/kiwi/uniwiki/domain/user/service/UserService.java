@@ -68,7 +68,16 @@ public class UserService {
 
     }
 
+    public UserResponseDTO.PushAgree getUserPushAgree(User user) {
+        return UserResponseDTO.PushAgree.builder()
+                .pushAgree(user.getIsPushAgree())
+                .build();
+    }
 
+    public void changePushAgree(User user, UserRequestDTO.PushRequest request){
+        user.changeIsPushAgree(request.getPushAgree());
+        userRepository.save(user);
+    }
 
 
 }

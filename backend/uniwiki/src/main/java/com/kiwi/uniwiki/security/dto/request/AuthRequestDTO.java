@@ -28,6 +28,7 @@ public class AuthRequestDTO {
         private String email;
         private String nickname;
         private String password;
+        private Boolean isPushAgree;
 
     }
 
