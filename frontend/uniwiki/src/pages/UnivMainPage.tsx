@@ -14,7 +14,6 @@ type PopularDoc = {
   viewCount: number;
 };
 
-// 한글/영문 혼용, 공백, 정규화 대비
 const norm = (s: string) =>
   s
     .normalize("NFKC")
@@ -27,24 +26,23 @@ export default function UnivMainPage() {
   const location = useLocation();
   const passedUnivId = (location.state as LocationState | null)?.universityId ?? null;
 
-  // 1) URL에서 받은 이름(사용자 입력값)
   const inputName = useMemo(
     () => (univName ? decodeURIComponent(univName) : ""),
     [univName]
   );
 
-  // 2) state에서 온 id (MainPage 링크 클릭 시)
   const initialId = location.state?.universityId ?? null;
 
-  // 3) 확정된 id/대학 정보/오류/로딩
   const [univId, setUnivId] = useState<number | null>(initialId);
   const [univ, setUniv] = useState<University | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // 🔥 인기 문서 상태
   const [popularDocs, setPopularDocs] = useState<PopularDoc[]>([]);
   const [popularLoading, setPopularLoading] = useState(false);
+
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   // 4) state가 없을 때: 이름으로 id 폴백 매핑
   useEffect(() => {
@@ -64,7 +62,6 @@ export default function UnivMainPage() {
           list.find(u => norm(u.universityName) === t) ??
           list.find(u => norm(u.universityName).replace(/\s+/g, "") === t.replace(/\s+/g, ""));
 
-        // 부분 포함 허용(원치 않으면 제거)
         const partial = exact ? null : list.find(u => norm(u.universityName).includes(t));
 
         const found = exact ?? partial ?? null;
@@ -90,7 +87,6 @@ export default function UnivMainPage() {
       try {
         setLoading(true);
         setErr(null);
-        // (임시) 목록 재사용. 백엔드에 /universities/:id 가 생기면 교체 권장
         const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
           headers: { accept: "*/*" },
         });
@@ -109,7 +105,7 @@ export default function UnivMainPage() {
     };
   }, [univId]);
 
-  // 6) 정규 URL로 교체: 공식 이름 기준으로 경로 통일
+  // 6) 정규 URL로 교체
   useEffect(() => {
     if (!univ) return;
     const canonical = `/univ/${encodeURIComponent(univ.universityName)}`;
@@ -118,10 +114,9 @@ export default function UnivMainPage() {
     }
   }, [univ, location.pathname, navigate]);
 
-  // 7) 표시는 항상 "공식 이름"
   const displayName = univ?.universityName || inputName || "대학교";
 
-  // ⭐ 인기 문서 API 호출: /api/v1/documents/popular?universityId=...
+  // ⭐ 인기 문서 API 호출
   useEffect(() => {
     if (!univId) return;
     let mounted = true;
@@ -150,6 +145,109 @@ export default function UnivMainPage() {
     };
   }, [univId]);
 
+  // ✅ 즐겨찾기 상태 확인
+  useEffect(() => {
+    if (!univId) return;
+
+    const accessToken = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+    if (!accessToken) {
+      setIsFavorite(false);
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          "https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities",
+          {
+            method: "GET",
+            headers: {
+              Accept: "*/*",
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (res.ok) {
+          const data: Array<{ universityId: number }> = await res.json();
+          if (mounted) {
+            setIsFavorite(data.some(fav => fav.universityId === univId));
+          }
+        } else {
+          if (mounted) setIsFavorite(false);
+        }
+      } catch (error) {
+        console.error("즐겨찾기 상태 확인 실패:", error);
+        if (mounted) setIsFavorite(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [univId]);
+
+  // ⭐ 즐겨찾기 토글
+  const handleFavoriteToggle = async () => {
+    if (!univId) {
+      alert("대학교 정보를 불러오는 중입니다.");
+      return;
+    }
+
+    const accessToken = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+    if (!accessToken) {
+      alert("로그인이 필요합니다.");
+      navigate("/login", { replace: false, state: { from: location.pathname } });
+      return;
+    }
+
+    try {
+      setFavoriteLoading(true);
+
+      if (isFavorite) {
+        const res = await fetch(
+          `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities/${univId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Accept: "*/*",
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (res.ok || res.status === 204) {
+          setIsFavorite(false);
+        } else {
+          throw new Error("즐겨찾기 삭제 실패");
+        }
+      } else {
+        const res = await fetch(
+          `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities/${univId}`,
+          {
+            method: "POST",
+            headers: {
+              Accept: "*/*",
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (res.ok || res.status === 201) {
+          setIsFavorite(true);
+        } else {
+          throw new Error("즐겨찾기 추가 실패");
+        }
+      }
+    } catch (error) {
+      console.error("즐겨찾기 처리 실패:", error);
+      alert("즐겨찾기 처리 중 오류가 발생했습니다.");
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
   if (err) return <div className="p-4 text-xs text-red-500">{err}</div>;
   if (loading && !univ) return <div className="p-4 text-sm text-gray-500">불러오는 중…</div>;
 
@@ -167,12 +265,39 @@ export default function UnivMainPage() {
       {/* 상단 - 학교 개요 카드 */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex items-center justify-between gap-6">
         <div className="flex items-center gap-6">
-          <div className="h-20 w-20 flex-shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">
-            🏫
+          {/* ✅ 로고 표시 */}
+          <div className="h-20 w-20 flex-shrink-0 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden">
+            {univ?.logoUrl ? (
+              <img 
+                src={univ.logoUrl} 
+                alt={`${displayName} 로고`}
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-3xl">🏫</span>
+            )}
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h1>
-             </div>
+          <div className="flex-1 flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+            {/* ⭐ 즐겨찾기 버튼 */}
+            <button
+              onClick={handleFavoriteToggle}
+              disabled={favoriteLoading}
+              aria-pressed={isFavorite}
+              title={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+              className={`
+                flex h-9 w-9 items-center justify-center rounded-lg border-2 text-xl
+                transition-all hover:scale-105
+                ${isFavorite 
+                  ? 'bg-[#2C80A0] text-white border-[#2C80A0]' 
+                  : 'bg-white text-gray-400 border-gray-300 hover:border-[#2C80A0] hover:text-[#2C80A0]'
+                }
+                ${favoriteLoading ? 'opacity-60 cursor-wait' : 'cursor-pointer'}
+              `}
+            >
+              ★
+            </button>
+          </div>
         </div>
         <button 
           onClick={() => {
@@ -181,7 +306,6 @@ export default function UnivMainPage() {
               return;
             }
 
-            // ✅ 로그인 체크
             const accessToken = localStorage.getItem("accessToken");
             if (!accessToken) {
               alert("로그인이 필요합니다.");
@@ -192,14 +316,12 @@ export default function UnivMainPage() {
               return;
             }
 
-            // ✅ 대학교 일치 여부 확인 (universityId가 없거나 다른 경우 모두 포함)
             const userUnivId = localStorage.getItem("universityId");
             if (!userUnivId || parseInt(userUnivId) !== univId) {
               alert("해당 학교 소속만 문서를 생성할 수 있습니다.");
               return;
             }
 
-            // ✅ 모든 체크 통과 → 페이지 이동
             navigate(`/univ/${encodeURIComponent(univName!)}/new/docs`, {
               state: { universityId: univId }
             });
@@ -231,13 +353,12 @@ export default function UnivMainPage() {
               <div className="text-3xl mb-2">{cat.icon}</div>
               <div className="font-medium text-gray-900">{cat.title}</div>
               <p className="text-xs text-gray-500">{cat.desc}</p>
-              
             </div>
           ))}
         </div>
       </div>
 
-      {/* 하단 - 인기 문서 (UI 동일, 데이터만 API 연동) */}
+      {/* 하단 - 인기 문서 */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">인기 문서</h2>
 

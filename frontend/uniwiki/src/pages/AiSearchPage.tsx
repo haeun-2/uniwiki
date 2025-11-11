@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, BookOpen, GraduationCap, Library } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface SearchResult {
   answer: string;
@@ -14,36 +14,77 @@ interface SearchResult {
   }>;
 }
 
+const makeHistoryKey = (sid: string) => `aiChatHistory:${sid}`;
+const makeResultKey  = (sid: string) => `aiChatResult:${sid}`;
+
 export default function AiSearchPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const isChatMode = searchParams.get("mode") === "chat";
+  const sid = searchParams.get("sid") || "";
+  const sidRef = useRef<string>(sid);
+  useEffect(() => { sidRef.current = sid; }, [sid]);
+
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [result, setResult] = useState<SearchResult | null>(null);
-  const [chatHistory, setChatHistory] = useState<Array<{ type: 'user' | 'ai', content: string }>>([]);
 
-  // ✅ 대화 메시지 스크롤 컨테이너 ref
+  // 세션별 초기 로드
+  const [chatHistory, setChatHistory] = useState<Array<{ type: "user" | "ai"; content: string }>>(() => {
+    if (typeof window === "undefined" || !isChatMode || !sid) return [];
+    try {
+      const saved = sessionStorage.getItem(makeHistoryKey(sid));
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [result, setResult] = useState<SearchResult | null>(() => {
+    if (typeof window === "undefined" || !isChatMode || !sid) return null;
+    try {
+      const saved = sessionStorage.getItem(makeResultKey(sid));
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+
+  // 메시지 스크롤
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ 대화 화면일 때만 Footer 숨김 (html에 클래스 토글)
-  useEffect(() => {
-    const root = document.documentElement; // <html>
-    if (chatHistory.length > 0) {
-      root.classList.add("chat-active");
-    } else {
-      root.classList.remove("chat-active");
-    }
-    return () => root.classList.remove("chat-active");
-  }, [chatHistory.length]);
+  // 하단 입력바 textarea ref (자동 높이)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // ✅ 새 메시지/로딩 변화 때 자동으로 맨 아래로 스크롤
+  // Footer 숨김 토글
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isChatMode) root.classList.add("chat-active");
+    else root.classList.remove("chat-active");
+    return () => root.classList.remove("chat-active");
+  }, [isChatMode]);
+
+  // 자동 스크롤
   useEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
-    // 다음 프레임에 스크롤 (콘텐츠 렌더 완료 후)
-    requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
-    });
+    requestAnimationFrame(() => (el.scrollTop = el.scrollHeight));
   }, [chatHistory, isSearching, result]);
+
+  // 세션별 저장
+  useEffect(() => {
+    if (!isChatMode || !sid) return;
+    try {
+      sessionStorage.setItem(makeHistoryKey(sid), JSON.stringify(chatHistory));
+      sessionStorage.setItem(makeResultKey(sid), JSON.stringify(result));
+    } catch {}
+  }, [chatHistory, result, isChatMode, sid]);
+
+  // textarea 자동 높이 (최대 2줄)
+  useEffect(() => {
+    if (!inputRef.current) return;
+    const el = inputRef.current;
+    el.style.height = "auto";
+    // 줄간격이 24px(leading-6) 기준, padding 포함 최대 약 2줄 높이 제한
+    const max = 56; // 약 2줄(24*2) + 상하 padding(8*2) 근사
+    el.style.height = Math.min(el.scrollHeight, max) + "px";
+  }, [query]);
 
   const exampleQuestions = [
     { category: "학과", icon: "🏫", question: "컴퓨터공학과에서 필수로 들어야 하는 전공과목은?" },
@@ -52,11 +93,29 @@ export default function AiSearchPage() {
     { category: "학교", icon: "🏛️", question: "장학금 신청 자격과 절차는 어떻게 되나요?" },
   ];
 
+  const createSid = () => Date.now().toString(36);
+
+  const startNewSession = () => {
+    const newSid = createSid();
+    const next = new URLSearchParams(searchParams);
+    next.set("mode", "chat");
+    next.set("sid", newSid);
+    setSearchParams(next, { replace: false });
+    sidRef.current = newSid;
+
+    setChatHistory([]);
+    setResult(null);
+    return newSid;
+  };
+
   const handleSearch = async () => {
     if (!query.trim()) return;
 
+    // 새 세션으로 시작 (이전 대화 유지하면서 새 sid 부여)
+    const activeSid = startNewSession();
+
     setIsSearching(true);
-    setChatHistory(prev => [...prev, { type: 'user', content: query }]);
+    setChatHistory((prev) => [...prev, { type: "user", content: query }]);
 
     try {
       const res = await fetch(
@@ -76,36 +135,52 @@ export default function AiSearchPage() {
         })),
       };
 
-      setChatHistory(prev => [...prev, { type: 'ai', content: searchResult.answer }]);
+      setChatHistory((prev) => [...prev, { type: "ai", content: searchResult.answer }]);
       setResult(searchResult);
+
+      try {
+        sessionStorage.setItem(
+          makeHistoryKey(activeSid),
+          JSON.stringify([
+            ...chatHistory,
+            { type: "user", content: query },
+            { type: "ai", content: searchResult.answer },
+          ])
+        );
+        sessionStorage.setItem(makeResultKey(activeSid), JSON.stringify(searchResult));
+      } catch {}
     } catch (error) {
       console.error("RAG 검색 실패:", error);
-      const errorMessage = "죄송합니다. 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
-      setChatHistory(prev => [...prev, { type: 'ai', content: errorMessage }]);
+      setChatHistory((prev) => [
+        ...prev,
+        { type: "ai", content: "죄송합니다. 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." },
+      ]);
       setResult(null);
     } finally {
       setIsSearching(false);
       setQuery("");
+      // 전송 후 입력창 높이 리셋
+      if (inputRef.current) inputRef.current.style.height = "40px";
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSearch();
     }
   };
 
-  const handleExampleClick = (question: string) => {
-    setQuery(question);
-  };
+  const handleExampleClick = (q: string) => setQuery(q);
 
   return (
-    // ✅ 전체 화면을 컬럼 레이아웃으로: 위(main)=스크롤, 아래(입력창)=고정
     <div className="min-h-dvh bg-gradient-to-b from-gray-50 to-white flex flex-col">
-      {/* 메인 콘텐츠 (대화면일 때 flex-1) */}
-      <main className={`mx-auto w-full max-w-4xl px-4 ${chatHistory.length > 0 ? 'flex-1 flex flex-col' : ''}`}>
-        {chatHistory.length === 0 ? (
+      <main
+        className={`mx-auto w-full max-w-4xl px-4 ${
+          isChatMode ? "flex-1 flex flex-col pb-[92px]" : ""
+        }`}
+      >
+        {!isChatMode ? (
           // ───────────────── 초기 화면 ─────────────────
           <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] py-12">
             <div className="text-center mb-12">
@@ -123,7 +198,12 @@ export default function AiSearchPage() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
                   placeholder="무엇이든 물어보세요"
                   disabled={isSearching}
                   className="w-full rounded-full border-2 border-gray-300 bg-white py-4 px-6 pr-14 text-base shadow-sm outline-none focus:border-uniwikicolor focus:ring-2 focus:ring-uniwikicolor/20 disabled:bg-gray-50 transition-all"
@@ -203,7 +283,6 @@ export default function AiSearchPage() {
         ) : (
           // ───────────────── 대화 화면 ─────────────────
           <>
-            {/* ✅ 메시지 영역: 고정 높이 스크롤 */}
             <div
               ref={chatScrollRef}
               className="flex-1 overflow-y-auto pt-8 pb-6 space-y-6"
@@ -211,25 +290,25 @@ export default function AiSearchPage() {
               {chatHistory.map((chat, idx) => (
                 <div
                   key={idx}
-                  className={`flex gap-4 ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex gap-4 ${chat.type === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {chat.type === 'ai' && (
+                  {chat.type === "ai" && (
                     <div className="flex-shrink-0 w-10 h-10 rounded-full bg-uniwikicolor flex items-center justify-center">
                       <Sparkles size={20} className="text-white" />
                     </div>
                   )}
                   <div
                     className={`max-w-[80%] rounded-2xl px-5 py-4 ${
-                      chat.type === 'user'
-                        ? 'bg-uniwikicolor text-white'
-                        : 'bg-white border border-gray-200 text-gray-800 shadow-sm'
+                      chat.type === "user"
+                        ? "bg-uniwikicolor text-white"
+                        : "bg-white border border-gray-200 text-gray-800 shadow-sm"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap leading-relaxed text-sm">
+                    <p className="whitespace-pre-wrap leading-relaxed text-sm break-words">
                       {chat.content}
                     </p>
                   </div>
-                  {chat.type === 'user' && (
+                  {chat.type === "user" && (
                     <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                       <span className="text-xl">👤</span>
                     </div>
@@ -237,7 +316,6 @@ export default function AiSearchPage() {
                 </div>
               ))}
 
-              {/* 로딩 중 */}
               {isSearching && (
                 <div className="flex gap-4 justify-start">
                   <div className="flex-shrink-0 w-10 h-10 rounded-full bg-uniwikicolor flex items-center justify-center">
@@ -253,7 +331,6 @@ export default function AiSearchPage() {
                 </div>
               )}
 
-              {/* 관련 문서 */}
               {result && result.relatedDocs.length > 0 && (
                 <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -266,7 +343,8 @@ export default function AiSearchPage() {
                         key={idx}
                         onClick={() =>
                           navigate(
-                            `/univ/${encodeURIComponent(doc.university)}/docs/${encodeURIComponent(doc.title)}`
+                            `/univ/${encodeURIComponent(doc.university)}/docs/${encodeURIComponent(doc.title)}`,
+                            { state: { from: "ai-chat" } }
                           )
                         }
                         className="w-full text-left bg-white rounded-xl p-4 hover:shadow-md transition-all border border-gray-200 hover:border-uniwikicolor"
@@ -289,31 +367,33 @@ export default function AiSearchPage() {
         )}
       </main>
 
-      {/* 하단 고정 입력창 - 대화 시작 후에만 표시 */}
-      {chatHistory.length > 0 && (
-        <div className="sticky bottom-0 left-0 right-0 bg-white backdrop-blur-md border-t border-gray-200 z-50">
-          <div className="mx-auto max-w-4xl px-4 py-4">
-            <div className="relative flex items-center gap-3">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="유니위키에 대해 무엇이든 물어보세요..."
-                disabled={isSearching}
-                className="flex-1 rounded-full border-2 border-gray-300 bg-white py-3 px-6 pr-14 text-sm outline-none focus:border-uniwikicolor focus:ring-2 focus:ring-uniwikicolor/20 disabled:bg-gray-50 transition-all"
-              />
+      {/* 하단 입력창: chat 모드에서만 (fixed 고정) */}
+      {isChatMode && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 z-50">
+          <div className="mx-auto max-w-4xl px-4 py-3">
+            <div className="relative flex items-end gap-3">
+             {/* textarea: 자동 높이, 최대 2줄, 줄바꿈 지원 */}
+<textarea
+  ref={inputRef}
+  value={query}
+  onChange={(e) => setQuery(e.target.value)}
+  onKeyDown={handleKeyPress}
+  placeholder="유니위키에 대해 무엇이든 물어보세요..."
+  disabled={isSearching}
+  rows={1}
+  className="flex-1 rounded-full border-2 border-gray-300 bg-white py-2.5 pl-5 pr-12 text-sm outline-none focus:border-uniwikicolor focus:ring-2 focus:ring-uniwikicolor/20 disabled:bg-gray-50 transition-all resize-none leading-6 overflow-y-hidden break-words"
+  style={{ maxHeight: 56 }} // 약 2줄
+/>
+
               <button
                 onClick={handleSearch}
                 disabled={!query.trim() || isSearching}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-uniwikicolor p-2.5 text-white hover:bg-uniwikicolor_hover disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
+                className="absolute right-2 bottom-1.5 rounded-full bg-uniwikicolor p-2.5 text-white hover:bg-uniwikicolor_hover disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
+                aria-label="전송"
               >
                 <Send size={18} />
               </button>
             </div>
-            <p className="text-xs text-center text-gray-500 mt-2">
-              AI가 제공하는 정보는 참고용이며, 공식 문서를 함께 확인하시기 바랍니다
-            </p>
           </div>
         </div>
       )}

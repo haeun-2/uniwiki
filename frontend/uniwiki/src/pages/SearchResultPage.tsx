@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import RecentEdit from "../layout/RecentEdit";
-import RecentDiscuss from "../layout/RecentDiscuss";
 
 interface SearchResultItem {
   title: string;
@@ -28,7 +26,7 @@ export default function SearchResultPage() {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0); // API는 0부터 시작
+  const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [hasPre, setHasPre] = useState(false);
   const [hasNext, setHasNext] = useState(false);
@@ -123,7 +121,7 @@ export default function SearchResultPage() {
               : "border-gray-300 hover:bg-gray-50"
           }`}
         >
-          {i + 1} {/* 사용자에게는 1부터 표시 */}
+          {i + 1}
         </button>
       );
     }
@@ -145,39 +143,14 @@ export default function SearchResultPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-6 px-4 py-8">
-      {/* 왼쪽: 검색 결과 */}
-      <main className="flex-1 min-w-0">
+    <div className="mx-auto max-w-4xl px-4 py-8">
+      {/* 검색 결과 */}
+      <main className="w-full">
         {/* 검색 정보 */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">검색</h1>
-          <div className="flex items-center gap-3 mb-4">
-            <input
-              type="text"
-              defaultValue={query}
-              placeholder="서울대학교"
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-uniwikicolor focus:ring-2 focus:ring-uniwikicolor/20"
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  const newQuery = (e.target as HTMLInputElement).value;
-                  if (newQuery) {
-                    window.location.href = `/search?q=${encodeURIComponent(newQuery)}`;
-                  }
-                }
-              }}
-            />
-            <button 
-              onClick={() => {
-                const input = document.querySelector('input[type="text"]') as HTMLInputElement;
-                if (input?.value) {
-                  window.location.href = `/search?q=${encodeURIComponent(input.value)}`;
-                }
-              }}
-              className="rounded-lg bg-uniwikicolor text-white px-4 py-2 hover:bg-uniwikicolor_hover transition"
-            >
-              검색
-            </button>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            "{query}" 검색 결과
+          </h1>
           <p className="text-sm text-gray-600">
             전체 <span className="font-semibold text-gray-900">{totalCount.toLocaleString()}</span> 건
           </p>
@@ -220,12 +193,6 @@ export default function SearchResultPage() {
         {/* 페이지네이션 */}
         {renderPagination()}
       </main>
-
-      {/* 오른쪽: 사이드바 */}
-      <aside className="hidden lg:block w-64 flex-shrink-0 space-y-6">
-        <RecentEdit />
-        <RecentDiscuss />
-      </aside>
     </div>
   );
 }

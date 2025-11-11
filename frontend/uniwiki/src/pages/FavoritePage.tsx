@@ -180,8 +180,10 @@ export default function FavoritePage() {
   };
 
   // 문서 이동
-  const goDocument = (title: string) =>
-    navigate(`/docs/${encodeURIComponent(title)}`);
+ const goDocument = (univName: string, title: string) =>
+    navigate(
+      `/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(title)}`
+    );
 
   // 학교 이동(라우팅 규칙에 맞게: /univ/:univName 사용 중이라 가정)
   const goUniversity = (univName: string) =>
@@ -253,7 +255,7 @@ export default function FavoritePage() {
               >
                 <div className="col-span-3">
                   <button
-                    onClick={() => goDocument(f.documentTitle)}
+                    onClick={() => goDocument(f.universityName, f.documentTitle)}
                     className="text-left text-sm text-yellow-600 hover:underline"
                   >
                     {f.documentTitle}
