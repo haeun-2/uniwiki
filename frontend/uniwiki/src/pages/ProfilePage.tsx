@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 
+const FLASH_AUTO_MS = 3200;
+
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [nickname, setNickname] = useState("");
@@ -33,9 +35,52 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
-  // 계정 삭제 모달 상태
+  // (남겨두되 버튼은 제거함) 계정 삭제 모달 상태
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // ─────────────────────────────────────────────────────────────
+  // 로그인 페이지와 동일한 플래시 팝업 상태/유틸
+  const [flash, setFlash] = useState("");
+  const [flashType, setFlashType] = useState<"success" | "error" | "info">("info");
+  const flashTimerRef = useRef<number | null>(null);
+
+  const showFlash = (
+    msg: string,
+    type: "success" | "error" | "info" = "info",
+    ms = FLASH_AUTO_MS
+  ) => {
+    setFlash(msg);
+    setFlashType(type);
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    if (!/오류|실패|에러/.test(msg)) {
+      flashTimerRef.current = window.setTimeout(() => setFlash(""), ms);
+    }
+  };
+
+  const closeFlash = () => {
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    setFlash("");
+  };
+
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    },
+    []
+  );
+
+  const getFlashStyle = () => {
+    switch (flashType) {
+      case "success":
+        return "bg-green-500/80 border-green-600/40";
+      case "error":
+        return "bg-red-500/80 border-red-600/40";
+      default:
+        return "bg-blue-500/80 border-blue-600/40"; // info
+    }
+  };
+  // ─────────────────────────────────────────────────────────────
 
   const getToken = () =>
     localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
@@ -46,7 +91,7 @@ export default function ProfilePage() {
       const accessToken = getToken();
 
       if (!accessToken) {
-        alert("로그인이 필요합니다.");
+        showFlash("로그인이 필요합니다.", "error");
         navigate("/login");
         return;
       }
@@ -69,16 +114,16 @@ export default function ProfilePage() {
             data.role === "USER" ? "사용자" : data.role === "ADMIN" ? "관리자" : data.role
           );
         } else if (response.status === 401) {
-          alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
           localStorage.removeItem("accessToken");
           sessionStorage.removeItem("accessToken");
+          showFlash("로그인이 만료되었습니다. 다시 로그인해주세요.", "error");
           navigate("/login");
         } else {
-          alert("사용자 정보를 불러오는데 실패했습니다.");
+          showFlash("사용자 정보를 불러오는데 실패했습니다.", "error");
         }
       } catch (error) {
         console.error("Fetch user info error:", error);
-        alert("서버와의 연결에 실패했습니다.");
+        showFlash("서버와의 연결에 실패했습니다.", "error");
       } finally {
         setIsLoading(false);
       }
@@ -107,16 +152,16 @@ export default function ProfilePage() {
           const data = await res.json(); // { pushAgree: boolean }
           setPushAgree(!!data.pushAgree);
         } else if (res.status === 401) {
-          alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
           localStorage.removeItem("accessToken");
           sessionStorage.removeItem("accessToken");
+          showFlash("로그인이 만료되었습니다. 다시 로그인해주세요.", "error");
           navigate("/login");
         } else {
-          alert("알림 설정을 불러오지 못했습니다.");
+          showFlash("알림 설정을 불러오지 못했습니다.", "error");
         }
       } catch (e) {
         console.error("GET push error:", e);
-        alert("알림 설정을 불러오지 못했습니다.");
+        showFlash("알림 설정을 불러오지 못했습니다.", "error");
       } finally {
         setIsPushLoading(false);
       }
@@ -129,12 +174,11 @@ export default function ProfilePage() {
   const handleSave = async () => {
     const accessToken = getToken();
     if (!accessToken) {
-      alert("로그인이 필요합니다.");
+      showFlash("로그인이 필요합니다.", "error");
       navigate("/login");
       return;
     }
 
-    // ✅ 알림 동의 저장 (PATCH /api/v1/users/me/push)
     try {
       setIsPushSaving(true);
       const res = await fetch("https://k13d104.p.ssafy.io/api/v1/users/me/push", {
@@ -148,22 +192,22 @@ export default function ProfilePage() {
 
       if (!res.ok) {
         if (res.status === 401) {
-          alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
           localStorage.removeItem("accessToken");
           sessionStorage.removeItem("accessToken");
+          showFlash("로그인이 만료되었습니다. 다시 로그인해주세요.", "error");
           navigate("/login");
           return;
         }
         const err = await res.json().catch(() => ({}));
-        alert(err.message || "알림 설정 저장에 실패했습니다.");
+        showFlash(err.message || "알림 설정 저장에 실패했습니다.", "error");
         return;
       }
 
-      alert("프로필이 저장되었습니다.");
+      showFlash("프로필이 저장되었습니다.", "success");
       setIsEditing(false);
     } catch (e) {
       console.error("PATCH push error:", e);
-      alert("알림 설정 저장 중 오류가 발생했습니다.");
+      showFlash("알림 설정 저장 중 오류가 발생했습니다.", "error");
     } finally {
       setIsPushSaving(false);
     }
@@ -173,14 +217,14 @@ export default function ProfilePage() {
     setIsDeleteModalOpen(true);
   };
 
-  // 계정 삭제 확인
+  // 계정 삭제 확인 (API 미연결 상태 유지)
   const handleDeleteConfirm = () => {
     if (deleteConfirmText !== "계정 삭제") {
-      alert("'계정 삭제'를 정확히 입력해주세요.");
+      showFlash("'계정 삭제'를 정확히 입력해주세요.", "error");
       return;
     }
-    console.log("Account deleted");
-    alert("계정이 삭제되었습니다.");
+    console.log("Account deleted (stub)");
+    showFlash("계정이 삭제되었습니다. (데모)", "success");
     setIsDeleteModalOpen(false);
     setDeleteConfirmText("");
   };
@@ -190,11 +234,10 @@ export default function ProfilePage() {
     const next = newNickname.trim();
 
     if (next.length < 2) {
-      alert("닉네임은 2자 이상이어야 합니다.");
+      showFlash("닉네임은 2자 이상이어야 합니다.", "error");
       return;
     }
 
-    // 변경 없음: 서버 호출 불필요
     if (next === nickname) {
       setIsNicknameModalOpen(false);
       setNewNickname("");
@@ -202,15 +245,14 @@ export default function ProfilePage() {
       return;
     }
 
-    // 중복 미확인/불가일 때 막기
     if (isNickChecking || nickAvailable !== true) {
-      alert("닉네임 중복 확인을 통과해야 저장할 수 있습니다.");
+      showFlash("닉네임 중복 확인을 통과해야 저장할 수 있습니다.", "error");
       return;
     }
 
     const accessToken = getToken();
     if (!accessToken) {
-      alert("로그인이 필요합니다.");
+      showFlash("로그인이 필요합니다.", "error");
       navigate("/login");
       return;
     }
@@ -230,26 +272,25 @@ export default function ProfilePage() {
 
       if (!res.ok) {
         if (res.status === 401) {
-          alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
           localStorage.removeItem("accessToken");
           sessionStorage.removeItem("accessToken");
+          showFlash("로그인이 만료되었습니다. 다시 로그인해주세요.", "error");
           navigate("/login");
           return;
         }
         const err = await res.json().catch(() => ({}));
-        alert(err.message || "닉네임 변경에 실패했습니다.");
+        showFlash(err.message || "닉네임 변경에 실패했습니다.", "error");
         return;
       }
 
-      // 서버가 성공 시 OK(200). 필요하면 응답에서 닉네임을 다시 읽어도 됨.
       setNickname(next);
-      alert("닉네임이 변경되었습니다.");
+      showFlash("닉네임이 변경되었습니다.", "success");
       setIsNicknameModalOpen(false);
       setNewNickname("");
       setNickAvailable(null);
     } catch (e) {
       console.error("PATCH nickname error:", e);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     }
   };
 
@@ -258,14 +299,12 @@ export default function ProfilePage() {
     if (!isNicknameModalOpen) return;
     const next = newNickname.trim();
 
-    // 길이 미달 → 검사 안 함
     if (next.length < 2) {
       setNickAvailable(null);
       setIsNickChecking(false);
       return;
     }
 
-    // 기존 닉네임과 동일 → 중복확인 패스(저장 시 서버 호출은 스킵)
     if (next === nickname) {
       setNickAvailable(true);
       setIsNickChecking(false);
@@ -287,12 +326,11 @@ export default function ProfilePage() {
           { headers: { Accept: "application/json" }, signal: ctrl.signal }
         );
 
-        // 더 최신 입력이 있으면 무시
         if (reqSeq.current !== mySeq) return;
 
         if (!res.ok) {
           setNickAvailable(null);
-          alert("닉네임 중복 확인 중 오류가 발생했습니다.");
+          showFlash("닉네임 중복 확인 중 오류가 발생했습니다.", "error");
           return;
         }
 
@@ -317,21 +355,21 @@ export default function ProfilePage() {
   // 비밀번호 변경 저장
   const handlePasswordSave = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("모든 필드를 입력해주세요.");
+      showFlash("모든 필드를 입력해주세요.", "error");
       return;
     }
     if (newPassword !== confirmPassword) {
-      alert("비밀번호가 일치하지 않습니다.");
+      showFlash("비밀번호가 일치하지 않습니다.", "error");
       return;
     }
     if (newPassword.length < 8) {
-      alert("비밀번호는 8자 이상이어야 합니다.");
+      showFlash("비밀번호는 8자 이상이어야 합니다.", "error");
       return;
     }
 
     const accessToken = getToken();
     if (!accessToken) {
-      alert("로그인이 필요합니다.");
+      showFlash("로그인이 필요합니다.", "error");
       navigate("/login");
       return;
     }
@@ -356,25 +394,26 @@ export default function ProfilePage() {
       );
 
       if (response.ok) {
-        alert("비밀번호가 변경되었습니다.");
+        showFlash("비밀번호가 변경되었습니다.", "success");
         setIsPasswordModalOpen(false);
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } else if (response.status === 401) {
-        alert("현재 비밀번호가 일치하지 않습니다.");
+        showFlash("현재 비밀번호가 일치하지 않습니다.", "error");
       } else if (response.status === 400) {
         const errorData = await response.json();
-        alert(
+        showFlash(
           errorData.message ||
-            "비밀번호 형식이 올바르지 않습니다.\n영문, 숫자, 특수문자를 포함하여 8자 이상 입력해주세요."
+            "비밀번호 형식이 올바르지 않습니다.\n영문, 숫자, 특수문자를 포함하여 8자 이상 입력해주세요.",
+          "error"
         );
       } else {
-        alert("비밀번호 변경에 실패했습니다.");
+        showFlash("비밀번호 변경에 실패했습니다.", "error");
       }
     } catch (error) {
       console.error("Password change error:", error);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     } finally {
       setIsPasswordLoading(false);
     }
@@ -402,6 +441,43 @@ export default function ProfilePage() {
 
   return (
     <>
+      {/* ===== 플래시 팝업 (로그인 페이지와 동일 디자인) ===== */}
+      {flash && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
+          <div
+            className={`
+              ${getFlashStyle()}
+              min-w-[320px] max-w-md
+              rounded-xl border
+              px-6 py-4
+              shadow-lg
+              backdrop-blur-[2px]
+              flex items-center justify-between gap-4
+            `}
+          >
+            <span className="text-white font-medium text-base flex-1">
+              {flash}
+            </span>
+            <button
+              onClick={closeFlash}
+              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              aria-label="닫기"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 애니메이션 (로그인과 동일) */}
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slideDown { animation: slideDown 0.3s ease-out; }
+      `}</style>
+
       <div className="mx-auto max-w-4xl px-4 py-12">
         <h1 className="mb-12 text-center text-3xl font-semibold text-gray-900">
           내 정보
@@ -416,8 +492,8 @@ export default function ProfilePage() {
               {isEditing && (
                 <button
                   onClick={() => {
-                    setNewNickname(nickname);   // ← 모달 열 때 현재 닉네임 주입
-                    setNickAvailable(null);     // 상태 초기화
+                    setNewNickname(nickname);
+                    setNickAvailable(null);
                     setIsNicknameModalOpen(true);
                   }}
                   className="text-sm text-gray-400 hover:text-gray-600"
@@ -491,13 +567,7 @@ export default function ProfilePage() {
           {/* 버튼 */}
           <div className="pt-8">
             {isEditing ? (
-              <div className="flex justify-between">
-                <button
-                  onClick={handleDelete}
-                  className="rounded-lg bg-red-500 px-8 py-2.5 font-medium text-white hover:bg-red-600"
-                >
-                  계정 삭제
-                </button>
+              <div className="flex justify-end">
                 <button
                   onClick={handleSave}
                   disabled={isPushSaving}
@@ -545,7 +615,7 @@ export default function ProfilePage() {
                 value={newNickname}
                 onChange={(e) => {
                   setNewNickname(e.target.value);
-                  setNickAvailable(null); // 입력 중 상태 초기화
+                  setNickAvailable(null);
                 }}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
@@ -581,7 +651,6 @@ export default function ProfilePage() {
                 disabled={
                   isNickChecking ||
                   !isNicknameValid ||
-                  // 동일 닉네임이면 저장 가능(호출 스킵), 다르면 반드시 사용 가능 상태여야 저장 가능
                   (newNickname.trim() !== nickname && nickAvailable !== true)
                 }
                 className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
@@ -698,7 +767,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* 계정 삭제 확인 모달 */}
+      {/* (옵션) 계정 삭제 확인 모달: 현재 버튼은 UI에서 제거했지만, 로직은 보존 */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
@@ -718,16 +787,9 @@ export default function ProfilePage() {
 
             <div className="space-y-4">
               <p className="text-sm text-gray-700">
-                계정을 삭제한다면, 불이익이 
+                계정을 삭제하면 복구할 수 없습니다.
                 <br />
-                있을 수 있습니다. 그 외에 모든 데이터가 어쩌구
-                <br />
-                내용이 있습니다.
-              </p>
-              <p className="text-sm text-gray-700">
-                그래도 삭제하시려면,
-                <br />
-                '계정 삭제' 기입 후 계정 삭제를 눌러주세요.
+                정말로 삭제하시려면 아래에 <b>계정 삭제</b>를 입력해주세요.
               </p>
               <input
                 type="text"

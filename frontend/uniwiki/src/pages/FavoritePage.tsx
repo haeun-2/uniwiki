@@ -1,7 +1,8 @@
 // src/pages/FavoritePage.tsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { X } from "lucide-react";
 
 /** 문서 즐겨찾기 */
 interface DocumentFavorite {
@@ -20,10 +21,62 @@ interface UniversityFavorite {
 
 type ViewMode = "documents" | "universities";
 
+const FLASH_AUTO_MS = 1800;
+const REDIRECT_AFTER_MS = FLASH_AUTO_MS + 50;
+
 export default function FavoritePage() {
-  const location = useLocation() as { state? : {tab?: ViewMode} };
+  const location = useLocation() as { state?: { tab?: ViewMode } };
   const initialView: ViewMode = location.state?.tab ?? "documents";
   const navigate = useNavigate();
+
+  // ── Flash (LoginPage/DiscussionHistoryPage와 동일 스타일)
+  const [flash, setFlash] = useState("");
+  const [flashType, setFlashType] =
+    useState<"success" | "error" | "info">("info");
+  const flashTimerRef = useRef<number | null>(null);
+  const redirectTimerRef = useRef<number | null>(null);
+
+  const showFlash = (
+    msg: string,
+    type: "success" | "error" | "info" = "info",
+    autoMs = FLASH_AUTO_MS
+  ) => {
+    setFlash(msg);
+    setFlashType(type);
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlash(""), autoMs);
+  };
+
+  const scheduleRedirectToLogin = (msg: string) => {
+    showFlash(msg, "error", FLASH_AUTO_MS);
+    if (redirectTimerRef.current) window.clearTimeout(redirectTimerRef.current);
+    redirectTimerRef.current = window.setTimeout(() => {
+      navigate("/login", { replace: true });
+    }, REDIRECT_AFTER_MS);
+  };
+
+  const closeFlash = () => {
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    setFlash("");
+  };
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      if (redirectTimerRef.current) window.clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
+
+  const getFlashStyle = () => {
+    switch (flashType) {
+      case "success":
+        return "bg-green-500/80 border-green-600/40";
+      case "error":
+        return "bg-red-500/80 border-red-600/40";
+      default:
+        return "bg-blue-500/80 border-blue-600/40";
+    }
+  };
 
   // 탭 상태
   const [view, setView] = useState<ViewMode>(initialView);
@@ -36,12 +89,11 @@ export default function FavoritePage() {
   const [univFavs, setUnivFavs] = useState<UniversityFavorite[]>([]);
   const [univLoading, setUnivLoading] = useState(false);
 
-  // 공통: 인증 체크
+  // 공통: 인증 체크 (플래시 → 자동 이동)
   const ensureAuthed = () => {
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      alert("로그인이 필요합니다.");
-      navigate("/login");
+      scheduleRedirectToLogin("로그인이 필요한 페이지입니다.");
       return null;
     }
     return accessToken;
@@ -81,15 +133,14 @@ export default function FavoritePage() {
         const data: DocumentFavorite[] = await resp.json();
         setDocFavs(data ?? []);
       } else if (resp.status === 401) {
-        alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
         localStorage.removeItem("accessToken");
-        navigate("/login");
+        scheduleRedirectToLogin("로그인이 만료되었습니다. 다시 로그인해주세요.");
       } else {
-        console.error("즐겨찾기한 문서를 불러오지 못했습니다.");
+        showFlash("즐겨찾기한 문서를 불러오지 못했습니다.", "error");
       }
     } catch (e) {
       console.error("Fetch doc favorites error:", e);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     } finally {
       setDocLoading(false);
     }
@@ -117,15 +168,14 @@ export default function FavoritePage() {
         const data: UniversityFavorite[] = await resp.json();
         setUnivFavs(data ?? []);
       } else if (resp.status === 401) {
-        alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
         localStorage.removeItem("accessToken");
-        navigate("/login");
+        scheduleRedirectToLogin("로그인이 만료되었습니다. 다시 로그인해주세요.");
       } else {
-        console.error("즐겨찾기한 학교를 불러오지 못했습니다.");
+        showFlash("즐겨찾기한 학교를 불러오지 못했습니다.", "error");
       }
     } catch (e) {
       console.error("Fetch univ favorites error:", e);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     } finally {
       setUnivLoading(false);
     }
@@ -163,21 +213,20 @@ export default function FavoritePage() {
 
       if (resp.ok) {
         setDocFavs((list) => list.filter((f) => f.documentId !== documentId));
-        alert("즐겨찾기가 삭제되었습니다.");
+        showFlash("즐겨찾기가 삭제되었습니다.", "success");
       } else if (resp.status === 401) {
-        alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
         localStorage.removeItem("accessToken");
-        navigate("/login");
+        scheduleRedirectToLogin("로그인이 만료되었습니다. 다시 로그인해주세요.");
       } else {
-        alert("즐겨찾기 삭제에 실패했습니다.");
+        showFlash("즐겨찾기 삭제에 실패했습니다.", "error");
       }
     } catch (e) {
       console.error("Delete doc favorite error:", e);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     }
   };
 
-  // ✅ 학교 즐겨찾기 삭제
+  // 학교 즐겨찾기 삭제
   const handleDeleteUniversity = async (universityId: number) => {
     if (!window.confirm("즐겨찾기를 삭제하시겠습니까?")) return;
 
@@ -194,23 +243,26 @@ export default function FavoritePage() {
       );
 
       if (resp.ok || resp.status === 204) {
-        setUnivFavs((list) => list.filter((f) => f.universityId !== universityId));
-        alert("즐겨찾기가 삭제되었습니다.");
-        
-        // ✅ 이벤트 발생시켜서 UnivMainPage가 감지할 수 있도록
-        window.dispatchEvent(new CustomEvent("uniwiki:favorite-changed", {
-          detail: { universityId, isFavorite: false }
-        }));
+        setUnivFavs((list) =>
+          list.filter((f) => f.universityId !== universityId)
+        );
+        showFlash("즐겨찾기가 삭제되었습니다.", "success");
+
+        // UnivMainPage 감지 이벤트
+        window.dispatchEvent(
+          new CustomEvent("uniwiki:favorite-changed", {
+            detail: { universityId, isFavorite: false },
+          })
+        );
       } else if (resp.status === 401) {
-        alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
         localStorage.removeItem("accessToken");
-        navigate("/login");
+        scheduleRedirectToLogin("로그인이 만료되었습니다. 다시 로그인해주세요.");
       } else {
-        alert("즐겨찾기 삭제에 실패했습니다.");
+        showFlash("즐겨찾기 삭제에 실패했습니다.", "error");
       }
     } catch (e) {
       console.error("Delete univ favorite error:", e);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     }
   };
 
@@ -223,7 +275,7 @@ export default function FavoritePage() {
   // 학교 이동
   const goUniversity = (u: UniversityFavorite) =>
     navigate(`/univ/${encodeURIComponent(u.universityName)}`, {
-      state: { universityId: u.universityId, isFavorite: true }
+      state: { universityId: u.universityId, isFavorite: true },
     });
 
   // 로딩 상태
@@ -231,157 +283,205 @@ export default function FavoritePage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="text-gray-500">로딩 중...</div>
-      </div>
+      <>
+        {/* Flash */}
+        {flash && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
+            <div
+              className={`${getFlashStyle()} min-w-[320px] max-w-md rounded-xl border px-6 py-4 shadow-lg backdrop-blur-[2px] flex items-center justify-between gap-4`}
+            >
+              <span className="text-white font-medium text-base flex-1">
+                {flash}
+              </span>
+              <button
+                onClick={closeFlash}
+                className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+                aria-label="닫기"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+        <style>{`@keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}.animate-slideDown{animation:slideDown .3s ease-out}`}</style>
+
+        <div className="flex justify-center items-center min-h-[50vh]">
+          <div className="text-gray-500">로딩 중...</div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div>
-      <h1 className="mb-6 text-3xl font-semibold text-gray-900">즐겨찾기</h1>
-
-      {/* 탭 토글 */}
-      <div className="mb-6 inline-flex rounded-lg border border-gray-300 overflow-hidden">
-        <button
-          className={`px-4 py-2 text-sm font-medium ${
-            view === "documents"
-              ? "bg-uniwikicolor text-white"
-              : "bg-white text-gray-700 hover:bg-gray-50"
-          }`}
-          onClick={() => setView("documents")}
-        >
-          문서
-        </button>
-        <div className="w-px bg-gray-300" />
-        <button
-          className={`px-4 py-2 text-sm font-medium ${
-            view === "universities"
-              ? "bg-uniwikicolor text-white"
-              : "bg-white text-gray-700 hover:bg-gray-50"
-          }`}
-          onClick={() => setView("universities")}
-        >
-          학교
-        </button>
-      </div>
-
-      {view === "documents" ? (
-        <>
-          {/* 헤더 */}
-          <div className="mb-3 grid grid-cols-12 gap-6 border-b-2 border-gray-400 pb-3">
-            <div className="col-span-3 text-base font-medium text-gray-900">
-              문서명
-            </div>
-            <div className="col-span-3 text-base font-medium text-gray-900">
-              학교명
-            </div>
-            <div className="col-span-4 text-base font-medium text-gray-900">
-              문서 수정 시각
-            </div>
-            <div className="col-span-2" />
+    <>
+      {/* Flash */}
+      {flash && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
+          <div
+            className={`${getFlashStyle()} min-w-[320px] max-w-md rounded-xl border px-6 py-4 shadow-lg backdrop-blur-[2px] flex items-center justify-between gap-4`}
+          >
+            <span className="text-white font-medium text-base flex-1">
+              {flash}
+            </span>
+            <button
+              onClick={closeFlash}
+              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              aria-label="닫기"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-
-          {/* 리스트 */}
-          <div className="space-y-0">
-            {docFavs.map((f) => (
-              <div
-                key={f.documentId}
-                className="grid grid-cols-12 gap-6 border-b border-gray-200 py-4"
-              >
-                <div className="col-span-3">
-                  <button
-                    onClick={() => goDocument(f.universityName, f.documentTitle)}
-                    className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
-                  >
-                    {f.documentTitle}
-                  </button>
-                </div>
-                <div className="col-span-3">
-                  <span className="text-sm">{f.universityName}</span>
-                </div>
-                <div className="col-span-4">
-                  <span className="text-sm text-gray-600">
-                    {formatDate(f.documentUpdateAt)}
-                  </span>
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <span
-                    onClick={() => handleDeleteDocument(f.documentId)}
-                    className="text-red-500 hover:underline cursor-pointer"
-                  >
-                    삭제
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {docFavs.length === 0 && (
-            <div className="py-12 text-center text-gray-500">
-              즐겨찾기한 문서가 없습니다.
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          {/* ✅ 학교 헤더 (삭제 컬럼 추가) */}
-          <div className="mb-3 grid grid-cols-12 gap-6 border-b-2 border-gray-400 pb-3">
-            <div className="col-span-2 text-base font-medium text-gray-900">
-              로고
-            </div>
-            <div className="col-span-8 text-base font-medium text-gray-900">
-              학교명
-            </div>
-            <div className="col-span-2" />
-          </div>
-
-          {/* ✅ 학교 리스트 (삭제 버튼 추가) */}
-          <div className="space-y-0">
-            {univFavs.map((u) => (
-              <div
-                key={u.universityId}
-                className="grid grid-cols-12 gap-6 border-b border-gray-200 py-4 items-center"
-              >
-                <div className="col-span-2">
-                  {u.logoUrl ? (
-                    <img
-                      src={u.logoUrl}
-                      alt={`${u.universityName} 로고`}
-                      onClick={() => goUniversity(u)}
-                      className="h-10 w-auto object-contain cursor-pointer"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded bg-gray-100" />
-                  )}
-                </div>
-                <div className="col-span-8">
-                  <button
-                    onClick={() => goUniversity(u)}
-                    className="text-left text-sm text-uniwikicolor hover:underline cursor-pointer"
-                  >
-                    {u.universityName}
-                  </button>
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <span
-                    onClick={() => handleDeleteUniversity(u.universityId)}
-                    className="text-red-500 hover:underline cursor-pointer"
-                  >
-                    삭제
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {univFavs.length === 0 && (
-            <div className="py-12 text-center text-gray-500">
-              즐겨찾기한 학교가 없습니다.
-            </div>
-          )}
-        </>
+        </div>
       )}
-    </div>
+      <style>{`@keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}.animate-slideDown{animation:slideDown .3s ease-out}`}</style>
+
+      <div>
+        <h1 className="mb-6 text-3xl font-semibold text-gray-900">즐겨찾기</h1>
+
+        {/* 탭 토글 */}
+        <div className="mb-6 inline-flex rounded-lg border border-gray-300 overflow-hidden">
+          <button
+            className={`px-4 py-2 text-sm font-medium ${
+              view === "documents"
+                ? "bg-uniwikicolor text-white"
+                : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+            onClick={() => setView("documents")}
+          >
+            문서
+          </button>
+          <div className="w-px bg-gray-300" />
+          <button
+            className={`px-4 py-2 text-sm font-medium ${
+              view === "universities"
+                ? "bg-uniwikicolor text-white"
+                : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+            onClick={() => setView("universities")}
+          >
+            학교
+          </button>
+        </div>
+
+        {view === "documents" ? (
+          <>
+            {/* 헤더 */}
+            <div className="mb-3 grid grid-cols-12 gap-6 border-b-2 border-gray-400 pb-3">
+              <div className="col-span-3 text-base font-medium text-gray-900">
+                문서명
+              </div>
+              <div className="col-span-3 text-base font-medium text-gray-900">
+                학교명
+              </div>
+              <div className="col-span-4 text-base font-medium text-gray-900">
+                문서 수정 시각
+              </div>
+              <div className="col-span-2" />
+            </div>
+
+            {/* 리스트 */}
+            <div className="space-y-0">
+              {docFavs.map((f) => (
+                <div
+                  key={f.documentId}
+                  className="grid grid-cols-12 gap-6 border-b border-gray-200 py-4"
+                >
+                  <div className="col-span-3">
+                    <button
+                      onClick={() =>
+                        goDocument(f.universityName, f.documentTitle)
+                      }
+                      className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
+                    >
+                      {f.documentTitle}
+                    </button>
+                  </div>
+                  <div className="col-span-3">
+                    <span className="text-sm">{f.universityName}</span>
+                  </div>
+                  <div className="col-span-4">
+                    <span className="text-sm text-gray-600">
+                      {formatDate(f.documentUpdateAt)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 flex justify-end">
+                    <span
+                      onClick={() => handleDeleteDocument(f.documentId)}
+                      className="text-red-500 hover:underline cursor-pointer"
+                    >
+                      삭제
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {docFavs.length === 0 && (
+              <div className="py-12 text-center text-gray-500">
+                즐겨찾기한 문서가 없습니다.
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* 학교 헤더 */}
+            <div className="mb-3 grid grid-cols-12 gap-6 border-b-2 border-gray-400 pb-3">
+              <div className="col-span-2 text-base font-medium text-gray-900">
+                로고
+              </div>
+              <div className="col-span-8 text-base font-medium text-gray-900">
+                학교명
+              </div>
+              <div className="col-span-2" />
+            </div>
+
+            {/* 학교 리스트 */}
+            <div className="space-y-0">
+              {univFavs.map((u) => (
+                <div
+                  key={u.universityId}
+                  className="grid grid-cols-12 gap-6 border-b border-gray-200 py-4 items-center"
+                >
+                  <div className="col-span-2">
+                    {u.logoUrl ? (
+                      <img
+                        src={u.logoUrl}
+                        alt={`${u.universityName} 로고`}
+                        onClick={() => goUniversity(u)}
+                        className="h-10 w-auto object-contain cursor-pointer"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded bg-gray-100" />
+                    )}
+                  </div>
+                  <div className="col-span-8">
+                    <button
+                      onClick={() => goUniversity(u)}
+                      className="text-left text-sm text-uniwikicolor hover:underline cursor-pointer"
+                    >
+                      {u.universityName}
+                    </button>
+                  </div>
+                  <div className="col-span-2 flex justify-end">
+                    <span
+                      onClick={() => handleDeleteUniversity(u.universityId)}
+                      className="text-red-500 hover:underline cursor-pointer"
+                    >
+                      삭제
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {univFavs.length === 0 && (
+              <div className="py-12 text-center text-gray-500">
+                즐겨찾기한 학교가 없습니다.
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
   );
 }
