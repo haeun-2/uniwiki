@@ -179,7 +179,7 @@ export default function DocumentViewPage() {
           const token = getAccessToken();
           if (!token) setFavOn(false);
           else {
-            const favRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents`, {
+            const favRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents`, { // ← 오타 수정
               method: 'GET',
               headers: authHeaders({ Accept: 'application/json' }),
               credentials: 'include',
@@ -339,7 +339,7 @@ export default function DocumentViewPage() {
           )}
 
           {showCard && (
-            <section className="relative rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
+            <section className="relative rounded-2xl border border-[#B3B3B3] bg-gray-50 p-6">
               {/* 브레드크럼 */}
               <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
                 <ol className="flex items-center gap-1">
@@ -363,9 +363,9 @@ export default function DocumentViewPage() {
               </h1>
 
               {/* 날짜 + 액션바 */}
-              <div className="mb-5 flex items-center gap-4 min-w-0">
+              <div className="mb-20 flex items-center gap-4 min-w-0">
                 {lastUpdated && status === 'ok' && (
-                  <p className="text-[18px] text-gray-800 whitespace-nowrap">
+                  <p className="text-md text-gray-800 whitespace-nowrap">
                     최근 수정 시각 : {lastUpdated}
                   </p>
                 )}
@@ -373,14 +373,14 @@ export default function DocumentViewPage() {
                 <div
                   role="tablist"
                   aria-label="문서 작업 메뉴"
-                  className="grid grid-cols-4 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(280px,40vw,520px)] max-w-full"
+                  className="grid grid-cols-4 items-stretch overflow-hidden rounded-lg border border-[#B3B3B3] bg-gray-50 w-[clamp(220px,28vw,360px)] max-w-full"
                 >
                   <button
                     onClick={toggleFavorite}
                     disabled={favBusy || !docId || status !== 'ok'}
                     aria-pressed={favOn}
                     title={favOn ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-                    className={`h-10 px-4 text-[18px] leading-tight flex items-center justify-center
+                    className={`h-9 px-2 text-md leading-tight flex items-center justify-center
                       ${favOn ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg-white/60'}
                       ${favBusy ? 'opacity-60 cursor-wait' : ''}`}
                   >
@@ -391,7 +391,7 @@ export default function DocumentViewPage() {
                   <button
                     role="tab"
                     onClick={handleEditClick}
-                    className="h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
+                    className="h-9 px-2 text-md leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
                   >
                     편집
                   </button>
@@ -399,7 +399,7 @@ export default function DocumentViewPage() {
                   <Link
                     role="tab"
                     to={`${docBase}/discussions`}
-                    className={`h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3]
+                    className={`h-9 px-2 text-md leading-tight flex items-center justify-center border-l border-[#B3B3B3]
                       ${hasTalk ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg-white/60'}`}
                   >
                     토론
@@ -408,7 +408,7 @@ export default function DocumentViewPage() {
                   <Link
                     role="tab"
                     to={`${docBase}/history`}
-                    className="h-10 px-4 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
+                    className="h-9 px-2 text-md leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
                   >
                     역사
                   </Link>
@@ -430,9 +430,9 @@ export default function DocumentViewPage() {
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
                     style={{
-                      backgroundColor: '#FAFAFA',
-                      ['--color-canvas-default' as any]: '#FAFAFA',
-                      ['--color-canvas-subtle' as any]: '#FAFAFA',
+                      backgroundColor: '#F9FAFB', // gray-50
+                      ['--color-canvas-default' as any]: '#F9FAFB',
+                      ['--color-canvas-subtle' as any]: '#F9FAFB',
                     }}
                   />
                 )}

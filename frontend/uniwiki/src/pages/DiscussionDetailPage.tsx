@@ -753,7 +753,7 @@ export default function DiscussionDetailPage() {
         {/* Left */}
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 헤더 + 액션바 + 패널 */}
-          <section className="rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
+          <section className="rounded-2xl border border-[#B3B3B3] bg-gray-50 p-6">
             {/* 통일된 플래시 배너 (닫기 버튼 + 자동 사라짐) */}
             {(errorMsg || flash) && (
               <div
@@ -793,13 +793,13 @@ export default function DiscussionDetailPage() {
               <div
                 role="tablist"
                 aria-label="문서 작업 메뉴"
-                className="grid grid-cols-2 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(184px,24vw,236px)]"
+                className="grid grid-cols-2 items-stretch overflow-hidden rounded-lg border border-[#B3B3B3] bg-gray-50 w-[clamp(184px,24vw,236px)]"
               >
                 <Link
                   role="tab"
                   aria-selected={false}
                   to={`${docPath}/discussions`}
-                  className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
+                  className="h-9 px-2 text-md leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
                 >
                   토론 목록
                 </Link>
@@ -807,7 +807,7 @@ export default function DiscussionDetailPage() {
                   role="tab"
                   aria-selected={false}
                   to={docPath}
-                  className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
+                  className="h-9 px-2 text-md leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
                 >
                   문서로
                 </Link>
