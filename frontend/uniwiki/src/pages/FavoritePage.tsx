@@ -34,7 +34,7 @@ export default function FavoritePage() {
 
   // 학교 즐겨찾기
   const [univFavs, setUnivFavs] = useState<UniversityFavorite[]>([]);
-  const [univLoading, setUnivLoading] = useState(false); // 최초엔 문서 탭이 기본
+  const [univLoading, setUnivLoading] = useState(false);
 
   // 공통: 인증 체크
   const ensureAuthed = () => {
@@ -47,7 +47,7 @@ export default function FavoritePage() {
     return accessToken;
   };
 
-  // 날짜 포맷 (예: 2025-11-04T06:26:38.850Z → 2025-11-04 15:26)
+  // 날짜 포맷
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     const yyyy = d.getFullYear();
@@ -85,7 +85,7 @@ export default function FavoritePage() {
         localStorage.removeItem("accessToken");
         navigate("/login");
       } else {
-        alert("즐겨찾기한 문서를 불러오지 못했습니다.");
+        console.error("즐겨찾기한 문서를 불러오지 못했습니다.");
       }
     } catch (e) {
       console.error("Fetch doc favorites error:", e);
@@ -121,7 +121,7 @@ export default function FavoritePage() {
         localStorage.removeItem("accessToken");
         navigate("/login");
       } else {
-        alert("즐겨찾기한 학교를 불러오지 못했습니다.");
+        console.error("즐겨찾기한 학교를 불러오지 못했습니다.");
       }
     } catch (e) {
       console.error("Fetch univ favorites error:", e);
@@ -137,7 +137,7 @@ export default function FavoritePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 탭 전환 시 필요한 데이터만 로딩(이미 로딩된 건 재요청 X)
+  // 탭 전환 시 필요한 데이터만 로딩
   useEffect(() => {
     if (view === "universities" && univFavs.length === 0 && !univLoading) {
       fetchUniversityFavorites();
@@ -177,21 +177,57 @@ export default function FavoritePage() {
     }
   };
 
+  // ✅ 학교 즐겨찾기 삭제
+  const handleDeleteUniversity = async (universityId: number) => {
+    if (!window.confirm("즐겨찾기를 삭제하시겠습니까?")) return;
+
+    const token = ensureAuthed();
+    if (!token) return;
+
+    try {
+      const resp = await fetch(
+        `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities/${universityId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (resp.ok || resp.status === 204) {
+        setUnivFavs((list) => list.filter((f) => f.universityId !== universityId));
+        alert("즐겨찾기가 삭제되었습니다.");
+        
+        // ✅ 이벤트 발생시켜서 UnivMainPage가 감지할 수 있도록
+        window.dispatchEvent(new CustomEvent("uniwiki:favorite-changed", {
+          detail: { universityId, isFavorite: false }
+        }));
+      } else if (resp.status === 401) {
+        alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
+        localStorage.removeItem("accessToken");
+        navigate("/login");
+      } else {
+        alert("즐겨찾기 삭제에 실패했습니다.");
+      }
+    } catch (e) {
+      console.error("Delete univ favorite error:", e);
+      alert("서버와의 연결에 실패했습니다.");
+    }
+  };
+
   // 문서 이동
- const goDocument = (univName: string, title: string) =>
+  const goDocument = (univName: string, title: string) =>
     navigate(
       `/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(title)}`
     );
 
-  // 학교 이동(라우팅 규칙에 맞게: /univ/:univName 사용 중이라 가정)
-   const goUniversity = (u: UniversityFavorite) =>
-   navigate(`/univ/${encodeURIComponent(u.universityName)}`, {
-     state: { universityId: u.universityId, isFavorite: true } // ★ 선지식 전달
-   });
+  // 학교 이동
+  const goUniversity = (u: UniversityFavorite) =>
+    navigate(`/univ/${encodeURIComponent(u.universityName)}`, {
+      state: { universityId: u.universityId, isFavorite: true }
+    });
 
   // 로딩 상태
-  const isLoading =
-    view === "documents" ? docLoading : univLoading;
+  const isLoading = view === "documents" ? docLoading : univLoading;
 
   if (isLoading) {
     return (
@@ -255,17 +291,14 @@ export default function FavoritePage() {
               >
                 <div className="col-span-3">
                   <button
-onClick={() => goDocument(f.universityName, f.documentTitle)}
-className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
-
+                    onClick={() => goDocument(f.universityName, f.documentTitle)}
+                    className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
                   >
                     {f.documentTitle}
                   </button>
                 </div>
                 <div className="col-span-3">
-                  <span className="text-sm">
-                    {f.universityName}
-                  </span>
+                  <span className="text-sm">{f.universityName}</span>
                 </div>
                 <div className="col-span-4">
                   <span className="text-sm text-gray-600">
@@ -292,17 +325,18 @@ className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
         </>
       ) : (
         <>
-          {/* 학교 헤더 */}
+          {/* ✅ 학교 헤더 (삭제 컬럼 추가) */}
           <div className="mb-3 grid grid-cols-12 gap-6 border-b-2 border-gray-400 pb-3">
             <div className="col-span-2 text-base font-medium text-gray-900">
               로고
             </div>
-            <div className="col-span-10 text-base font-medium text-gray-900">
+            <div className="col-span-8 text-base font-medium text-gray-900">
               학교명
             </div>
+            <div className="col-span-2" />
           </div>
 
-          {/* 학교 리스트 */}
+          {/* ✅ 학교 리스트 (삭제 버튼 추가) */}
           <div className="space-y-0">
             {univFavs.map((u) => (
               <div
@@ -321,13 +355,21 @@ className="text-left text-md text-uniwikicolor hover:underline cursor-pointer"
                     <div className="h-10 w-10 rounded bg-gray-100" />
                   )}
                 </div>
-                <div className="col-span-10">
+                <div className="col-span-8">
                   <button
-                    onClick={() =>goUniversity(u)}
+                    onClick={() => goUniversity(u)}
                     className="text-left text-sm text-uniwikicolor hover:underline cursor-pointer"
                   >
                     {u.universityName}
                   </button>
+                </div>
+                <div className="col-span-2 flex justify-end">
+                  <span
+                    onClick={() => handleDeleteUniversity(u.universityId)}
+                    className="text-red-500 hover:underline cursor-pointer"
+                  >
+                    삭제
+                  </span>
                 </div>
               </div>
             ))}

@@ -137,7 +137,8 @@ export default function DiscussionHistoryPage() {
         localStorage.removeItem("accessToken");
         navigate("/login");
       } else {
-        alert("참여 토론 목록을 불러오지 못했습니다.");
+        // ✅ alert 제거
+        console.error("참여 토론 목록을 불러오지 못했습니다.");
       }
     } catch (e) {
       console.error("fetch discussions error:", e);

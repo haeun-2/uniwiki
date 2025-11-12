@@ -76,7 +76,8 @@ export default function AttributePage() {
         localStorage.removeItem("accessToken");
         navigate("/login");
       } else {
-        alert("기여 문서 목록을 불러오는데 실패했습니다.");
+        // ✅ 이 alert만 제거
+        console.error("기여 문서 목록을 불러오는데 실패했습니다.");
       }
     } catch (error) {
       console.error("Fetch contributions error:", error);
