@@ -19,12 +19,6 @@ export default function WelcomePage() {
           >
             로그인하고 시작하기
           </Link>
-          <Link
-            to="/univ"
-            className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-3 text-gray-700 hover:bg-gray-50 transition"
-          >
-            학교별 문서 둘러보기
-          </Link>
         </div>
       </section>
 
@@ -130,12 +124,6 @@ export default function WelcomePage() {
             className="inline-flex items-center justify-center rounded-xl bg-uniwikicolor px-5 py-3 text-white hover:opacity-90 transition"
           >
             로그인
-          </Link>
-          <Link
-            to="/univ"
-            className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-3 text-gray-700 hover:bg-gray-50 transition"
-          >
-            학교별 문서 보기
           </Link>
         </div>
       </section>
