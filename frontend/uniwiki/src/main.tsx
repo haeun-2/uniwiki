@@ -62,14 +62,11 @@ import CategoryPage from './pages/CategoryPage'
 import AiSearchPage from './pages/AiSearchPage'
 import SearchResultPage from './pages/SearchResultPage'
 
-/** 🔁 레거시 경로 호환:
- *   /univ/:univName/docs/:documentTitle → /docs/:documentTitle 로 리다이렉트
- *   (한글 타이틀 포함, 안전하게 encodeURIComponent 적용)
- */
-function LegacyUnivDocRedirect() {
-  const { documentTitle = '' } = useParams()
-  return <Navigate to={`/docs/${encodeURIComponent(documentTitle)}`} replace />
-}
+// footer 내용
+import WelcomePage from './pages/footer/WelcomePage'
+import GuidePage from './pages/footer/GuidePage'
+import RulePage from './pages/footer/RulePage'
+
 
 const router = createBrowserRouter([
   // 메인 페이지
@@ -87,11 +84,13 @@ const router = createBrowserRouter([
       { path: 'profile', element: <ProfilePage /> },
        { path: 'ai-search', element: <AiSearchPage /> },
        { path: 'search', element: <SearchResultPage /> },
+      
+      // footer 내용
+      { path: 'welcome', element: <WelcomePage />},
+      { path: 'guide', element: <GuidePage />},
+      { path: 'rule', element: <RulePage />},
     ],
   },
-
-  /** ✅ 레거시 경로 리다이렉트(404 방지) */
-  // { path: '/univ/:univName/docs/:documentTitle', element: <LegacyUnivDocRedirect /> },
 
   // 대학교 메인 페이지
   {

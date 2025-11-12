@@ -179,7 +179,7 @@ export default function DocumentViewPage() {
           const token = getAccessToken();
           if (!token) setFavOn(false);
           else {
-            const favRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents`, { // ← 오타 수정
+            const favRes = await fetch(`${API_BASE}/v1/users/me/favorites/documents`, {
               method: 'GET',
               headers: authHeaders({ Accept: 'application/json' }),
               credentials: 'include',
@@ -307,11 +307,12 @@ export default function DocumentViewPage() {
     []
   );
 
-  // 링크 정규화
+  // 링크 정규화 (+ 대학 ID 동반 전달)
   const univNameSafe = meta?.universityName || '대학교';
   const cateNameSafe = meta?.categoryName || '카테고리';
   const univHref = `/univ/${enc(univNameSafe)}`;
-  const catHref  = `/univ/${enc(univNameSafe)}/category/${enc(cateNameSafe)}`;
+  const catePathBase = `/univ/${enc(univNameSafe)}/category/${enc(cateNameSafe)}`;
+  const cateHref = typeof docUniId === 'number' ? `${catePathBase}?universityId=${docUniId}` : catePathBase;
   const docBase  = `${univHref}/docs/${docTitleParam}`;
 
   const showCard = status === 'ok' || status === 'loading';
@@ -350,7 +351,11 @@ export default function DocumentViewPage() {
                   </li>
                   <li className="mx-1 text-gray-500">›</li>
                   <li>
-                    <Link to={catHref} className="text-[#2C80A0] hover:underline">
+                    <Link
+                      to={cateHref}
+                      state={typeof docUniId === 'number' ? { universityId: docUniId } : undefined}
+                      className="text-[#2C80A0] hover:underline"
+                    >
                       {cateNameSafe}
                     </Link>
                   </li>
