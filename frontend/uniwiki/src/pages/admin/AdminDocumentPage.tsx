@@ -1,8 +1,7 @@
-// pages/admin/AdminDocumentPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-/* ====== 기존 타입 유지 ====== */
+/* ====== 타입 ====== */
 type AdminDocumentRevision = {
   documentId: number;
   createdAt: string;
@@ -23,7 +22,7 @@ type AdminDocumentResponse = {
   content: AdminDocumentRevision[];
 };
 
-/* ====== 지역/대학교 타입 (MainPage와 동일) ====== */
+/* ====== 지역/대학교 타입 ====== */
 type Region = { regionId: number; regionName: string };
 type University = { universityId: number; universityName: string; logoUrl: string | null };
 
@@ -48,11 +47,6 @@ const shortenRegion = (name: string) => {
   return name;
 };
 
-type Chip = {
-  key: "categoryId" | "universityId" | "title" | "nickname" | "startDate" | "endDate";
-  label: string;
-};
-
 function getToken() {
   return (
     localStorage.getItem("accessToken") ||
@@ -60,9 +54,11 @@ function getToken() {
     ""
   );
 }
+
 const fmt = (iso: string) => {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
 };
+
 function buildPageItems(cur: number, total: number) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i);
   const items: (number | "...")[] = [];
@@ -76,11 +72,13 @@ function buildPageItems(cur: number, total: number) {
   }
   return items;
 }
+
 function buildDocumentHref(universityName: string, documentName: string) {
   const univ = encodeURIComponent(universityName);
   const doc = encodeURIComponent(documentName);
   return `/univ/${univ}/docs/${doc}`;
 }
+
 function localToISOZ(s: string | undefined) {
   if (!s) return undefined;
   const d = new Date(s);
@@ -88,35 +86,13 @@ function localToISOZ(s: string | undefined) {
   return d.toISOString();
 }
 
-/* ====== 칩 컴포넌트 ====== */
-function FilterChips({
-  chips, onRemove, onClear,
-}: {
-  chips: Chip[];
-  onRemove: (key: Chip["key"]) => void;
-  onClear: () => void;
-}) {
-  if (!chips.length) return null;
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {chips.map((c) => (
-        <button
-          key={c.key}
-          onClick={() => onRemove(c.key)}
-          className="group inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs hover:bg-gray-50"
-          title="이 필터 제거"
-        >
-          <span>{c.label}</span>
-          <span className="text-gray-400 group-hover:text-gray-600">✕</span>
-        </button>
-      ))}
-      <button onClick={onClear} className="text-xs text-gray-500 hover:underline">모두 지우기</button>
-    </div>
-  );
-}
+type ChipKey = "categoryId" | "universityId" | "title" | "nickname" | "startDate" | "endDate";
+
+
 
 /* ====== 페이지 ====== */
 export default function AdminDocumentPage() {
+
   /* 페이지/데이터 */
   const [page, setPage] = useState(0);
   const size = FIXED_SIZE;
@@ -124,15 +100,29 @@ export default function AdminDocumentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* 필터 상태 */
-  const [categoryId, setCategoryId] = useState<string>("");  // 단일 선택
-  const [universityId, setUniversityId] = useState<string>("");
-  const [selectedUnivName, setSelectedUnivName] = useState<string>(""); // 칩 표기를 위해 보관
-  const [title, setTitle] = useState<string>("");
-  const [nickname, setNickname] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const [direction, setDirection] = useState<"asc" | "desc">("desc");
+  /* 폼 상태(사용자가 입력 중인 값) */
+  const [form, setForm] = useState({
+    categoryId: "",
+    universityId: "",
+    title: "",
+    nickname: "",
+    startDate: "",
+    endDate: "",
+    direction: "desc" as "asc" | "desc",
+    selectedUnivName: "",
+  });
+
+  /* 적용된 필터(실제 요청에 사용) */
+  const [applied, setApplied] = useState({
+    categoryId: "",
+    universityId: "",
+    title: "",
+    nickname: "",
+    startDate: "",
+    endDate: "",
+    direction: "desc" as "asc" | "desc",
+    selectedUnivName: "",
+  });
 
   /* 접기/펼치기 */
   const [open, setOpen] = useState(true);
@@ -142,10 +132,7 @@ export default function AdminDocumentPage() {
 
   /* 지역/대학교 (MainPage와 동일 로직) */
   const [regions, setRegions] = useState<Region[]>([]);
-  const regionChips = useMemo(
-    () => [{ regionId: 0, regionName: "전체" } as Region, ...regions],
-    [regions]
-  );
+  const regionChips = useMemo(() => [{ regionId: 0, regionName: "전체" } as Region, ...regions], [regions]);
   const [selectedRegionId, setSelectedRegionId] = useState<number>(0);
 
   const [universities, setUniversities] = useState<University[]>([]);
@@ -195,32 +182,32 @@ export default function AdminDocumentPage() {
     return () => { mounted = false; };
   }, [selectedRegionId]);
 
-  /* 쿼리스트링 */
+  /* 쿼리스트링(적용된 값 기준) */
   const queryString = useMemo(() => {
     const q = new URLSearchParams();
     const hasFilter =
-      categoryId !== "" ||
-      universityId !== "" ||
-      title.trim() !== "" ||
-      nickname.trim() !== "" ||
-      startDate !== "" ||
-      endDate !== "";
+      applied.categoryId !== "" ||
+      applied.universityId !== "" ||
+      applied.title.trim() !== "" ||
+      applied.nickname.trim() !== "" ||
+      applied.startDate !== "" ||
+      applied.endDate !== "";
 
     if (hasFilter) {
-      if (categoryId !== "") q.set("categoryId", String(Number(categoryId)));
-      if (universityId !== "") q.set("universityId", String(Number(universityId)));
-      if (title.trim() !== "") q.set("title", title.trim());
-      if (nickname.trim() !== "") q.set("nickname", nickname.trim());
-      const sISO = localToISOZ(startDate);
-      const eISO = localToISOZ(endDate);
+      if (applied.categoryId !== "") q.set("categoryId", String(Number(applied.categoryId)));
+      if (applied.universityId !== "") q.set("universityId", String(Number(applied.universityId)));
+      if (applied.title.trim() !== "") q.set("title", applied.title.trim());
+      if (applied.nickname.trim() !== "") q.set("nickname", applied.nickname.trim());
+      const sISO = localToISOZ(applied.startDate);
+      const eISO = localToISOZ(applied.endDate);
       if (sISO) q.set("startDate", sISO);
       if (eISO) q.set("endDate", eISO);
     }
     q.set("page", String(page));
     q.set("size", String(size));
-    q.set("direction", direction);
+    q.set("direction", applied.direction);
     return q.toString();
-  }, [categoryId, universityId, title, nickname, startDate, endDate, page, size, direction]);
+  }, [applied, page, size]);
 
   /* 데이터 요청 */
   async function fetchList(signal?: AbortSignal) {
@@ -249,7 +236,6 @@ export default function AdminDocumentPage() {
 
   const rows = data?.content ?? [];
   const totalPages = Math.max(1, data?.totalPages ?? 1);
-  const pageItems = buildPageItems(page, totalPages);
 
   const handleGoto = () => {
     const n = Number(goto);
@@ -257,43 +243,57 @@ export default function AdminDocumentPage() {
     const target = Math.max(1, Math.min(totalPages, Math.floor(n))) - 1;
     setPage(target);
   };
+  
+  /* 액션들 */
+  const applyFilters = () => {
+    setApplied(form);
+    setPage(0);
+  };
 
   const resetFilters = () => {
-    setCategoryId("");
-    setUniversityId("");
-    setSelectedUnivName("");
-    setTitle("");
-    setNickname("");
-    setStartDate("");
-    setEndDate("");
-    setDirection("desc");
+    const empty = {
+      categoryId: "",
+      universityId: "",
+      title: "",
+      nickname: "",
+      startDate: "",
+      endDate: "",
+      direction: "desc" as "asc" | "desc",
+      selectedUnivName: "",
+    };
+    setForm(empty);
+    setApplied(empty);
     setSelectedRegionId(0);
     setPage(0);
   };
 
-  const removeOneFilter = (key: Chip["key"]) => {
+  const removeOneFilter = (key: ChipKey) => {
+    const nextForm = { ...form };
+    const nextApplied = { ...applied };
     switch (key) {
-      case "categoryId": setCategoryId(""); break;
-      case "universityId": setUniversityId(""); setSelectedUnivName(""); break;
-      case "title": setTitle(""); break;
-      case "nickname": setNickname(""); break;
-      case "startDate": setStartDate(""); break;
-      case "endDate": setEndDate(""); break;
+      case "categoryId": nextForm.categoryId = ""; nextApplied.categoryId = ""; break;
+      case "universityId": nextForm.universityId = ""; nextApplied.universityId = ""; nextForm.selectedUnivName = ""; nextApplied.selectedUnivName = ""; break;
+      case "title": nextForm.title = ""; nextApplied.title = ""; break;
+      case "nickname": nextForm.nickname = ""; nextApplied.nickname = ""; break;
+      case "startDate": nextForm.startDate = ""; nextApplied.startDate = ""; break;
+      case "endDate": nextForm.endDate = ""; nextApplied.endDate = ""; break;
     }
+    setForm(nextForm);
+    setApplied(nextApplied);
     setPage(0);
   };
 
-  const chips: Chip[] = (() => {
-    const out: Chip[] = [];
-    if (categoryId) {
-      const n = CAT.find(c => String(c.id) === categoryId)?.name ?? categoryId;
+  const chips = (() => {
+    const out: { key: ChipKey; label: string }[] = [];
+    if (applied.categoryId) {
+      const n = CAT.find(c => String(c.id) === applied.categoryId)?.name ?? applied.categoryId;
       out.push({ key: "categoryId", label: `카테고리: ${n}` });
     }
-    if (universityId) out.push({ key: "universityId", label: `대학: ${selectedUnivName || universityId}` });
-    if (title.trim()) out.push({ key: "title", label: `제목: ${title.trim()}` });
-    if (nickname.trim()) out.push({ key: "nickname", label: `닉네임: ${nickname.trim()}` });
-    if (startDate) out.push({ key: "startDate", label: `시작: ${startDate.replace("T", " ")}` });
-    if (endDate) out.push({ key: "endDate", label: `종료: ${endDate.replace("T", " ")}` });
+    if (applied.universityId) out.push({ key: "universityId", label: `대학: ${applied.selectedUnivName || applied.universityId}` });
+    if (applied.title.trim()) out.push({ key: "title", label: `제목: ${applied.title.trim()}` });
+    if (applied.nickname.trim()) out.push({ key: "nickname", label: `닉네임: ${applied.nickname.trim()}` });
+    if (applied.startDate) out.push({ key: "startDate", label: `시작: ${applied.startDate.replace("T", " ")}` });
+    if (applied.endDate) out.push({ key: "endDate", label: `종료: ${applied.endDate.replace("T", " ")}` });
     return out;
   })();
 
@@ -303,35 +303,41 @@ export default function AdminDocumentPage() {
 
       {/* ====== 필터 박스 ====== */}
       <div className="rounded-2xl border border-gray-200 bg-white">
-        {/* 접힘 상태 헤더(칩만 노출) */}
-        {!open && (
-          <div className="p-3">
-            <FilterChips chips={chips} onRemove={removeOneFilter} onClear={resetFilters} />
-          </div>
-        )}
-
-        {/* 본문: 열림일 때만 */}
+        
+        {/* 상세 필터 본문: 열림일 때만 */}
         {open && (
           <div className="p-4 space-y-6">
             {/* 카테고리 */}
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-gray-700">카테고리</span>
-              <div className="flex flex-wrap gap-4">
-                {CAT.map((c) => {
-                  const checked = categoryId === String(c.id);
-                  return (
-                    <label key={c.id} className="inline-flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={checked}
-                        onChange={() => setCategoryId(checked ? "" : String(c.id))}
-                      />
-                      <span>{c.name}</span>
-                    </label>
-                  );
-                })}
+            <div className="flex items-center gap-4 justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-700">카테고리</span>
+                <div className="flex flex-wrap gap-4">
+                  {CAT.map((c) => {
+                    const checked = form.categoryId === String(c.id);
+                    return (
+                      <label key={c.id} className="inline-flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={checked}
+                          onChange={() => setForm(f => ({ ...f, categoryId: checked ? "" : String(c.id) }))}
+                        />
+                        <span>{c.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
+              <button
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50"
+                aria-label="필터 접기"
+                title="필터 접기"
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <path d="M5 12l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             </div>
 
             {/* 대학교 영역 */}
@@ -370,30 +376,28 @@ export default function AdminDocumentPage() {
 
               {/* 대학교 스크롤 목록 */}
               <div className="rounded-2xl border border-gray-200">
-                {/* 고정 높이: min/max 둘 다 지정해서 탭 전환 시 높이 유지 */}
-                <div className="min-h-[360px] max-h-[360px] overflow-y-auto p-3 pr-2 text-sm text-gray-700">
+                {/* 고정 높이: 탭 전환 시 높이 유지 */}
+                <div className="min-h-[240px] max-h-[240px] overflow-y-auto p-3 pr-2 text-sm text-gray-700">
                   {loadingUniversities && (
                     <div className="h-full w-full rounded bg-gray-50 animate-pulse" />
                   )}
                   {univError && <div className="text-xs text-red-500">대학교 목록 오류</div>}
                   {!loadingUniversities && !univError && (
-                    // {/* 👇 2) 그리드/아이템 스타일 변경(더 조밀) */}
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-x-4 gap-y-2">
                       {universities.map((u) => {
-                        const active = universityId === String(u.universityId);
+                        const active = form.universityId === String(u.universityId);
                         return (
                           <button
                             type="button"
                             key={u.universityId}
                             onClick={() => {
                               const next = active ? "" : String(u.universityId);
-                              setUniversityId(next);
-                              setSelectedUnivName(active ? "" : u.universityName);
+                              setForm(f => ({ ...f, universityId: next, selectedUnivName: active ? "" : u.universityName }));
                             }}
                             className={[
                               "block w-full truncate text-left",
-                              "text-[13px] leading-6",             // 글자/줄간격 축소
-                              "px-1 py-0.5",                        // 내부 여백 축소
+                              "text-[13px] leading-6",
+                              "px-1 py-0.5",
                               active ? "text-[#2C80A0] font-medium underline" : "hover:underline",
                             ].join(" ")}
                             title={u.universityName}
@@ -408,13 +412,13 @@ export default function AdminDocumentPage() {
               </div>
             </div>
 
-            {/* 기타 필드 */}
-            <div className="grid gap-4 md:grid-cols-2">
+            {/* 문서명, 작성/수정자 */}
+            <div className="grid gap-8 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm text-gray-600">문서명</label>
                 <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  value={form.title}
+                  onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="문서 제목"
                   className="w-full border rounded-lg px-3 py-2 text-sm"
                 />
@@ -422,18 +426,21 @@ export default function AdminDocumentPage() {
               <div>
                 <label className="mb-1 block text-sm text-gray-600">작성/수정자</label>
                 <input
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
+                  value={form.nickname}
+                  onChange={(e) => setForm(f => ({ ...f, nickname: e.target.value }))}
                   placeholder="닉네임"
                   className="w-full border rounded-lg px-3 py-2 text-sm"
                 />
               </div>
+            </div>
+
+            <div className="grid gap-8 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm text-gray-600">기간 시작</label>
                 <input
                   type="datetime-local"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  value={form.startDate}
+                  onChange={(e) => setForm(f => ({ ...f, startDate: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm"
                 />
               </div>
@@ -441,19 +448,43 @@ export default function AdminDocumentPage() {
                 <label className="mb-1 block text-sm text-gray-600">기간 종료</label>
                 <input
                   type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  value={form.endDate}
+                  onChange={(e) => setForm(f => ({ ...f, endDate: e.target.value }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm"
                 />
               </div>
             </div>
 
-            {/* 정렬 + 버튼 */}
+            {/* 적용된 칩 표시 */}
+            {(chips.length > 0) && (
+              <div className="pt-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {chips.map((c) => (
+                    <button
+                      key={c.key}
+                      onClick={() => removeOneFilter(c.key)}
+                      className="group inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs hover:bg-gray-50"
+                      title="이 필터 제거"
+                    >
+                      <span>{c.label}</span>
+                      <span className="text-gray-400 group-hover:text-gray-600">✕</span>
+                    </button>
+                  ))}
+                  <button onClick={resetFilters} className="text-xs text-gray-500 hover:underline">모두 지우기</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="p-4 pb-3 border-b border-gray-100">
+          {open ? (
+            // 열림: 정렬 + 적용/초기화
             <div className="flex flex-wrap items-center gap-2">
               <label className="text-xs text-gray-500">정렬</label>
               <select
-                value={direction}
-                onChange={(e) => setDirection(e.target.value as "asc" | "desc")}
+                value={form.direction}
+                onChange={(e) => setForm(f => ({ ...f, direction: e.target.value as "asc" | "desc" }))}
                 className="border rounded-lg px-3 py-1.5 text-sm bg-white"
               >
                 <option value="desc">최신순</option>
@@ -462,8 +493,8 @@ export default function AdminDocumentPage() {
 
               <div className="ml-auto flex items-center gap-2">
                 <button
-                  onClick={() => { setPage(0); }}
-                  className="px-3 py-1.5 rounded-lg border hover:bg-gray-50 text-sm"
+                  onClick={applyFilters}
+                  className="px-3 py-1.5 rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover text-sm"
                 >
                   적용
                 </button>
@@ -475,23 +506,24 @@ export default function AdminDocumentPage() {
                 </button>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* 하단 토글 버튼 */}
-        <div className="flex justify-center py-3">
-          <button
-            onClick={() => setOpen(v => !v)}
-            className="inline-flex items-center justify-center rounded-full border px-3 py-2 text-sm hover:bg-gray-50"
-            aria-label={open ? "필터 접기" : "필터 펼치기"}
-            title={open ? "필터 접기" : "필터 펼치기"}
-          >
-            {open ? (
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M5 12l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            )}
-          </button>
+          ) : (
+            // 닫힘: 펼치기 버튼만 우측에 표시
+            <div className="flex items-center">
+              <span className="text-sm">필터링 메뉴 열기</span>
+              <div className="ml-auto">
+                <button
+                  onClick={() => setOpen(true)}
+                  className="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50"
+                  aria-label="필터 펼치기"
+                  title="필터 펼치기"
+                >
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                    <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -500,24 +532,9 @@ export default function AdminDocumentPage() {
         <div className="text-sm text-gray-500">
           페이지 {data ? data.page + 1 : page + 1} / {data ? Math.max(1, data.totalPages) : 1} • 총 {data?.totalElements ?? 0}건 • 페이지당 {size}건
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="relative">
-            <input
-              value={goto}
-              onChange={(e) => setGoto(e.target.value.replace(/[^\d]/g, ""))}
-              onKeyDown={(e) => { if (e.key === "Enter") handleGoto(); }}
-              placeholder="페이지 번호"
-              className="w-28 border rounded-lg px-3 py-2 text-sm text-right"
-              inputMode="numeric"
-            />
-            <button onClick={handleGoto} className="absolute right-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded border text-xs hover:bg-gray-50">
-              이동
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* 로딩/에러/테이블/페이지네이션 (기존 그대로) */}
+      {/* 로딩/에러/테이블 */}
       {loading && (
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -544,7 +561,7 @@ export default function AdminDocumentPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((d, idx) => {
+              {(rows ?? []).map((d, idx) => {
                 const href = buildDocumentHref(d.universityName, d.documentTitle);
                 return (
                   <tr key={`${d.documentId}-${d.createdAt}-${idx}`} className="group border-b hover:bg-gray-50 transition-colors">
@@ -583,6 +600,7 @@ export default function AdminDocumentPage() {
         </div>
       )}
 
+      {/* 페이지네이션 */}
       <div className="pt-2 flex flex-wrap items-center text-sm">
         <div className="flex flex-wrap items-center gap-1">
           <button disabled={loading || page === 0} onClick={() => setPage(0)} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">« 처음</button>
@@ -598,6 +616,19 @@ export default function AdminDocumentPage() {
           )}
           <button disabled={loading || !(data?.hasNext)} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">다음 ›</button>
           <button disabled={loading || page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">끝 »</button>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <input
+            value={goto}
+            onChange={(e) => setGoto(e.target.value.replace(/[^\d]/g, ""))}
+            onKeyDown={(e) => { if (e.key === "Enter") handleGoto(); }}
+            placeholder="페이지 번호"
+            className="w-28 border rounded-lg px-3 py-2 text-sm text-right"
+            inputMode="numeric"
+          />
+          <button onClick={handleGoto} className="px-2 py-1 rounded border text-xs hover:bg-gray-50">
+            이동
+          </button>
         </div>
       </div>
     </div>
