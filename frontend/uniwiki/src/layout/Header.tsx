@@ -55,17 +55,18 @@ export default function Header({
     if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
   }, []);
 
-  // 플래시 타입별 스타일
-  const getFlashStyle = () => {
-    switch (flashType) {
-      case "success":
-        return "bg-green-500 border-green-600";
-      case "error":
-        return "bg-red-500 border-red-600";
-      default:
-        return "bg-blue-500 border-blue-600";
-    }
-  };
+  // 플래시 타입별 스타일 
+const getFlashStyle = () => {
+  switch (flashType) {
+    case "success":
+      return "bg-green-500/80 border-green-600/40"; // 80% 배경, 40% 보더
+    case "error":
+      return "bg-red-500/80 border-red-600/40";
+    default:
+      return "bg-blue-500/80 border-blue-600/40";   // info
+  }
+};
+
 
   // accessToken 존재 여부로 로그인 상태 판단
   useEffect(() => {
@@ -135,13 +136,15 @@ export default function Header({
       {flash && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
           <div className={`
-            ${getFlashStyle()}
-            min-w-[320px] max-w-md
-            rounded-xl border-2 
-            px-6 py-4 
-            shadow-2xl
-            flex items-center justify-between gap-4
-          `}>
+  ${getFlashStyle()}
+  min-w-[320px] max-w-md
+  rounded-xl border                    /* ← border-2 → border */
+  px-6 py-4
+  shadow-lg                            /* ← shadow-2xl → shadow-lg */
+  backdrop-blur-[2px]                  /* (선택) 살짝 유리 느낌 */
+  flex items-center justify-between gap-4
+`}>
+
             <span className="text-white font-medium text-base flex-1">
               {flash}
             </span>
