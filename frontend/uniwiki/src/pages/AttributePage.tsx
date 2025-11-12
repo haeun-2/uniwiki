@@ -184,21 +184,21 @@ export default function AttributePage() {
                 {/* 오른쪽 링크들 */}
                 <div className="ml-auto flex gap-2 text-gray-600">
                   <Link 
-                    to={`/docs/${encodeURIComponent(contribution.documentName)}/history`} 
+                    to={`/univ/${encodeURIComponent(contribution.universityName)}/docs/${encodeURIComponent(contribution.documentName)}/history`} 
                     className="hover:underline"
                   >
                     역사
                   </Link>
                   <span>|</span>
                   <Link 
-                    to={`/docs/${encodeURIComponent(contribution.documentName)}/discussions`} 
+                    to={`/univ/${encodeURIComponent(contribution.universityName)}/docs/${encodeURIComponent(contribution.documentName)}/discussions`} 
                     className="hover:underline"
                   >
                     토론
                   </Link>
                   <span>|</span>
                   <Link 
-                    to={`/docs/${encodeURIComponent(contribution.documentName)}/history`} 
+                    to={`/univ/${encodeURIComponent(contribution.universityName)}/docs/${encodeURIComponent(contribution.documentName)}/history`} 
                     className="hover:underline"
                   >
                     비교
