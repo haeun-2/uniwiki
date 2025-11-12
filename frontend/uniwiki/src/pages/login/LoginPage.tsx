@@ -1,41 +1,69 @@
 // src/pages/LoginPage.tsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Mail, Lock, X } from "lucide-react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate} from "react-router-dom";
+
+const FLASH_AUTO_MS = 3200;
 
 export default function LoginPage() {
-  
-  const location = useLocation();
-  const fromPath = (location.state as any)?.from || "/";
-
   const navigate = useNavigate();
+
+   useEffect(() => {
+    const token =
+      localStorage.getItem("accessToken") ||
+      sessionStorage.getItem("accessToken"); // 세션도 사용하는 경우 포함
+    if (token) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // ===== 플래시 팝업 상태 =====
+  const [flash, setFlash] = useState("");
+  const [flashType, setFlashType] = useState<"success" | "error" | "info">("info");
+  const flashTimerRef = useRef<number | null>(null);
+  
+  const showFlash = (msg: string, type: "success" | "error" | "info" = "info", ms = FLASH_AUTO_MS) => {
+  setFlash(msg);
+  setFlashType(type);
+  if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+  // ✅ 에러 메시지에 키워드가 있을 때만 자동으로 안 사라지게 수정
+  if (!/오류|실패|에러/.test(msg)) {
+    flashTimerRef.current = window.setTimeout(() => setFlash(""), ms);
+  }
+};
+  
+  const closeFlash = () => {
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    setFlash("");
+  };
+  
+  useEffect(() => () => { 
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current); 
+  }, []);
+  
   // 모달 관련 상태
-  const [resetEmail, setResetEmail] = useState(""); // 비밀번호 찾기용 이메일
+  const [resetEmail, setResetEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [timeLeft, setTimeLeft] = useState(0); // 초기값 0으로 변경
-  const [isCodeSent, setIsCodeSent] = useState(false); // 인증번호 발송 여부
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isCodeSent, setIsCodeSent] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // 타이머 기능
   useEffect(() => {
     if (!isModalOpen || timeLeft <= 0) return;
-
     const timer = setInterval(() => {
       setTimeLeft((prev) => prev - 1);
     }, 1000);
-
     return () => clearInterval(timer);
   }, [isModalOpen, timeLeft]);
 
-  // 시간을 MM:SS 형식으로 변환
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -46,7 +74,7 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (!email || !password) {
-      alert("이메일과 비밀번호를 입력해주세요.");
+      showFlash("이메일과 비밀번호를 입력해주세요.", "error");
       return;
     }
 
@@ -67,7 +95,6 @@ export default function LoginPage() {
       if (response.ok) {
         const data = await response.json();
         
-        // 토큰과 사용자 정보 저장
         localStorage.setItem("accessToken", data.accessToken);
         localStorage.setItem("userId", data.userId.toString());
         localStorage.setItem("nickName", data.nickName);
@@ -78,33 +105,33 @@ export default function LoginPage() {
 
         window.dispatchEvent(new Event("uniwiki:auth-changed"));
 
-        alert(`${data.nickName}님, 환영합니다!`);
-
-        navigate(fromPath, { replace: true });
+        showFlash(`${data.nickName}님, 환영합니다!`, "success");
+        
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 1500);
 
       } else {
         const error = await response.json();
-        alert(error.message || "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
+        showFlash(error.message || "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.", "error");
       }
     } catch (error) {
       console.error("Login error:", error);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 인증번호 발송
   const handleSendCode = async () => {
     if (!resetEmail) {
-      alert("이메일을 입력해주세요.");
+      showFlash("이메일을 입력해주세요.", "error");
       return;
     }
 
-    // 이메일 형식 검증
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(resetEmail)) {
-      alert("올바른 이메일 형식을 입력해주세요.");
+      showFlash("올바른 이메일 형식을 입력해주세요.", "error");
       return;
     }
 
@@ -122,48 +149,46 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        alert("인증번호가 발송되었습니다. 이메일을 확인해주세요.");
+        showFlash("인증번호가 발송되었습니다. 이메일을 확인해주세요.", "success");
         setIsCodeSent(true);
-        setTimeLeft(180); // 3분 타이머 시작
+        setTimeLeft(180);
       } else if (response.status === 404) {
-        alert("등록되지 않은 이메일입니다.");
+        showFlash("등록되지 않은 이메일입니다.", "error");
       } else {
         const error = await response.json();
-        alert(error.message || "인증번호 발송에 실패했습니다.");
+        showFlash(error.message || "인증번호 발송에 실패했습니다.", "error");
       }
     } catch (error) {
       console.error("Send code error:", error);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     } finally {
       setIsVerifying(false);
     }
   };
 
-  // 비밀번호 재설정
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!verificationCode) {
-      alert("인증번호를 입력해주세요.");
+      showFlash("인증번호를 입력해주세요.", "error");
       return;
     }
 
     if (!newPassword || !confirmPassword) {
-      alert("새 비밀번호를 입력해주세요.");
+      showFlash("새 비밀번호를 입력해주세요.", "error");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      alert("비밀번호가 일치하지 않습니다.");
+      showFlash("비밀번호가 일치하지 않습니다.", "error");
       return;
     }
 
-    // 비밀번호 검증
-const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
-if (!passwordRegex.test(newPassword)) {
-  alert("비밀번호는 영문 대/소문자, 숫자, 특수문자를 포함하여 8자 이상이어야 합니다.");
-  return;
-}
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      showFlash("비밀번호는 영문 대/소문자, 숫자, 특수문자를 포함하여 8자 이상이어야 합니다.", "error");
+      return;
+    }
 
     setIsVerifying(true);
 
@@ -175,16 +200,15 @@ if (!passwordRegex.test(newPassword)) {
         },
         body: JSON.stringify({
           email: resetEmail,
-          code: verificationCode,  // ✅ "code"로 변경
+          code: verificationCode,
           newPassword: newPassword,
           confirmPassword: confirmPassword,
         }),
       });
 
       if (response.ok) {
-        alert("비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요.");
+        showFlash("비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요.", "success");
         setIsModalOpen(false);
-        // 상태 초기화
         setResetEmail("");
         setVerificationCode("");
         setNewPassword("");
@@ -194,23 +218,22 @@ if (!passwordRegex.test(newPassword)) {
       } else if (response.status === 400) {
         const errorData = await response.json();
         if (errorData.code === "EMAIL_CODE_400_01") {
-          alert("잘못된 인증번호입니다. 다시 확인해주세요.");
+          showFlash("잘못된 인증번호입니다. 다시 확인해주세요.", "error");
         } else {
-          alert(errorData.message || "비밀번호 재설정에 실패했습니다.");
+          showFlash(errorData.message || "비밀번호 재설정에 실패했습니다.", "error");
         }
       } else {
         const error = await response.json();
-        alert(error.message || "비밀번호 재설정에 실패했습니다.");
+        showFlash(error.message || "비밀번호 재설정에 실패했습니다.", "error");
       }
     } catch (error) {
       console.error("Password reset error:", error);
-      alert("서버와의 연결에 실패했습니다.");
+      showFlash("서버와의 연결에 실패했습니다.", "error");
     } finally {
       setIsVerifying(false);
     }
   };
 
-  // 모달 닫기 시 상태 초기화
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setResetEmail("");
@@ -221,17 +244,70 @@ if (!passwordRegex.test(newPassword)) {
     setIsCodeSent(false);
   };
 
-  // 비밀번호 유효성 검사 (대문자, 소문자, 숫자, 특수문자 모두 포함)
-const isPasswordValid = 
-  newPassword.length >= 8 && 
-  /[A-Z]/.test(newPassword) &&      // 대문자
-  /[a-z]/.test(newPassword) &&      // 소문자
-  /\d/.test(newPassword) &&          // 숫자
-  /[^A-Za-z\d]/.test(newPassword);  // 특수문자
+  const isPasswordValid = 
+    newPassword.length >= 8 && 
+    /[A-Z]/.test(newPassword) &&
+    /[a-z]/.test(newPassword) &&
+    /\d/.test(newPassword) &&
+    /[^A-Za-z\d]/.test(newPassword);
   const isPasswordMatch = newPassword === confirmPassword && confirmPassword !== "";
+
+  // 플래시 타입별 스타일
+  const getFlashStyle = () => {
+    switch (flashType) {
+      case "success":
+        return "bg-green-500 border-green-600";
+      case "error":
+        return "bg-red-500 border-red-600";
+      default:
+        return "bg-blue-500 border-blue-600";
+    }
+  };
 
   return (
     <>
+      {/* ===== 플래시 팝업 (화면 상단 중앙, 고정) ===== */}
+      {flash && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
+          <div className={`
+            ${getFlashStyle()}
+            min-w-[320px] max-w-md
+            rounded-xl border-2 
+            px-6 py-4 
+            shadow-2xl
+            flex items-center justify-between gap-4
+          `}>
+            <span className="text-white font-medium text-base flex-1">
+              {flash}
+            </span>
+            <button
+              onClick={closeFlash}
+              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              aria-label="닫기"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 애니메이션 수정 */}
+<style>{`
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);  /* ✅ Y축만 이동 */
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);      /* ✅ Y축만 이동 */
+    }
+  }
+  .animate-slideDown {
+    animation: slideDown 0.3s ease-out;
+  }
+`}</style>
+
       <div className="flex min-h-[70vh] items-center justify-center">
         <div className="w-full max-w-md">
           <h1 className="mb-8 text-center text-3xl font-semibold text-gray-900">로그인</h1>
@@ -315,7 +391,6 @@ const isPasswordValid =
             <h2 className="mb-6 text-xl font-semibold text-gray-900">비밀번호 찾기</h2>
 
             <form onSubmit={handlePasswordReset} className="space-y-6">
-              {/* 이메일 입력 */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   이메일
@@ -340,7 +415,6 @@ const isPasswordValid =
                 </div>
               </div>
 
-              {/* 인증번호 입력 (이메일 발송 후에만 표시) */}
               {isCodeSent && (
                 <>
                   <div>
@@ -379,12 +453,12 @@ const isPasswordValid =
                       className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
                     />
                     {newPassword && (
-  <p className={`mt-1 text-xs ${isPasswordValid ? "text-green-600" : "text-orange-500"}`}>
-    {isPasswordValid
-      ? "안전한 비밀번호입니다."
-      : "영문 대/소문자, 숫자, 특수문자를 포함하여 8자 이상"}
-  </p>
-)}
+                      <p className={`mt-1 text-xs ${isPasswordValid ? "text-green-600" : "text-orange-500"}`}>
+                        {isPasswordValid
+                          ? "안전한 비밀번호입니다."
+                          : "영문 대/소문자, 숫자, 특수문자를 포함하여 8자 이상"}
+                      </p>
+                    )}
                   </div>
 
                   <div>
