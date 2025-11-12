@@ -369,12 +369,12 @@ export default function DocumentDiffPage() {
           <div
             role="tablist"
             aria-label="버전 비교 메뉴"
-            className="grid grid-cols-1 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(92px,12vw,116px)]"
+            className="grid items-stretch overflow-hidden rounded-lg border border-[#B3B3B3] bg-gray-50 w-[clamp(92px,12vw,116px)]"
           >
             <Link
               role="tab"
               to={`${docBase}/history`}
-              className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
+              className="h-9 px-2 text-md leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
             >
               돌아가기
             </Link>

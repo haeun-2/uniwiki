@@ -64,7 +64,7 @@ export default function DiscussionListPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // 플래시 배너(문서 조회 화면과 동일한 디자인 + 자동 사라짐 + 닫기 버튼)
+  // 플래시 배너
   const [flash, setFlash] = useState<string>("");
   const flashTimerRef = useRef<number | null>(null);
   const showFlash = (msg: string, ms = 3000) => {
@@ -240,8 +240,8 @@ export default function DiscussionListPage() {
         {/* 좌측 */}
         <div className="lg:col-span-8 space-y-6">
           {/* 상자 #1 : 문서정보 + 토론 목록 */}
-          <section className="rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
-            {/* 플래시 배너 (문서 조회 화면과 동일) */}
+          <section className="rounded-2xl border border-[#B3B3B3] bg-gray-50 p-6">
+            {/* 플래시 배너 */}
             {flash && (
               <div
                 role="status"
@@ -280,13 +280,13 @@ export default function DiscussionListPage() {
               <div
                 role="tablist"
                 aria-label="문서 작업 메뉴"
-                className="grid grid-cols-1 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(92px,12vw,116px)]"
+                className="grid grid-cols-1 items-stretch overflow-hidden rounded-lg border border-[#B3B3B3] bg-gray-50 w-[clamp(92px,12vw,116px)]"
               >
                 <Link
                   role="tab"
                   aria-selected={false}
                   to={docHref}
-                  className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
+                  className="h-9 px-2 text-md leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
                 >
                   문서로
                 </Link>
@@ -320,7 +320,7 @@ export default function DiscussionListPage() {
           </section>
 
           {/* 상자 #2 : 새 토론 생성 */}
-          <section className="rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
+          <section className="rounded-2xl border border-[#B3B3B3] bg-gray-50 p-6">
             <header className="mb-4">
               <h2 className="text-[28px] leading-tight font-semibold text-gray-900">새 토론 생성</h2>
             </header>
