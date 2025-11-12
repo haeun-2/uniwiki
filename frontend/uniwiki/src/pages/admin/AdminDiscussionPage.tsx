@@ -196,7 +196,7 @@ export default function AdminDiscussionPage() {
                           }`}
                         title={
                           !canEnd
-                            ? "생성 후 14일 이상 지난 토론은 종료할 수 없습니다."
+                            ? "마지막 수정 이후 14일이 지난 토론만 종료할 수 있습니다."
                             : "토론 종료"
                         }
                       >

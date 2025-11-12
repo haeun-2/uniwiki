@@ -538,7 +538,14 @@ export default function AdminDiscussionReportPageGrouped() {
       {/* 상단 바: 페이지/검색 */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-sm text-gray-500">
-          페이지 {data ? data.page + 1 : page + 1} / {data ? data.totalPages : 1}
+          페이지{" "}
+          {data
+            ? data.totalPages === 0
+              ? 0
+              : data.page + 1
+            : 0}
+          {" / "}
+          {data ? data.totalPages : 0}
         </div>
         <div className="relative ml-auto">
           <input

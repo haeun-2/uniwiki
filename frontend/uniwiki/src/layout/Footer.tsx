@@ -2,6 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom"
 
 export default function Footer() {
+  const scrollToTop = () => window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+
   return (
     <footer 
     id="site-footer"
@@ -11,26 +13,17 @@ export default function Footer() {
           <div className="mb-2 font-semibold">UniWiki 소개</div>
           <ul className="space-y-1">
             <li>
-              <Link
-                to="/welcome"
-                className="hover:underline"
-              >
+              <Link to="/welcome" className="hover:underline" onClick={scrollToTop}>
                 UniWiki란?
               </Link>
             </li>
             <li>
-              <Link
-                to=""
-                className="hover:underline"
-              >
+              <Link to="" className="hover:underline" onClick={scrollToTop}>
                 기능 설명
               </Link>
             </li>
             <li>
-              <Link
-                to="/guide"
-                className="hover:underline"
-              >
+              <Link to="/guide" className="hover:underline" onClick={scrollToTop}>
                 문서 작성법
               </Link>
             </li>
@@ -40,26 +33,17 @@ export default function Footer() {
           <div className="mb-2 font-semibold">정책</div>
           <ul className="space-y-1">
             <li>
-              <Link
-                to="/rule"
-                className="hover:underline"
-              >
+              <Link to="/rule" className="hover:underline" onClick={scrollToTop}>
                 운영정책
               </Link>
             </li>
             <li>
-              <Link
-                to="/rule#copyright"
-                className="hover:underline"
-              >
+              <Link to="/rule#copyright" className="hover:underline">
                 저작권
               </Link>
             </li>
             <li>
-              <Link
-                to="/rule#privacy"
-                className="hover:underline"
-              >
+              <Link to="/rule#privacy" className="hover:underline">
                 개인정보 처리방침
               </Link>
             </li>
