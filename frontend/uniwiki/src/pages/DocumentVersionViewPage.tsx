@@ -91,7 +91,6 @@ export default function DocumentVersionViewPage() {
         setLatestVersion(baseData.versionNumber ?? null);
 
         const verUrl = `${API_BASE}/v1/documents/${baseData.documentId}/versions/${versionNumber}`;
-        // ✅ GET으로 변경
         const verRes = await fetch(verUrl, {
           method: 'GET',
           headers: authHeaders({ Accept: 'application/json' }),
@@ -137,13 +136,15 @@ export default function DocumentVersionViewPage() {
   const docTitleParam = enc(documentTitle);
   const univName = doc?.universityName || '대학교';
   const cateName = doc?.categoryName || '카테고리';
+  const univId = doc?.universityId;
 
   const univHref = `/univ/${enc(univName)}`;
-  const cateHref = `/univ/${enc(univName)}/category/${enc(cateName)}`;
+  // URL은 카테고리 이름 기반을 유지, 대학 ID는 쿼리와 state로 함께 전달
+  const catePathBase = `/univ/${enc(univName)}/category/${enc(cateName)}`;
+  const cateHref = typeof univId === 'number' ? `${catePathBase}?universityId=${univId}` : catePathBase;
   const docBase = `/univ/${enc(univName)}/docs/${docTitleParam}`;
 
   const isLatest = latestVersion != null && doc?.versionNumber === latestVersion;
-
   const lastUpdated = formatServerTimestamp(doc?.updatedAt);
 
   return (
@@ -163,12 +164,24 @@ export default function DocumentVersionViewPage() {
           </div>
         )}
 
-        <section className="relative rounded-2xl border border-[#B3B3B3] bg-[#FAFAFA] p-6">
+        <section className="relative rounded-2xl border border-[#B3B3B3] bg-gray-50 p-6">
           <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
             <ol className="flex items-center gap-1">
-              <li><Link to={univHref} className="text-[#2C80A0] hover:underline">{univName}</Link></li>
+              <li>
+                <Link to={univHref} className="text-[#2C80A0] hover:underline">
+                  {univName}
+                </Link>
+              </li>
               <li className="mx-1 text-gray-500">›</li>
-              <li><Link to={cateHref} className="text-[#2C80A0] hover:underline">{cateName}</Link></li>
+              <li>
+                <Link
+                  to={cateHref}
+                  state={typeof univId === 'number' ? { universityId: univId } : undefined}
+                  className="text-[#2C80A0] hover:underline"
+                >
+                  {cateName}
+                </Link>
+              </li>
             </ol>
           </nav>
 
@@ -179,9 +192,10 @@ export default function DocumentVersionViewPage() {
             ) : null}
           </h1>
 
-          <div className="mb-5 flex items-center gap-4">
+          {/* 날짜 + 액션바 (Diff와 동일 스펙) */}
+          <div className="mb-20 flex items-center gap-4">
             {lastUpdated && (
-              <p className="text-[18px] text-gray-800 whitespace-nowrap">
+              <p className="text-md text-gray-800 whitespace-nowrap">
                 수정 시각 : {lastUpdated}
               </p>
             )}
@@ -189,12 +203,12 @@ export default function DocumentVersionViewPage() {
             <div
               role="tablist"
               aria-label="버전 보기 메뉴"
-              className="grid grid-cols-1 items-stretch overflow-hidden rounded-xl border border-[#B3B3B3] bg-[#FAFAFA] w-[clamp(92px,12vw,116px)]"
+              className="grid items-stretch overflow-hidden rounded-lg border border-[#B3B3B3] bg-gray-50 w-[clamp(92px,12vw,116px)]"
             >
               <Link
                 role="tab"
                 to={`${docBase}/history`}
-                className="h-10 px-3 text-[18px] leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
+                className="h-9 px-2 text-md leading-tight flex items-center justify-center text-[#7F7F7F] hover:bg-white/60"
               >
                 돌아가기
               </Link>
@@ -216,9 +230,9 @@ export default function DocumentVersionViewPage() {
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[[rehypeSanitize, rehypeSchema]]}
                 style={{
-                  backgroundColor: '#FAFAFA',
-                  ['--color-canvas-default' as any]: '#FAFAFA',
-                  ['--color-canvas-subtle' as any]: '#FAFAFA',
+                  backgroundColor: '#F9FAFB', // gray-50
+                  ['--color-canvas-default' as any]: '#F9FAFB',
+                  ['--color-canvas-subtle'  as any]: '#F9FAFB',
                 }}
               />
             )}

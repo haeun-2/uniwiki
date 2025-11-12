@@ -18,8 +18,7 @@ type PopularDoc = {
   viewCount: number;
 };
 
-const norm = (s: string) =>
-  s.normalize("NFKC").trim().toLowerCase();
+const norm = (s: string) => s.normalize("NFKC").trim().toLowerCase();
 
 export default function UnivMainPage() {
   const { univName } = useParams<{ univName: string }>();
@@ -27,7 +26,8 @@ export default function UnivMainPage() {
   const location = useLocation();
   const passed = (location.state as LocationState) ?? {};
   const initialId = passed.universityId ?? null;
-  const passedFav = typeof passed.isFavorite === "boolean" ? passed.isFavorite : null; // ★
+  const passedFav =
+    typeof passed.isFavorite === "boolean" ? passed.isFavorite : null; // ★
 
   const inputName = useMemo(
     () => (univName ? decodeURIComponent(univName) : ""),
@@ -46,6 +46,15 @@ export default function UnivMainPage() {
   const [isFavorite, setIsFavorite] = useState<boolean | null>(passedFav); // ★
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
+  // ===== 플래시 배너 =====
+  const [flashMsg, setFlashMsg] = useState<string | null>(null);
+  const showFlash = (msg: string, ms = 3000) => {
+    setFlashMsg(msg);
+    window.clearTimeout((showFlash as any)._t);
+    (showFlash as any)._t = window.setTimeout(() => setFlashMsg(null), ms);
+  };
+  // ======================
+
   // 이름으로 id 폴백 매핑(직접 이동 등으로 state가 없을 때만)
   useEffect(() => {
     if (univId || !inputName) return;
@@ -53,18 +62,23 @@ export default function UnivMainPage() {
     (async () => {
       try {
         setErr(null);
-        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
-          headers: { accept: "*/*" },
-        });
+        const res = await fetch(
+          "https://k13d104.p.ssafy.io/api/v1/universities",
+          { headers: { accept: "*/*" } }
+        );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const list: University[] = await res.json();
 
         const t = norm(inputName);
         const exact =
-          list.find(u => norm(u.universityName) === t) ??
-          list.find(u => norm(u.universityName).replace(/\s+/g, "") === t.replace(/\s+/g, ""));
+          list.find((u) => norm(u.universityName) === t) ??
+          list.find(
+            (u) =>
+              norm(u.universityName).replace(/\s+/g, "") ===
+              t.replace(/\s+/g, "")
+          );
 
-        const partial = exact ? null : list.find(u => norm(u.universityName).includes(t));
+        const partial = exact ? null : list.find((u) => norm(u.universityName).includes(t));
         const found = exact ?? partial ?? null;
 
         if (mounted) {
@@ -75,7 +89,9 @@ export default function UnivMainPage() {
         if (mounted) setErr(e?.message ?? "대학교를 찾지 못했습니다.");
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [inputName, univId]);
 
   // 확정된 id로 상세 정보 확보(공식 이름/로고 등)
@@ -87,12 +103,13 @@ export default function UnivMainPage() {
       try {
         setLoading(true);
         setErr(null);
-        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/universities", {
-          headers: { accept: "*/*" },
-        });
+        const res = await fetch(
+          "https://k13d104.p.ssafy.io/api/v1/universities",
+          { headers: { accept: "*/*" } }
+        );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const list: University[] = await res.json();
-        const me = list.find(u => u.universityId === univId) ?? null;
+        const me = list.find((u) => u.universityId === univId) ?? null;
         if (mounted) setUniv(me);
       } catch (e: any) {
         if (mounted) setErr(e?.message ?? "대학교 정보를 불러오지 못했습니다.");
@@ -100,7 +117,9 @@ export default function UnivMainPage() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [univId]);
 
   // 정규 URL로 교체(상태 유지: universityId + 현재 즐겨찾기 표시 상태)
@@ -138,7 +157,9 @@ export default function UnivMainPage() {
         if (mounted) setPopularLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [univId]);
 
   // 즐겨찾기 상태 확인(전달값이 있으면 UI는 그대로, 서버 결과로만 동기화)
@@ -150,7 +171,7 @@ export default function UnivMainPage() {
 
     if (!accessToken) {
       // 로그인 안 된 경우: 전달값이 있으면 유지, 없으면 false로
-      setIsFavorite(prev => (prev ?? false));
+      setIsFavorite((prev) => prev ?? false);
       return;
     }
 
@@ -167,10 +188,11 @@ export default function UnivMainPage() {
 
         if (res.ok) {
           const data: Array<{ universityId: number }> = await res.json();
-          const serverFav = data.some(fav => fav.universityId === univId);
+          const serverFav = data.some((fav) => fav.universityId === univId);
           if (mounted) {
-            // prev가 null이면 최초 확정, 값이 있었는데 다르면 동기화
-            setIsFavorite(prev => (prev === null ? serverFav : (prev !== serverFav ? serverFav : prev)));
+            setIsFavorite((prev) =>
+              prev === null ? serverFav : prev !== serverFav ? serverFav : prev
+            );
           }
         } else {
           if (mounted && isFavorite === null) setIsFavorite(false);
@@ -181,22 +203,23 @@ export default function UnivMainPage() {
       }
     })();
 
-    return () => { mounted = false; };
-    // isFavorite는 UI 초기값 보존용이라 의존성에 넣지 않음(불필요 재요청 방지)
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [univId]);
 
   // 즐겨찾기 토글
   const handleFavoriteToggle = async () => {
     if (!univId) {
-      alert("대학교 정보를 불러오는 중입니다.");
+      showFlash("대학교 정보를 불러오는 중입니다.");
       return;
     }
 
     const accessToken =
       localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
     if (!accessToken) {
-      alert("로그인이 필요합니다.");
+      showFlash("로그인이 필요합니다.");
       navigate("/login", { replace: false, state: { from: location.pathname } });
       return;
     }
@@ -219,9 +242,9 @@ export default function UnivMainPage() {
         if (res.ok || res.status === 201) setIsFavorite(true);
         else throw new Error("즐겨찾기 추가 실패");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("즐겨찾기 처리 실패:", error);
-      alert("즐겨찾기 처리 중 오류가 발생했습니다.");
+      showFlash(error?.message || "즐겨찾기 처리 중 오류가 발생했습니다.");
     } finally {
       setFavoriteLoading(false);
     }
@@ -241,11 +264,24 @@ export default function UnivMainPage() {
 
   return (
     <section className="space-y-8">
+      {/* 플래시 배너 */}
+      {flashMsg && (
+        <div
+          role="status"
+          className="flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
+        >
+          <span className="text-[15px]">{flashMsg}</span>
+          <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+            닫기
+          </button>
+        </div>
+      )}
+
       {/* 상단 - 학교 개요 카드 */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex items-center justify-between gap-6">
         <div className="flex items-center gap-6">
-          {/* 로고 */}
-          <div className="h-20 w-20 flex-shrink-0 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden">
+          {/* 로고 (회색 배경 제거) */}
+          <div className="h-20 w-20 flex-shrink-0 rounded-xl flex items-center justify-center overflow-hidden">
             {univ?.logoUrl ? (
               <img
                 src={univ.logoUrl}
@@ -263,15 +299,17 @@ export default function UnivMainPage() {
             {/* 즐겨찾기 버튼 */}
             <button
               onClick={handleFavoriteToggle}
-              disabled={favoriteLoading || isFavorite === null} // ★ 판별 전 잠시 비활성
+              disabled={favoriteLoading || isFavorite === null}
               aria-pressed={!!isFavorite}
               title={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
               className={`
                 flex h-8 w-8 items-center justify-center rounded-lg border-2 text-xl
                 transition-all hover:scale-105
-                ${isFavorite
-                  ? "bg-[#2C80A0] text-white border-[#2C80A0]"
-                  : "bg-white text-gray-400 border-gray-300 hover:border-[#2C80A0] hover:text-[#2C80A0]"}
+                ${
+                  isFavorite
+                    ? "bg-[#2C80A0] text-white border-[#2C80A0]"
+                    : "bg-white text-gray-400 border-gray-300 hover:border-[#2C80A0] hover:text-[#2C80A0]"
+                }
                 ${(favoriteLoading || isFavorite === null) ? "opacity-60 cursor-wait" : "cursor-pointer"}
               `}
             >
@@ -283,20 +321,27 @@ export default function UnivMainPage() {
         <button
           onClick={() => {
             if (!univId) {
-              alert("대학교 정보를 불러오는 중입니다.");
+              showFlash("대학교 정보를 불러오는 중입니다.");
               return;
             }
-            const accessToken = localStorage.getItem("accessToken");
+            const accessToken =
+              localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
             if (!accessToken) {
-              alert("로그인이 필요합니다.");
+              showFlash("로그인이 필요합니다.");
               navigate("/login", { replace: false, state: { from: location.pathname } });
               return;
             }
-            const userUnivId = localStorage.getItem("universityId");
-            if (!userUnivId || parseInt(userUnivId) !== univId) {
-              alert("해당 학교 소속만 문서를 생성할 수 있습니다.");
+            const userUnivIdStr =
+              localStorage.getItem("myUniversityId") ||
+              localStorage.getItem("universityId") ||
+              localStorage.getItem("universityID");
+            const userUnivId = userUnivIdStr ? Number(userUnivIdStr) : NaN;
+
+            if (!Number.isFinite(userUnivId) || userUnivId !== univId) {
+              showFlash("해당 학교 소속만 문서를 생성할 수 있습니다.");
               return;
             }
+
             navigate(`/univ/${encodeURIComponent(univName!)}/new/docs`, {
               state: { universityId: univId },
             });
@@ -316,7 +361,7 @@ export default function UnivMainPage() {
               key={idx}
               onClick={() => {
                 if (!univId) {
-                  alert("대학교 정보를 불러오는 중입니다.");
+                  showFlash("대학교 정보를 불러오는 중입니다.");
                   return;
                 }
                 navigate(`/univ/${encodeURIComponent(univName!)}/category/${cat.path}`, {
@@ -347,18 +392,20 @@ export default function UnivMainPage() {
                 className="py-1 hover:underline hover:text-uniwikicolor cursor-pointer"
                 onClick={() => {
                   if (!univName) {
-                    alert("대학교 정보를 불러오는 중입니다.");
+                    showFlash("대학교 정보를 불러오는 중입니다.");
                     return;
                   }
                   navigate(
-                    `/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(doc.documentTitle)}`,
+                    `/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(
+                      doc.documentTitle
+                    )}`,
                     { state: { universityId: univId } }
                   );
                 }}
               >
                 <h3 className="font-medium mb-1 truncate">{doc.documentTitle}</h3>
                 <p className="text-sm text-gray-500">
-                  {displayName} · 조회수 {doc.viewCount.toLocaleString()}회
+                  조회수  {doc.viewCount.toLocaleString()}회
                 </p>
               </div>
             ))}
