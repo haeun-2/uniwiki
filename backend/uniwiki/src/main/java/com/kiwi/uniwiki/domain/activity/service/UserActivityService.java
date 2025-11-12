@@ -13,6 +13,7 @@ import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
 import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
 import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
+import com.kiwi.uniwiki.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
@@ -40,13 +41,13 @@ public class UserActivityService {
      * 사용자의 문서 활동 조회
      */
     public PageResponse<UserActivityResponseDTO.UserDocumentActivityResponse> getUserDocumentActivities(
-            Integer userId,
+            User user,
             Integer page,
             Integer size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt")));
 
-        Page<UserActivity> userActivities = userActivityRepository.findDocumentsTargetIdsByUserId(userId, pageable);
+        Page<UserActivity> userActivities = userActivityRepository.findDocumentsTargetIdsByUserId(user.getId(), pageable);
 
         if (userActivities.isEmpty()) {
             return PageResponse.from(Page.empty(pageable));
@@ -93,11 +94,12 @@ public class UserActivityService {
 
         return PageResponse.from(responsePage);
     }
+
     /**
      * 사용자의 토론 활동 조회
      */
     public PageResponse<UserActivityResponseDTO.UserDiscussionActivityResponse> getUserDiscussionActivities(
-            Integer userId,
+            User user,
             Integer page,
             Integer size) {
 
@@ -105,7 +107,7 @@ public class UserActivityService {
 
 
 
-        Page<UserActivity> userActivities = userActivityRepository.findDiscussionActivitiesByUserId(userId, pageable);
+        Page<UserActivity> userActivities = userActivityRepository.findDiscussionActivitiesByUserId(user.getId(), pageable);
 
 
 
