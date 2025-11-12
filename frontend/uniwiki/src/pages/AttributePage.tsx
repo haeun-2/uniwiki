@@ -30,10 +30,9 @@ const REDIRECT_AFTER_MS = FLASH_AUTO_MS + 50;
 export default function AttributePage() {
   const navigate = useNavigate();
 
-  // ── Flash (Favorite/DiscussionHistory와 동일 스타일)
+  // ── Flash
   const [flash, setFlash] = useState("");
-  const [flashType, setFlashType] =
-    useState<"success" | "error" | "info">("info");
+  const [flashType, setFlashType] = useState<"success" | "error" | "info">("info");
   const flashTimerRef = useRef<number | null>(null);
   const redirectTimerRef = useRef<number | null>(null);
 
@@ -91,7 +90,9 @@ export default function AttributePage() {
     hasNext: false,
   });
 
-  // 인증 체크 공통
+  const enc = (s: string) => encodeURIComponent(s || "");
+
+  // 인증 체크
   const ensureAuthed = () => {
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
@@ -101,7 +102,7 @@ export default function AttributePage() {
     return accessToken;
   };
 
-  // 기여 문서 목록 조회
+  // 목록 조회
   const fetchContributions = async (page: number) => {
     const accessToken = ensureAuthed();
     if (!accessToken) return;
@@ -150,13 +151,12 @@ export default function AttributePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
-  // 페이지 변경 함수
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // 날짜 포맷 변환
+  // 날짜 포맷
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date
@@ -173,10 +173,8 @@ export default function AttributePage() {
       .replace(/\.$/, "");
   };
 
-  // 바이트 변화량 계산
-  const getByteChange = (plusCount: number, minusCount: number) => {
-    return plusCount - minusCount;
-  };
+  const getByteChange = (plusCount: number, minusCount: number) =>
+    plusCount - minusCount;
 
   if (isLoading) {
     return (
@@ -266,6 +264,9 @@ export default function AttributePage() {
               contribution.minusCount
             );
 
+            const univ = enc(contribution.universityName);
+            const doc = enc(contribution.documentName);
+
             return (
               <div
                 key={contribution.documentId}
@@ -274,16 +275,14 @@ export default function AttributePage() {
                 {/* 문서 제목 */}
                 <div className="mb-1">
                   <Link
-                    to={`/docs/${encodeURIComponent(
-                      contribution.documentName
-                    )}`}
+                    to={`/univ/${univ}/docs/${doc}`}
                     className="text-base font-normal text-gray-900 hover:underline"
                   >
                     {contribution.documentName}
                   </Link>
                 </div>
 
-                {/* 대학명, 시간, 바이트 변화, 요약 + 링크들 */}
+                {/* 대학명, 시간, 바이트 변화, 요약 + 오른쪽 링크들 */}
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-gray-900">
                     {contribution.universityName}
@@ -308,29 +307,24 @@ export default function AttributePage() {
                     ({contribution.editMemo || "수정 내용 없음"})
                   </span>
 
+                  {/* 오른쪽 링크들 (기능 연결 유지) */}
                   <div className="ml-auto flex gap-2 text-gray-600">
                     <Link
-                      to={`/docs/${encodeURIComponent(
-                        contribution.documentName
-                      )}/history`}
+                      to={`/univ/${univ}/docs/${doc}/history`}
                       className="hover:underline"
                     >
                       역사
                     </Link>
                     <span>|</span>
                     <Link
-                      to={`/docs/${encodeURIComponent(
-                        contribution.documentName
-                      )}/discussions`}
+                      to={`/univ/${univ}/docs/${doc}/discussions`}
                       className="hover:underline"
                     >
                       토론
                     </Link>
                     <span>|</span>
                     <Link
-                      to={`/docs/${encodeURIComponent(
-                        contribution.documentName
-                      )}/history`}
+                      to={`/univ/${univ}/docs/${doc}/history`}
                       className="hover:underline"
                     >
                       비교
