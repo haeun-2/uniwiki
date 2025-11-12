@@ -97,7 +97,7 @@ export default function DocumentHistoryPage() {
   // 브레드크럼
   const [univName, setUnivName] = useState<string | undefined>();
   const [categoryName, setCategoryName] = useState<string | undefined>();
-  const [univId, setUnivId] = useState<number | null>(null); // ← 추가: 대학 ID 보관
+  const [univId, setUnivId] = useState<number | null>(null);
 
   // 상대시간용 "조회 시각" 스냅샷
   const [loadedAtMs, setLoadedAtMs] = useState<number>(Date.now());
@@ -130,7 +130,7 @@ export default function DocumentHistoryPage() {
           typeof data.universityId === "number" && Number.isFinite(data.universityId)
             ? data.universityId
             : null
-        ); // ← 추가
+        );
       } catch (e: any) {
         if (aborted) return;
         const msg = e?.message || "문서 조회 중 오류가 발생했습니다.";
@@ -203,30 +203,29 @@ export default function DocumentHistoryPage() {
   }, []);
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  // 버전 검색
-  const [revText, setRevText] = useState<string>("r");
+  // 버전 검색 (숫자만 입력)
+  const [revText, setRevText] = useState<string>(""); // ← r 고정 제거
   const inputRef = useRef<HTMLInputElement>(null);
-  const sanitizeRev = (raw: string) => "r" + raw.replace(/^r?/i, "").replace(/\D+/g, "");
-  const onRevChange = (e: React.ChangeEvent<HTMLInputElement>) => setRevText(sanitizeRev(e.target.value));
+  const sanitizeDigits = (raw: string) => raw.replace(/\D+/g, "");
+  const onRevChange = (e: React.ChangeEvent<HTMLInputElement>) => setRevText(sanitizeDigits(e.target.value));
   const onRevKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const el = e.target as HTMLInputElement;
-    const start = el.selectionStart ?? 0;
-    const end = el.selectionEnd ?? 0;
-    if ((e.key === "Backspace" && start === 1 && end === 1) || (e.key === "Delete" && start === 0 && end <= 1)) {
-      e.preventDefault(); return;
-    }
     if (e.key === "Enter") goToRevision();
   };
+
+  // 하이라이트 대상 ID
   const [highlightId, setHighlightId] = useState<number | null>(null);
+
   const goToRevision = () => {
-    const n = parseInt(revText.slice(1), 10);
+    const n = parseInt(revText, 10);
     if (Number.isNaN(n)) return;
     const idx = revisions.findIndex((r) => r.id === n);
     if (idx === -1) return;
     const targetPage = Math.floor(idx / pageSize) + 1;
     setPage(targetPage);
     setHighlightId(revisions[idx].id);
-    setTimeout(() => document.getElementById(`rev-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    setTimeout(() => {
+      document.getElementById(`rev-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 0);
     setTimeout(() => setHighlightId(null), 1800);
   };
 
@@ -234,7 +233,7 @@ export default function DocumentHistoryPage() {
   const [rollbackingId, setRollbackingId] = useState<number | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
 
-  // ✅ 특정 버전으로 되돌리기
+  // 특정 버전으로 되돌리기
   const doRollback = async (versionNumber: number) => {
     if (!docId) return;
     const token = getAccessToken();
@@ -252,17 +251,14 @@ export default function DocumentHistoryPage() {
         body: ''
       });
 
-      // 401: 로그인 필요
       if (res.status === 401) {
         navigate('/login', { replace: true, state: { from: (location as any).pathname } });
         return;
       }
 
-      // 본문을 미리 확보(텍스트 또는 JSON) — 메시지 판단에 사용
       let bodyText = "";
       try { bodyText = await res.clone().text(); } catch {}
 
-      // 차단 사용자 판단: 상태코드(423/451) 혹은 본문 키워드
       const lower = (bodyText || "").toLowerCase();
       const looksBlocked =
         res.status === 423 || res.status === 451 ||
@@ -278,7 +274,6 @@ export default function DocumentHistoryPage() {
           showFlash('차단된 사용자입니다.');
           return;
         }
-        // 그 외 상태는 서버 메시지 또는 기본 실패 문구
         showFlash(bodyText || `되돌리기 실패(${res.status})`);
         return;
       }
@@ -315,7 +310,6 @@ export default function DocumentHistoryPage() {
   const safeCate = categoryName || "카테고리";
 
   const univHref = `/univ/${enc(safeUniv)}`;
-  // 대학 ID를 쿼리와 state로 함께 전달
   const catePathBase = `/univ/${enc(safeUniv)}/category/${enc(safeCate)}`;
   const cateHref = typeof univId === "number" ? `${catePathBase}?universityId=${univId}` : catePathBase;
   const docBase = `/univ/${enc(safeUniv)}/docs/${enc(documentTitle)}`;
@@ -368,14 +362,23 @@ export default function DocumentHistoryPage() {
             <Pager />
             <div className="ml-1 flex items-center gap-1">
               <input
-                ref={inputRef} type="text" inputMode="numeric" value={revText}
-                onChange={onRevChange} onKeyDown={onRevKeyDown}
-                className="h-9 w-28 rounded-md border border-[#B3B3B3] bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#2C80A0] focus:ring-2 focus:ring-[#2C80A0]"
-                aria-label="버전 번호 (예: r120)"
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                pattern="\d*"
+                value={revText}
+                onChange={onRevChange}
+                onKeyDown={onRevKeyDown}
+                placeholder="(예시 : 11)"
+                title="검색하고자 하는 버전 번호를 입력하세요"
+                className="h-9 w-28 rounded-md border border-[#B3B3B3] bg-white px-2 text-sm text-gray-800 outline-none focus:border-[#2C80A0] focus:ring-2 focus:ring-[#2C80A0] placeholder:text-gray-400"
+                aria-label="버전 번호 숫자 입력 (예: 11)"
               />
-              <button onClick={goToRevision}
+              <button
+                onClick={goToRevision}
                 className="h-9 px-3 rounded-md border border-[#B3B3B3] bg-[#2C80A0] hover:brightness-95 inline-flex items-center justify-center"
-                title="해당 버전으로 이동">
+                title="해당 버전으로 이동"
+              >
                 <ChevronRight className="h-4 w-4 text-white" />
               </button>
             </div>
@@ -393,10 +396,16 @@ export default function DocumentHistoryPage() {
                 const working = rollbackingId === rev.id;
                 const isLatest = latestId != null && rev.id === latestId;
                 const isVersion1 = rev.id === 1; // r1은 비교 비활성화
+                const isHighlighted = highlightId === rev.id;
 
                 return (
                   <li key={rev.id} id={`rev-${rev.id}`} className="relative block w-full">
-                    <div className="relative z-10 px-2 py-3">
+                    <div
+                      className={
+                        "relative z-10 px-2 py-3 rounded-md transition-[background-color] duration-300 " +
+                        (isHighlighted ? "bg-[#2C80A0]/15" : "")
+                      }
+                    >
                       <div className="flex w-full items-center">
                         <div className="min-w-0 flex-1 text-sm">
                           <div className="flex min-w-0 items-center whitespace-nowrap">
@@ -482,7 +491,7 @@ export default function DocumentHistoryPage() {
                             <Link
                               to={`${docBase}/versions/${rev.id}/diff${docId ? `?docId=${docId}` : ""}`}
                               className="text-[#2C80A0] hover:underline"
-                              title="이 버전을 최신본과 비교"
+                              title="이 버전을 직전 버전과 비교"
                             >
                               비교
                             </Link>
@@ -502,7 +511,8 @@ export default function DocumentHistoryPage() {
             </ul>
           )}
 
-          {!loading && !err && (
+          {/* 하단 페이징: 한 페이지 표시 개수가 15 미만이면 숨김 */}
+          {!loading && !err && pageItems.length >= 15 && (
             <div className="pt-2"><Pager /></div>
           )}
         </div>
