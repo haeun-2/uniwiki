@@ -227,11 +227,14 @@ export default function DiscussionListPage() {
 
   const isEmpty = !loading && list.length === 0;
 
-  // ----- 경로 구성 (univ/아래로) -----
+  // ----- 경로 구성 (univ/아래로) + universityId 전달 -----
   const univName = docMeta?.universityName ?? "대학교";
   const cateName = docMeta?.categoryName ?? "카테고리";
+  const univId = docMeta?.universityId;
+
   const univHref = `/univ/${enc(univName)}`;
-  const cateHref = `/univ/${enc(univName)}/category/${enc(cateName)}`;
+  const catePathBase = `/univ/${enc(univName)}/category/${enc(cateName)}`;
+  const cateHref = typeof univId === "number" ? `${catePathBase}?universityId=${univId}` : catePathBase;
   const docHref = `/univ/${enc(univName)}/docs/${enc(documentTitle)}`;
 
   return (
@@ -263,7 +266,11 @@ export default function DiscussionListPage() {
                 </li>
                 <li className="mx-1 text-gray-500">›</li>
                 <li>
-                  <Link to={cateHref} className="text-[#2C80A0] hover:underline">
+                  <Link
+                    to={cateHref}
+                    state={typeof univId === "number" ? { universityId: univId } : undefined}
+                    className="text-[#2C80A0] hover:underline"
+                  >
                     {cateName}
                   </Link>
                 </li>

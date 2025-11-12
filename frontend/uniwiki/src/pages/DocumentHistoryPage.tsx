@@ -97,6 +97,7 @@ export default function DocumentHistoryPage() {
   // 브레드크럼
   const [univName, setUnivName] = useState<string | undefined>();
   const [categoryName, setCategoryName] = useState<string | undefined>();
+  const [univId, setUnivId] = useState<number | null>(null); // ← 추가: 대학 ID 보관
 
   // 상대시간용 "조회 시각" 스냅샷
   const [loadedAtMs, setLoadedAtMs] = useState<number>(Date.now());
@@ -125,6 +126,11 @@ export default function DocumentHistoryPage() {
         setDocId(data.documentId);
         setUnivName(data.universityName);
         setCategoryName(data.categoryName);
+        setUnivId(
+          typeof data.universityId === "number" && Number.isFinite(data.universityId)
+            ? data.universityId
+            : null
+        ); // ← 추가
       } catch (e: any) {
         if (aborted) return;
         const msg = e?.message || "문서 조회 중 오류가 발생했습니다.";
@@ -309,7 +315,9 @@ export default function DocumentHistoryPage() {
   const safeCate = categoryName || "카테고리";
 
   const univHref = `/univ/${enc(safeUniv)}`;
-  const cateHref = `/univ/${enc(safeUniv)}/category/${enc(safeCate)}`;
+  // 대학 ID를 쿼리와 state로 함께 전달
+  const catePathBase = `/univ/${enc(safeUniv)}/category/${enc(safeCate)}`;
+  const cateHref = typeof univId === "number" ? `${catePathBase}?universityId=${univId}` : catePathBase;
   const docBase = `/univ/${enc(safeUniv)}/docs/${enc(documentTitle)}`;
 
   return (
@@ -336,7 +344,15 @@ export default function DocumentHistoryPage() {
               <ol className="flex items-center gap-1">
                 <li><Link to={univHref} className="text-[#2C80A0] hover:underline">{safeUniv}</Link></li>
                 <li className="mx-1 text-gray-500">›</li>
-                <li><Link to={cateHref} className="text-[#2C80A0] hover:underline">{safeCate}</Link></li>
+                <li>
+                  <Link
+                    to={cateHref}
+                    state={typeof univId === "number" ? { universityId: univId } : undefined}
+                    className="text-[#2C80A0] hover:underline"
+                  >
+                    {safeCate}
+                  </Link>
+                </li>
               </ol>
             </nav>
             <h1 className="text-2xl font-semibold text-gray-900">
@@ -391,7 +407,6 @@ export default function DocumentHistoryPage() {
                             <span className="mr-3 text-gray-700">{fmtDateSmart(rev.createdAt, loadedAtMs)}</span>
 
                             <span className="mr-3 text-gray-400">|</span>
-                            {/* 작성자: 링크 제거, 텍스트만 */}
                             <span className="mr-3 text-gray-700">{rev.author}</span>
 
                             <span className="mr-3 text-gray-400">|</span>
@@ -412,7 +427,6 @@ export default function DocumentHistoryPage() {
                           </Link>
                           <span className="mx-2 text-gray-400">|</span>
 
-                          {/* 최신 버전은 되돌리기 금지 */}
                           {isLatest ? (
                             <button
                               type="button"
@@ -456,7 +470,6 @@ export default function DocumentHistoryPage() {
 
                           <span className="mx-2 text-gray-400">|</span>
 
-                          {/* r1 비교 비활성화 */}
                           {isVersion1 ? (
                             <span
                               className="text-gray-400 cursor-not-allowed"

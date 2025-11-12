@@ -71,6 +71,7 @@ type DocumentDto = {
   documentId: number;
   documentTitle: string;
   versionNumber: number;
+  universityId?: number;       // ← 추가
   universityName?: string;
   categoryName?: string;
 };
@@ -137,7 +138,7 @@ export default function DocumentDiffPage() {
   const [currEditorId, setCurrEditorId] = useState<string | number | undefined>();
   const [currEditMemo, setCurrEditMemo] = useState<string>("");
 
-  // 플래시 배너(닫기 버튼 + 자동 사라짐)
+  // 플래시 배너
   const [flashMsg, setFlashMsg] = useState<string | null>(null);
   const showFlash = (msg: string, ms = 3200) => {
     setFlashMsg(msg);
@@ -277,7 +278,6 @@ export default function DocumentDiffPage() {
 
       const txt = await res.clone().text().catch(() => "");
 
-      // ✅ 차단 사용자: 플래시 띄우고 모달 자동 닫기
       if (looksBanned(res.status, txt)) {
         setUserReportOpen(false);
         setUserReportPosting(false);
@@ -320,8 +320,17 @@ export default function DocumentDiffPage() {
   const title = meta?.documentTitle ?? documentTitle;
   const univName = meta?.universityName || "대학교";
   const categoryName = meta?.categoryName || "카테고리";
+  const univId = meta?.universityId; // ← 추가: 대학 ID
   const enc = (s: string) => encodeURIComponent(s || "");
   const countLines = (s?: string) => (s == null ? 0 : Math.max(1, s.split("\n").length));
+
+  const univHref = `/univ/${enc(univName)}`;
+  const catePathBase = `/univ/${enc(univName)}/category/${enc(categoryName)}`;
+  const cateHref =
+    typeof univId === "number" && Number.isFinite(univId)
+      ? `${catePathBase}?universityId=${univId}`
+      : catePathBase;
+
   const docBase = `/univ/${enc(univName)}/docs/${enc(title)}`;
 
   return (
@@ -344,9 +353,21 @@ export default function DocumentDiffPage() {
       {/* 브레드크럼 */}
       <div className="mb-2 text-[18px] leading-tight">
         <ol className="flex items-center gap-1">
-          <li><Link to={`/univ/${enc(univName)}`} className="text-[#2C80A0] hover:underline">{univName}</Link></li>
+          <li>
+            <Link to={univHref} className="text-[#2C80A0] hover:underline">
+              {univName}
+            </Link>
+          </li>
           <li className="mx-1 text-gray-500">›</li>
-          <li><Link to={`/univ/${enc(univName)}/category/${enc(categoryName)}`} className="text-[#2C80A0] hover:underline">{categoryName}</Link></li>
+          <li>
+            <Link
+              to={cateHref}
+              state={typeof univId === "number" && Number.isFinite(univId) ? { universityId: univId } : undefined}
+              className="text-[#2C80A0] hover:underline"
+            >
+              {categoryName}
+            </Link>
+          </li>
         </ol>
       </div>
 
@@ -356,9 +377,9 @@ export default function DocumentDiffPage() {
           <Link to={docBase} className="hover:underline">
             {title}
           </Link>{" "}
-          <span className="text-gray-600 text-lg">
-            (r{Number.isFinite(prevVersion) ? prevVersion : "—"} vs r{versionId})
-          </span>
+        <span className="text-gray-600 text-lg">
+          (r{Number.isFinite(prevVersion) ? prevVersion : "—"} vs r{versionId})
+        </span>
         </h1>
 
         <div className="mt-1 mb-1 flex items-center gap-4">
@@ -423,6 +444,7 @@ export default function DocumentDiffPage() {
           {rows.map((r, idx) => {
             const L = r.left, R = r.right;
             const lineForIndex = (L?.lineNumber ?? R?.lineNumber ?? undefined);
+            const countLines = (s?: string) => (s == null ? 0 : Math.max(1, s.split("\n").length));
             const delta = (R ? countLines(R.content) : 0) - (L ? countLines(L.content) : 0);
             return (
               <div key={idx} className="grid grid-cols-[84px_1fr_1fr] border-b border-[#B3B3B3] last:border-b-0">
@@ -451,7 +473,7 @@ export default function DocumentDiffPage() {
                   ) : (<div className="text-[12px] text-gray-300 italic">—</div>)}
                 </div>
 
-                {/* RIGHT — 가운데 세로선 표시 */}
+                {/* RIGHT */}
                 <div className="px-4 py-3 border-l border-[#B3B3B3]">
                   {R ? (
                     <div className="text-[13px] leading-6 text-gray-900 whitespace-pre-wrap break-words">
