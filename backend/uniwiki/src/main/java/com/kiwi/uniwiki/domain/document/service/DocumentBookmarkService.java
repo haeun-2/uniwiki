@@ -8,6 +8,8 @@ import com.kiwi.uniwiki.domain.document.repository.DocumentBookmarkRepository;
 import com.kiwi.uniwiki.domain.document.repository.DocumentRepository;
 import com.kiwi.uniwiki.domain.user.dto.response.UserResponseDTO;
 import com.kiwi.uniwiki.domain.user.entity.User;
+import com.kiwi.uniwiki.security.service.EmailVerificationService;
+import com.kiwi.uniwiki.security.service.MailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class DocumentBookmarkService {
 
     private final DocumentRepository documentRepository;
     private final DocumentBookmarkRepository documentBookmarkRepository;
+    private final MailService mailService;
 
     public void createFavoriteDocument(User user, Integer documentId){
         Document document = documentRepository.findById(documentId)
@@ -65,5 +68,14 @@ public class DocumentBookmarkService {
                         .build())
                 .collect(Collectors.toList());
 
+    }
+
+    //해당 문서가 수정됬을때 즐겨찾기 한 회원에게 메일 알림 발송
+    public void sendEmail(Integer documentId){
+        List<DocumentBookmark> documentBookmarksByDocument = documentBookmarkRepository.findByDocumentId(documentId);
+
+        for(DocumentBookmark bookmark : documentBookmarksByDocument){
+            mailService.sendChangeDocumentMail(bookmark.getUser().getEmail(), bookmark.getDocument().getTitle());
+        }
     }
 }

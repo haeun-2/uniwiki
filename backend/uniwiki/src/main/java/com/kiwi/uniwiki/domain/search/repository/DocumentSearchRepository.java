@@ -6,6 +6,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.annotations.Query;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
+import java.util.List;
+
 public interface DocumentSearchRepository extends ElasticsearchRepository<DocumentIndex, Integer> {
 
     @Query("""
@@ -29,12 +31,19 @@ public interface DocumentSearchRepository extends ElasticsearchRepository<Docume
                 "query": "?0"
               }
             }
+          },
+          {
+            "match_phrase": {
+              "title": {
+                "query": "?0",
+                "boost": 2
+             }
+            }
           }
         ]
       }
     }
     """)
     Page<DocumentIndex> searchByKeyword(String keyword, Pageable pageable);
-
 
 }

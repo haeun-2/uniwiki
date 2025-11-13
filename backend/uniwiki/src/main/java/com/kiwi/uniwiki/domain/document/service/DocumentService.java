@@ -45,6 +45,8 @@ public class DocumentService {
 
     private final ApplicationEventPublisher publisher;
 
+    private final DocumentBookmarkService documentBookmarkService;
+
     /**
      * 새 문서 생성
      */
@@ -140,6 +142,8 @@ public class DocumentService {
                 request.getDocumentContent(),
                 request.getEditMemo()
         );
+
+        documentBookmarkService.sendEmail(documentId);
 
         return document.getTitle();
     }
