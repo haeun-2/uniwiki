@@ -2,7 +2,6 @@ package com.kiwi.uniwiki.domain.document.service;
 
 import com.kiwi.uniwiki.common.exception.CustomException;
 import com.kiwi.uniwiki.common.exception.ErrorCode;
-import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.activity.service.AsyncUserActivityService;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentCreateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentUpdateRequestDTO;
@@ -19,9 +18,6 @@ import com.kiwi.uniwiki.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -154,10 +150,9 @@ public class DocumentService {
      */
     public List<DocumentResponseDTO> getRecentByUniversity(Short universityId) {
 
-        PageResponse<DocumentResponseDTO> pageResponse = getAllByUniversity(universityId, 0, 10);
+        List<Document> documents = documentRepository.findTop10ByUniversityIdAndIsDeletedFalseOrderByUpdatedAtDesc(universityId);
 
-        // PageResponse에서 content만 반환
-        return pageResponse.getContent();
+        return documents.stream().map(DocumentResponseDTO::from).toList();
     }
 
     /**
@@ -170,12 +165,9 @@ public class DocumentService {
     /**
      * 대학별 문서 조회
      */
-    public PageResponse<DocumentResponseDTO> getAllByUniversity(Short universityId, Integer page, Integer size) {
-        Page<Document> documents = documentRepository.findAllByUniversityIdAndIsDeletedFalse(
-                universityId,
-                PageRequest.of(page, size, Sort.by(Sort.Order.desc("updatedAt")))
-        );
+    public List<DocumentResponseDTO> getAllByUniversity(Short universityId) {
+        List<Document> documents = documentRepository.findAllByUniversityIdAndIsDeletedFalseOrderByTitleAsc(universityId);
 
-        return PageResponse.from(documents, DocumentResponseDTO::from);
+        return documents.stream().map(DocumentResponseDTO::from).toList();
     }
 }

@@ -1,6 +1,5 @@
 package com.kiwi.uniwiki.domain.document.controller;
 
-import com.kiwi.uniwiki.common.page.PageResponse;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentCreateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.request.DocumentUpdateRequestDTO;
 import com.kiwi.uniwiki.domain.document.dto.response.DocumentDetailResponseDTO;
@@ -66,12 +65,10 @@ public class DocumentController {
 
     @GetMapping
     @Operation(summary = "대학별 문서 조회", description = "대학별 문서 목록을 조회합니다.")
-    public ResponseEntity<PageResponse<DocumentResponseDTO>> getAllByUniversity(
-            @RequestParam Short universityId,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size
+    public ResponseEntity<List<DocumentResponseDTO>> getAllByUniversity(
+            @RequestParam Short universityId
     ) {
-        PageResponse<DocumentResponseDTO> responses = documentService.getAllByUniversity(universityId, page, size);
+        List<DocumentResponseDTO> responses = documentService.getAllByUniversity(universityId);
         return ResponseEntity.ok(responses);
     }
 

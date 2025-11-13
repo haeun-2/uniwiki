@@ -86,6 +86,11 @@ public class DocumentVersionService {
             throw new CustomException(ErrorCode.DOCUMENT_ACCESS_DENIED);
         }
 
+        // 버전 확인
+        if (document.getLatestVersionNumber().equals(targetVersionNumber)) {
+            throw new CustomException(ErrorCode.DOCUMENT_SAME_VERSION_REVERT);
+        }
+
         DocumentVersion targetVersion = documentVersionRepository.findByDocumentIdAndVersionNumber(documentId, targetVersionNumber)
                 .orElseThrow(() -> new CustomException(ErrorCode.DOCUMENT_VERSION_NOT_FOUND));
 
