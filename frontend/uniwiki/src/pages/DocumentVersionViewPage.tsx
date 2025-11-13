@@ -1,5 +1,5 @@
 // src/pages/DocumentVersionViewPage.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronUp } from 'lucide-react';
 
@@ -32,11 +32,22 @@ type VersionDoc = {
 
 type Status = 'loading' | 'ok' | 'notfound' | 'error';
 
+type TocItem = {
+  id: string;
+  text: string;
+  level: number;   // 1~6
+  number: string;  // 1. / 2.1. / 3.4.2. 등
+};
+
 const API_BASE = 'https://k13d104.p.ssafy.io/api';
 
 // ===== Auth =====
 function getAccessToken() {
-  try { return localStorage.getItem('accessToken') || ''; } catch { return ''; }
+  try {
+    return localStorage.getItem('accessToken') || '';
+  } catch {
+    return '';
+  }
 }
 function authHeaders(extra: HeadersInit = {}) {
   const t = getAccessToken();
@@ -52,6 +63,17 @@ function formatServerTimestamp(s?: string): string {
   if (!m) return s;
   const [, y, mo, d, h, mi, ss] = m;
   return `${y}. ${mo}. ${d}. ${h}:${mi}${ss ? `:${ss}` : ''}`;
+}
+
+// 단순 slug 함수(한글/영문 공통 사용)
+function slugify(raw: string) {
+  const base = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+  return base || 'section';
 }
 
 export default function DocumentVersionViewPage() {
@@ -82,10 +104,13 @@ export default function DocumentVersionViewPage() {
 
         const baseRes = await fetch(
           `${API_BASE}/v1/documents/${encodeURIComponent(documentTitle)}`,
-          { headers: { Accept: 'application/json' } }
+          { headers: { Accept: 'application/json' } },
         );
         if (aborted) return;
-        if (baseRes.status === 404) { setStatus('notfound'); return; }
+        if (baseRes.status === 404) {
+          setStatus('notfound');
+          return;
+        }
         if (!baseRes.ok) throw new Error(`문서 조회 실패(${baseRes.status})`);
         const baseData: BaseDoc = await baseRes.json();
         setLatestVersion(baseData.versionNumber ?? null);
@@ -121,17 +146,29 @@ export default function DocumentVersionViewPage() {
     }
 
     loadVersion();
-    return () => { aborted = true; };
+    return () => {
+      aborted = true;
+    };
   }, [documentTitle, versionNumber]);
 
-  const rehypeSchema = useMemo(() => ({
-    ...defaultSchema,
-    attributes: {
-      ...defaultSchema.attributes,
-      a: [...(defaultSchema.attributes?.a || []), ['target'], ['rel']],
-      img: [...(defaultSchema.attributes?.img || []), ['alt'], ['title'], ['width'], ['height']],
-    },
-  }) as Parameters<typeof rehypeSanitize>[0], []);
+  const rehypeSchema = useMemo(
+    () =>
+      ({
+        ...defaultSchema,
+        attributes: {
+          ...defaultSchema.attributes,
+          a: [...(defaultSchema.attributes?.a || []), ['target'], ['rel']],
+          img: [
+            ...(defaultSchema.attributes?.img || []),
+            ['alt'],
+            ['title'],
+            ['width'],
+            ['height'],
+          ],
+        },
+      }) as Parameters<typeof rehypeSanitize>[0],
+    [],
+  );
 
   const docTitleParam = enc(documentTitle);
   const univName = doc?.universityName || '대학교';
@@ -141,11 +178,64 @@ export default function DocumentVersionViewPage() {
   const univHref = `/univ/${enc(univName)}`;
   // URL은 카테고리 이름 기반을 유지, 대학 ID는 쿼리와 state로 함께 전달
   const catePathBase = `/univ/${enc(univName)}/category/${enc(cateName)}`;
-  const cateHref = typeof univId === 'number' ? `${catePathBase}?universityId=${univId}` : catePathBase;
+  const cateHref =
+    typeof univId === 'number' ? `${catePathBase}?universityId=${univId}` : catePathBase;
   const docBase = `/univ/${enc(univName)}/docs/${docTitleParam}`;
 
   const isLatest = latestVersion != null && doc?.versionNumber === latestVersion;
   const lastUpdated = formatServerTimestamp(doc?.updatedAt);
+
+  /** ===== 목차 생성 ===== */
+  const articleRef = useRef<HTMLElement | null>(null);
+  const [tocItems, setTocItems] = useState<TocItem[]>([]);
+
+  useEffect(() => {
+    if (status !== 'ok' || !doc) {
+      setTocItems([]);
+      return;
+    }
+    const root = articleRef.current;
+    if (!root) {
+      setTocItems([]);
+      return;
+    }
+
+    const headings = Array.from(
+      root.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6'),
+    );
+    if (!headings.length) {
+      setTocItems([]);
+      return;
+    }
+
+    const slugCounts: Record<string, number> = {};
+    const levelCounters = [0, 0, 0, 0, 0, 0, 0];
+    const items: TocItem[] = [];
+
+    headings.forEach((el, idx) => {
+      const level = Math.min(Math.max(Number(el.tagName.slice(1)) || 1, 1), 6);
+      const text = el.textContent?.trim() || `제목 ${idx + 1}`;
+
+      let baseSlug = slugify(text);
+      if (slugCounts[baseSlug] == null) slugCounts[baseSlug] = 0;
+      else slugCounts[baseSlug] += 1;
+      const slug = slugCounts[baseSlug] === 0 ? baseSlug : `${baseSlug}-${slugCounts[baseSlug]}`;
+
+      el.id = slug;
+
+      levelCounters[level] += 1;
+      for (let i = level + 1; i <= 6; i += 1) levelCounters[i] = 0;
+      const num = levelCounters
+        .slice(1, level + 1)
+        .filter((n) => n > 0)
+        .join('.');
+
+      items.push({ id: slug, text, level, number: num });
+    });
+
+    setTocItems(items);
+  }, [doc?.documentContent, status]);
+  /** ===================== */
 
   return (
     <div className="bg-white">
@@ -153,7 +243,9 @@ export default function DocumentVersionViewPage() {
         {status === 'ok' && doc && (
           <div className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white">
             <span className="text-[15px]">
-              {isLatest ? '최신 버전의 문서입니다.' : `r${doc.versionNumber} 버전 보기 — 최신 버전과 내용이 다를 수 있습니다.`}
+              {isLatest
+                ? '최신 버전의 문서입니다.'
+                : `r${doc.versionNumber} 버전 보기 — 최신 버전과 내용이 다를 수 있습니다.`}
             </span>
             <div />
           </div>
@@ -188,16 +280,16 @@ export default function DocumentVersionViewPage() {
           <h1 className="text-[28px] leading-tight font-semibold text-gray-900 mb-2">
             {documentTitle}
             {doc?.versionNumber ? (
-              <span className="ml-2 align-middle text-sm text-gray-500">(r{doc.versionNumber} 보기)</span>
+              <span className="ml-2 align-middle text-sm text-gray-500">
+                (r{doc.versionNumber} 보기)
+              </span>
             ) : null}
           </h1>
 
           {/* 날짜 + 액션바 (Diff와 동일 스펙) */}
-          <div className="mb-20 flex items-center gap-4">
+          <div className="mb-6 flex items-center gap-4">
             {lastUpdated && (
-              <p className="text-md text-gray-800 whitespace-nowrap">
-                수정 시각 : {lastUpdated}
-              </p>
+              <p className="text-md text-gray-800 whitespace-nowrap">수정 시각 : {lastUpdated}</p>
             )}
             <div className="ml-auto" />
             <div
@@ -215,7 +307,35 @@ export default function DocumentVersionViewPage() {
             </div>
           </div>
 
-          <article data-color-mode="light" className="prose max-w-none">
+          {/* 목차 (상자 없이, h2 비워둠) */}
+          {status === 'ok' && tocItems.length > 0 && (
+            <section className="mb-8">
+              <h2 className="mb-2 text-lg font-semibold text-gray-900"></h2>
+              <ol className="space-y-1 text-sm">
+                {tocItems.map((item) => (
+                  <li
+                    key={item.id}
+                    style={{ marginLeft: (item.level - 1) * 16 }}
+                    className="leading-snug"
+                  >
+                    <a
+                      href={`#${item.id}`}
+                      className="text-[#2C80A0] hover:underline"
+                    >
+                      <span className="mr-1">{item.number}</span>
+                      {item.text}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          <article
+            ref={articleRef}
+            data-color-mode="light"
+            className="prose max-w-none"
+          >
             {status === 'loading' && (
               <div className="animate-pulse">
                 <div className="mb-3 h-6 w-1/3 rounded bg-gray-200" />
@@ -232,7 +352,7 @@ export default function DocumentVersionViewPage() {
                 style={{
                   backgroundColor: '#F9FAFB', // gray-50
                   ['--color-canvas-default' as any]: '#F9FAFB',
-                  ['--color-canvas-subtle'  as any]: '#F9FAFB',
+                  ['--color-canvas-subtle' as any]: '#F9FAFB',
                 }}
               />
             )}
@@ -243,7 +363,7 @@ export default function DocumentVersionViewPage() {
       {showTop && (
         <button
           onClick={scrollTop}
-          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
+          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50 cursor-pointer"
           aria-label="문서 상단으로 이동"
           title="문서 상단으로 이동"
         >

@@ -5,7 +5,7 @@ import '@uiw/react-markdown-preview/markdown.css'
 import './index.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { createBrowserRouter, RouterProvider, Navigate, useParams } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 // 레이아웃
 import RootLayout from './layout/RootLayout'
@@ -17,6 +17,7 @@ import CategoryLayout from './layout/CategoryLayout'
 // 메인 페이지, 대학교 메인 페이지
 import MainPage from './pages/MainPage'
 import UnivMainPage from './pages/UnivMainPage'
+import UnivAllDocsPage from './pages/UnivAllDocsPage' // ★ 전체 문서 페이지
 
 // 로그인
 import LoginPage from './pages/login/LoginPage'
@@ -67,7 +68,6 @@ import WelcomePage from './pages/footer/WelcomePage'
 import GuidePage from './pages/footer/GuidePage'
 import RulePage from './pages/footer/RulePage'
 
-
 const router = createBrowserRouter([
   // 메인 페이지
   {
@@ -82,13 +82,13 @@ const router = createBrowserRouter([
       { path: 'signup', element: <SignupPage /> },
       { path: 'signup/complete', element: <SignupCompletePage /> },
       { path: 'profile', element: <ProfilePage /> },
-       { path: 'ai-search', element: <AiSearchPage /> },
-       { path: 'search', element: <SearchResultPage /> },
-      
+      { path: 'ai-search', element: <AiSearchPage /> },
+      { path: 'search', element: <SearchResultPage /> },
+
       // footer 내용
-      { path: 'welcome', element: <WelcomePage />},
-      { path: 'guide', element: <GuidePage />},
-      { path: 'rule', element: <RulePage />},
+      { path: 'welcome', element: <WelcomePage /> },
+      { path: 'guide', element: <GuidePage /> },
+      { path: 'rule', element: <RulePage /> },
     ],
   },
 
@@ -100,11 +100,14 @@ const router = createBrowserRouter([
       { index: true, element: <UnivMainPage /> },
       { path: 'category/:categoryName', element: <CategoryPage /> },
 
+      // ★ 전체 문서 페이지
+      { path: 'docs/all', element: <UnivAllDocsPage /> },
+
       // 문서, 토론
-      { path: 'new/docs', element: <DocumentCreatePage /> },                 // ✅ 새 문서 생성
+      { path: 'new/docs', element: <DocumentCreatePage /> }, // ✅ 새 문서 생성
       { path: 'docs/:documentTitle', element: <DocumentViewPage /> },
       { path: 'docs/:documentTitle/history', element: <DocumentHistoryPage /> }, // ✅ 역사
-      { path: 'docs/:documentTitle/edit', element: <DocumentEditPage /> },       // ✅ 편집
+      { path: 'docs/:documentTitle/edit', element: <DocumentEditPage /> }, // ✅ 편집
       { path: 'docs/:documentTitle/discussions', element: <DiscussionListPage /> },
       { path: 'docs/:documentTitle/discussions/:id', element: <DiscussionDetailPage /> },
       { path: 'docs/:documentTitle/versions/:versionId', element: <DocumentVersionViewPage /> },

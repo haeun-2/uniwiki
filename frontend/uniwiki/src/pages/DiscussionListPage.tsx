@@ -76,7 +76,12 @@ export default function DiscussionListPage() {
     if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
     setFlash("");
   };
-  useEffect(() => () => { if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    },
+    []
+  );
 
   // 새 토론 입력
   const [subject, setSubject] = useState("");
@@ -101,7 +106,7 @@ export default function DiscussionListPage() {
     });
     const txt = await res.clone().text().catch(() => "");
     if (res.status === 401) {
-      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      navigate("/login", { replace: true, state: { from: (location as any).pathname } });
       return null;
     }
     if (looksBanned(res.status, txt)) {
@@ -122,7 +127,7 @@ export default function DiscussionListPage() {
     );
     const txt = await res.clone().text().catch(() => "");
     if (res.status === 401) {
-      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      navigate("/login", { replace: true, state: { from: (location as any).pathname } });
       return;
     }
     if (looksBanned(res.status, txt)) {
@@ -135,7 +140,7 @@ export default function DiscussionListPage() {
     const itemsRaw = (page?.content ?? []).map((x: any) => ({
       id: String(x.discussionId),
       title: x.discussionTitle,
-      status: "open",
+      status: "open" as const,
     }));
     setList(itemsRaw.slice().reverse());
   }
@@ -169,6 +174,7 @@ export default function DiscussionListPage() {
 
     if (!getAccessToken()) {
       showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+      navigate("/login", { replace: true, state: { from: (location as any).pathname } });
       return;
     }
     if (!docMeta) {
@@ -198,6 +204,7 @@ export default function DiscussionListPage() {
 
       if (res.status === 401) {
         showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        navigate("/login", { replace: true, state: { from: (location as any).pathname } });
         return;
       }
       if (looksBanned(res.status, txt)) {
@@ -251,7 +258,7 @@ export default function DiscussionListPage() {
                 className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
               >
                 <span className="text-[16px]">{flash}</span>
-                <button onClick={closeFlash} className="hover:opacity-80">
+                <button onClick={closeFlash} className="hover:opacity-80 cursor-pointer">
                   닫기
                 </button>
               </div>

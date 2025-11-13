@@ -78,7 +78,9 @@ export default function UnivMainPage() {
               t.replace(/\s+/g, "")
           );
 
-        const partial = exact ? null : list.find((u) => norm(u.universityName).includes(t));
+        const partial = exact
+          ? null
+          : list.find((u) => norm(u.universityName).includes(t));
         const found = exact ?? partial ?? null;
 
         if (mounted) {
@@ -112,7 +114,8 @@ export default function UnivMainPage() {
         const me = list.find((u) => u.universityId === univId) ?? null;
         if (mounted) setUniv(me);
       } catch (e: any) {
-        if (mounted) setErr(e?.message ?? "대학교 정보를 불러오지 못했습니다.");
+        if (mounted)
+          setErr(e?.message ?? "대학교 정보를 불러오지 못했습니다.");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -149,7 +152,8 @@ export default function UnivMainPage() {
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data: PopularDoc[] = await resp.json();
-        if (mounted) setPopularDocs(Array.isArray(data) ? data.slice(0, 10) : []);
+        if (mounted)
+          setPopularDocs(Array.isArray(data) ? data.slice(0, 10) : []);
       } catch (e) {
         console.error("popular fetch error:", e);
         if (mounted) setPopularDocs([]);
@@ -167,7 +171,8 @@ export default function UnivMainPage() {
     if (!univId) return;
 
     const accessToken =
-      localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+      localStorage.getItem("accessToken") ||
+      sessionStorage.getItem("accessToken");
 
     if (!accessToken) {
       // 로그인 안 된 경우: 전달값이 있으면 유지, 없으면 false로
@@ -217,7 +222,8 @@ export default function UnivMainPage() {
     }
 
     const accessToken =
-      localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+      localStorage.getItem("accessToken") ||
+      sessionStorage.getItem("accessToken");
     if (!accessToken) {
       showFlash("로그인이 필요합니다.");
       navigate("/login", { replace: false, state: { from: location.pathname } });
@@ -230,14 +236,26 @@ export default function UnivMainPage() {
       if (isFavorite) {
         const res = await fetch(
           `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities/${univId}`,
-          { method: "DELETE", headers: { Accept: "*/*", Authorization: `Bearer ${accessToken}` } }
+          {
+            method: "DELETE",
+            headers: {
+              Accept: "*/*",
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
         );
         if (res.ok || res.status === 204) setIsFavorite(false);
         else throw new Error("즐겨찾기 삭제 실패");
       } else {
         const res = await fetch(
           `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities/${univId}`,
-          { method: "POST", headers: { Accept: "*/*", Authorization: `Bearer ${accessToken}` } }
+          {
+            method: "POST",
+            headers: {
+              Accept: "*/*",
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
         );
         if (res.ok || res.status === 201) setIsFavorite(true);
         else throw new Error("즐겨찾기 추가 실패");
@@ -250,16 +268,30 @@ export default function UnivMainPage() {
     }
   };
 
-  if (err) return <div className="p-4 text-xs text-red-500">{err}</div>;
-  if (loading && !univ) return <div className="p-4 text-sm text-gray-500">불러오는 중…</div>;
+  if (err)
+    return <div className="p-4 text-xs text-red-500">{err}</div>;
+  if (loading && !univ)
+    return (
+      <div className="p-4 text-sm text-gray-500">불러오는 중…</div>
+    );
 
   const categories = [
     { icon: "🏛️", title: "학교", path: "학교", desc: "학교 정보 및 연혁" },
-    { icon: "🏫", title: "학과", path: "학과", desc: "학과별 커리큘럼 및 진로 정보" },
+    {
+      icon: "🏫",
+      title: "학과",
+      path: "학과",
+      desc: "학과별 커리큘럼 및 진로 정보",
+    },
     { icon: "📘", title: "강의", path: "강의", desc: "강의 요약 및 후기" },
     { icon: "🏢", title: "시설", path: "시설", desc: "학교 시설 및 위치 정보" },
     { icon: "🎉", title: "행사", path: "행사", desc: "축제·세미나 등 행사 정보" },
-    { icon: "🏷️", title: "기타", path: "기타", desc: "장학금·교통·등록금 등 기타 문서" },
+    {
+      icon: "🏷️",
+      title: "기타",
+      path: "기타",
+      desc: "장학금·교통·등록금 등 기타 문서",
+    },
   ];
 
   return (
@@ -271,7 +303,10 @@ export default function UnivMainPage() {
           className="flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
         >
           <span className="text-[15px]">{flashMsg}</span>
-          <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+          <button
+            onClick={() => setFlashMsg(null)}
+            className="hover:opacity-80 cursor-pointer"
+          >
             닫기
           </button>
         </div>
@@ -294,7 +329,9 @@ export default function UnivMainPage() {
           </div>
 
           <div className="flex-1 flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {displayName}
+            </h1>
 
             {/* 즐겨찾기 버튼 */}
             <button
@@ -310,7 +347,11 @@ export default function UnivMainPage() {
                     ? "bg-[#2C80A0] text-white border-[#2C80A0]"
                     : "bg-white text-gray-400 border-gray-300 hover:border-[#2C80A0] hover:text-[#2C80A0]"
                 }
-                ${(favoriteLoading || isFavorite === null) ? "opacity-60 cursor-wait" : "cursor-pointer"}
+                ${
+                  favoriteLoading || isFavorite === null
+                    ? "opacity-60 cursor-wait"
+                    : "cursor-pointer"
+                }
               `}
             >
               ★
@@ -325,17 +366,23 @@ export default function UnivMainPage() {
               return;
             }
             const accessToken =
-              localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+              localStorage.getItem("accessToken") ||
+              sessionStorage.getItem("accessToken");
             if (!accessToken) {
               showFlash("로그인이 필요합니다.");
-              navigate("/login", { replace: false, state: { from: location.pathname } });
+              navigate("/login", {
+                replace: false,
+                state: { from: location.pathname },
+              });
               return;
             }
             const userUnivIdStr =
               localStorage.getItem("myUniversityId") ||
               localStorage.getItem("universityId") ||
               localStorage.getItem("universityID");
-            const userUnivId = userUnivIdStr ? Number(userUnivIdStr) : NaN;
+            const userUnivId = userUnivIdStr
+              ? Number(userUnivIdStr)
+              : NaN;
 
             if (!Number.isFinite(userUnivId) || userUnivId !== univId) {
               showFlash("해당 학교 소속만 문서를 생성할 수 있습니다.");
@@ -346,7 +393,7 @@ export default function UnivMainPage() {
               state: { universityId: univId },
             });
           }}
-          className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition flex-shrink-0"
+          className="rounded-lg bg-[#2c80a0] text-white text-sm px-4 py-2 hover:bg-[#256a86] transition flex-shrink-0 cursor-pointer"
         >
           새 문서 만들기
         </button>
@@ -354,7 +401,27 @@ export default function UnivMainPage() {
 
       {/* 중단 - 주요 카테고리 */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">학교 문서 카테고리</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">
+            학교 문서 카테고리
+          </h2>
+          <button
+            type="button"
+            onClick={() => {
+              if (!univId || !univName) {
+                showFlash("대학교 정보를 불러오는 중입니다.");
+                return;
+              }
+              navigate(`/univ/${encodeURIComponent(univName)}/docs/all`, {
+                state: { universityId: univId },
+              });
+            }}
+            className="text-xs font-medium text-[#2C80A0] hover:underline cursor-pointer"
+          >
+            전체보기
+          </button>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {categories.map((cat, idx) => (
             <div
@@ -364,14 +431,19 @@ export default function UnivMainPage() {
                   showFlash("대학교 정보를 불러오는 중입니다.");
                   return;
                 }
-                navigate(`/univ/${encodeURIComponent(univName!)}/category/${cat.path}`, {
-                  state: { universityId: univId },
-                });
+                navigate(
+                  `/univ/${encodeURIComponent(univName!)}/category/${cat.path}`,
+                  {
+                    state: { universityId: univId },
+                  }
+                );
               }}
               className="group flex flex-col items-center justify-center rounded-xl border border-gray-300 bg-white p-4 text-center hover:shadow-sm transition cursor-pointer"
             >
               <div className="text-3xl mb-2">{cat.icon}</div>
-              <div className="font-medium text-gray-900">{cat.title}</div>
+              <div className="font-medium text-gray-900">
+                {cat.title}
+              </div>
               <p className="text-xs text-gray-500">{cat.desc}</p>
             </div>
           ))}
@@ -380,7 +452,12 @@ export default function UnivMainPage() {
 
       {/* 하단 - 인기 문서 (2열 리스트 형태) */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">인기 문서</h2>
+        <h2
+          className="text-lg font-semibold text-gray-900 mb-6"
+          title="해당 인기 문서는 최근 24시간 내의 조회수를 매시간마다 반영하여 표출됩니다"
+        >
+          인기 문서
+        </h2>
 
         {popularLoading ? (
           <div className="text-sm text-gray-500">불러오는 중…</div>
@@ -396,22 +473,26 @@ export default function UnivMainPage() {
                     return;
                   }
                   navigate(
-                    `/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(
-                      doc.documentTitle
-                    )}`,
+                    `/univ/${encodeURIComponent(
+                      univName
+                    )}/docs/${encodeURIComponent(doc.documentTitle)}`,
                     { state: { universityId: univId } }
                   );
                 }}
               >
-                <h3 className="font-medium mb-1 truncate">{doc.documentTitle}</h3>
+                <h3 className="font-medium mb-1 truncate">
+                  {doc.documentTitle}
+                </h3>
                 <p className="text-sm text-gray-500">
-                  조회수  {doc.viewCount.toLocaleString()}회
+                  조회수 {doc.viewCount.toLocaleString()}회
                 </p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-sm text-gray-500">인기 문서가 없습니다.</div>
+          <div className="text-sm text-gray-500">
+            인기 문서가 없습니다.
+          </div>
         )}
       </div>
     </section>

@@ -49,6 +49,21 @@ function authHeaders() {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
+// 로그인 시 localStorage에 저장된 "사용자 소속 대학 ID" 읽기
+// universityId / myUniversityId / univId 순으로 찾아봄
+function getViewerUnivIdFromStorage(): number | null {
+  try {
+    const keys = ["universityId", "myUniversityId", "univId"];
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (!raw || raw === "null" || raw === "undefined") continue;
+      const n = Number(raw);
+      if (Number.isFinite(n)) return n;
+    }
+  } catch {}
+  return null;
+}
+
 /** timezone 표기 없으면 'Z' 추가해 UTC로 파싱 */
 function parseServerUtc(iso: string): Date {
   const hasTZ = /Z$|[+-]\d\d:\d\d$/.test(iso);
@@ -204,7 +219,7 @@ export default function DocumentHistoryPage() {
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   // 버전 검색 (숫자만 입력)
-  const [revText, setRevText] = useState<string>(""); // ← r 고정 제거
+  const [revText, setRevText] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
   const sanitizeDigits = (raw: string) => raw.replace(/\D+/g, "");
   const onRevChange = (e: React.ChangeEvent<HTMLInputElement>) => setRevText(sanitizeDigits(e.target.value));
@@ -294,13 +309,21 @@ export default function DocumentHistoryPage() {
   // 페이저
   const Pager = ({ className = "" }: { className?: string }) => (
     <div className={`inline-flex items-stretch overflow-hidden rounded-[10px] border border-[#B3B3B3] bg-[#FAFAFA] ${className}`}>
-      <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))}
-        disabled={page === 1} className="px-5 py-2 text-sm font-semibold text-[#7F7F7F] hover:bg-white/40 disabled:opacity-50">
+      <button
+        type="button"
+        onClick={() => setPage((p) => Math.max(1, p - 1))}
+        disabled={page === 1}
+        className="px-5 py-2 text-sm font-semibold text-[#7F7F7F] hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      >
         &lt; 이전
       </button>
       <div className="w-px bg-[#B3B3B3]" />
-      <button type="button" onClick={() => setPage((p) => Math.min(maxPage, p + 1))}
-        disabled={page === maxPage} className="px-5 py-2 text-sm font-semibold text-[#7F7F7F] hover:bg-white/40 disabled:opacity-50">
+      <button
+        type="button"
+        onClick={() => setPage((p) => Math.min(maxPage, p + 1))}
+        disabled={page === maxPage}
+        className="px-5 py-2 text-sm font-semibold text-[#7F7F7F] hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      >
         다음 &gt;
       </button>
     </div>
@@ -324,7 +347,10 @@ export default function DocumentHistoryPage() {
             className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
           >
             <span className="text-[15px]">{flashMsg}</span>
-            <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+            <button
+              onClick={() => setFlashMsg(null)}
+              className="hover:opacity-80 cursor-pointer"
+            >
               닫기
             </button>
           </div>
@@ -376,7 +402,7 @@ export default function DocumentHistoryPage() {
               />
               <button
                 onClick={goToRevision}
-                className="h-9 px-3 rounded-md border border-[#B3B3B3] bg-[#2C80A0] hover:brightness-95 inline-flex items-center justify-center"
+                className="h-9 px-3 rounded-md border border-[#B3B3B3] bg-[#2C80A0] hover:brightness-95 inline-flex items-center justify-center cursor-pointer"
                 title="해당 버전으로 이동"
               >
                 <ChevronRight className="h-4 w-4 text-white" />
@@ -397,6 +423,13 @@ export default function DocumentHistoryPage() {
                 const isLatest = latestId != null && rev.id === latestId;
                 const isVersion1 = rev.id === 1; // r1은 비교 비활성화
                 const isHighlighted = highlightId === rev.id;
+
+                // 문서 대학 ID vs 사용자 대학 ID(localStorage) 비교
+                const viewerUnivId = getViewerUnivIdFromStorage();
+                const isForeignViewer =
+                  typeof univId === "number" &&
+                  Number.isFinite(univId) &&
+                  viewerUnivId !== univId; // viewerUnivId가 null이어도 => mismatch → 차단
 
                 return (
                   <li key={rev.id} id={`rev-${rev.id}`} className="relative block w-full">
@@ -449,8 +482,15 @@ export default function DocumentHistoryPage() {
                           ) : !asking ? (
                             <button
                               type="button"
-                              className="text-[#2C80A0] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                              onClick={() => setConfirmId(rev.id)}
+                              className="text-[#2C80A0] hover:underline disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                              onClick={() => {
+                                // 클릭 순간 소속 대학 체크: 아니면 바로 플래시만 띄우고 종료
+                                if (isForeignViewer) {
+                                  showFlash('해당 학교 소속만 되돌릴 수 있습니다.');
+                                  return;
+                                }
+                                setConfirmId(rev.id);
+                              }}
                               disabled={!!rollbackingId}
                               title="이 버전으로 현재 문서를 되돌립니다"
                             >
@@ -460,7 +500,7 @@ export default function DocumentHistoryPage() {
                             <span className="inline-flex items-center gap-2">
                               <button
                                 type="button"
-                                className="rounded-md border border-[#B3B3B3] px-2 py-0.5 text-gray-700 hover:bg-white/60"
+                                className="rounded-md border border-[#B3B3B3] px-2 py-0.5 text-gray-700 hover:bg-white/60 cursor-pointer disabled:cursor-not-allowed"
                                 onClick={() => setConfirmId(null)}
                                 disabled={working}
                               >
@@ -468,7 +508,7 @@ export default function DocumentHistoryPage() {
                               </button>
                               <button
                                 type="button"
-                                className="rounded-md border border-[#B3B3B3] px-2 py-0.5 bg-[#2C80A0] text-white hover:brightness-95 disabled:opacity-60"
+                                className="rounded-md border border-[#B3B3B3] px-2 py-0.5 bg-[#2C80A0] text-white hover:brightness-95 disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
                                 onClick={() => doRollback(rev.id)}
                                 disabled={working}
                               >
@@ -499,6 +539,7 @@ export default function DocumentHistoryPage() {
                         </div>
                       </div>
 
+                      {/* 여기 분홍 경고는 ask 모드에서만, 그리고 소속 허용된 경우에만 들어옴 */}
                       {!isLatest && asking && (
                         <div className="mt-2 rounded-md bg-[#FFE6EE] px-3 py-2 text-[13px] text-[#7A1240] border border-[#F5A3C0]">
                           현재 최신 내용이 <b>r{rev.id}</b> 기준으로 덮어씌워집니다. 실행 후 되돌릴 수 없습니다.
@@ -521,7 +562,7 @@ export default function DocumentHistoryPage() {
       {showTop && (
         <button
           onClick={scrollTop}
-          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
+          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50 cursor-pointer"
           aria-label="문서 상단으로 이동" title="문서 상단으로 이동"
         >
           <ChevronUp className="h-5 w-5" />

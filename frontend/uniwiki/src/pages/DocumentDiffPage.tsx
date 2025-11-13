@@ -71,7 +71,7 @@ type DocumentDto = {
   documentId: number;
   documentTitle: string;
   versionNumber: number;
-  universityId?: number;       // ← 추가
+  universityId?: number;
   universityName?: string;
   categoryName?: string;
 };
@@ -320,7 +320,7 @@ export default function DocumentDiffPage() {
   const title = meta?.documentTitle ?? documentTitle;
   const univName = meta?.universityName || "대학교";
   const categoryName = meta?.categoryName || "카테고리";
-  const univId = meta?.universityId; // ← 추가: 대학 ID
+  const univId = meta?.universityId;
   const enc = (s: string) => encodeURIComponent(s || "");
   const countLines = (s?: string) => (s == null ? 0 : Math.max(1, s.split("\n").length));
 
@@ -343,7 +343,10 @@ export default function DocumentDiffPage() {
         >
           <span className="text-[15px]">{flashMsg}</span>
           <div className="flex items-center gap-4">
-            <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+            <button
+              onClick={() => setFlashMsg(null)}
+              className="hover:opacity-80 cursor-pointer"
+            >
               닫기
             </button>
           </div>
@@ -377,9 +380,9 @@ export default function DocumentDiffPage() {
           <Link to={docBase} className="hover:underline">
             {title}
           </Link>{" "}
-        <span className="text-gray-600 text-lg">
-          (r{Number.isFinite(prevVersion) ? prevVersion : "—"} vs r{versionId})
-        </span>
+          <span className="text-gray-600 text-lg">
+            (r{Number.isFinite(prevVersion) ? prevVersion : "—"} vs r{versionId})
+          </span>
         </h1>
 
         <div className="mt-1 mb-1 flex items-center gap-4">
@@ -409,7 +412,7 @@ export default function DocumentDiffPage() {
             <button
               type="button"
               onClick={openUserReport}
-              className="ml-2 underline-offset-2 hover:underline focus:underline outline-none"
+              className="ml-2 underline-offset-2 hover:underline focus:underline outline-none cursor-pointer"
               title="사용자 신고하기"
             >
               {currEditor}
@@ -493,7 +496,7 @@ export default function DocumentDiffPage() {
       {showTop && (
         <button
           onClick={scrollTop}
-          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
+          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50 cursor-pointer"
           aria-label="문서 상단으로 이동"
           title="문서 상단으로 이동"
         >
@@ -504,7 +507,10 @@ export default function DocumentDiffPage() {
       {/* ===== 사용자 신고 모달 ===== */}
       {userReportOpen && (
         <div className="fixed inset-0 z-[110]">
-          <div className="absolute inset-0 bg-black/50" onClick={closeUserReport} />
+          <div
+            className="absolute inset-0 bg-black/50 cursor-pointer"
+            onClick={closeUserReport}
+          />
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
               <div className="mb-4 flex items-start justify-between">
@@ -512,7 +518,7 @@ export default function DocumentDiffPage() {
                 <button
                   onClick={closeUserReport}
                   aria-label="닫기"
-                  className="h-8 w-8 -mr-2 -mt-2 text-gray-500 hover:text-gray-700"
+                  className="h-8 w-8 -mr-2 -mt-2 text-gray-500 hover:text-gray-700 cursor-pointer"
                 >
                   ×
                 </button>
@@ -540,14 +546,14 @@ export default function DocumentDiffPage() {
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   onClick={closeUserReport}
-                  className="h-10 min-w-[80px] rounded-xl border border-[#B3B3B3] bg-white px-4 text-[16px]"
+                  className="h-10 min-w-[80px] rounded-xl border border-[#B3B3B3] bg-white px-4 text-[16px] cursor-pointer"
                 >
                   취소
                 </button>
                 <button
                   onClick={submitUserReport}
                   disabled={!userReportReason.trim() || userReportPosting || !currEditorId}
-                  className="h-10 min-w-[80px] rounded-xl bg-[#E45757] px-4 text-white disabled:opacity-50"
+                  className="h-10 min-w-[80px] rounded-xl bg-[#E45757] px-4 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {userReportPosting ? "전송 중…" : "신고"}
                 </button>

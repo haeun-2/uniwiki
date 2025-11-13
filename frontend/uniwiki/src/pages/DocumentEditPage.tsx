@@ -574,7 +574,7 @@ export default function DocumentEditPage() {
           </nav>
           <button
             onClick={() => setRailCollapsed((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
             aria-pressed={railCollapsed}
             aria-label={railCollapsed ? '우측 레일 펼치기' : '우측 레일 접기'}
             title={railCollapsed ? '우측 레일 펼치기' : '우측 레일 접기'}
@@ -712,7 +712,7 @@ export default function DocumentEditPage() {
             <button
               onClick={onSave}
               disabled={!canSave}
-              className="inline-flex min-w-[104px] items-center justify-center rounded-xl bg-[#2C80A0] px-5 py-2 font-medium text-white hover:bg-[#276E86] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex min-w-[104px] items-center justify-center rounded-xl bg-[#2C80A0] px-5 py-2 font-medium text-white hover:bg-[#276E86] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               title={
                 !agree
                   ? '라이선스 동의가 필요합니다.'

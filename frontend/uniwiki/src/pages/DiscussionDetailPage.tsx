@@ -1,4 +1,3 @@
-// src/pages/DiscussionDetailPage.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
@@ -823,7 +822,7 @@ export default function DiscussionDetailPage() {
                 </span>
                 <button
                   onClick={closeFlash}
-                  className="hover:opacity-80"
+                  className="hover:opacity-80 cursor-pointer"
                 >
                   닫기
                 </button>
@@ -839,7 +838,7 @@ export default function DiscussionDetailPage() {
                 <button
                   onClick={onCloseDiscussion}
                   disabled={closing}
-                  className="h-10 w-[clamp(92px,12vw,116px)] rounded-xl bg-[color:var(--uniwikicolor,#2c80a0)] text-white flex items-center justify-center hover:opacity-90 text-[18px] leading-tight disabled:opacity-60"
+                  className="h-10 w-[clamp(92px,12vw,116px)] rounded-xl bg-[color:var(--uniwikicolor,#2c80a0)] text-white flex items-center justify-center hover:opacity-90 text-[18px] leading-tight disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {closing ? "종료 중…" : "종료하기"}
                 </button>
@@ -944,7 +943,7 @@ export default function DiscussionDetailPage() {
                                 <button
                                   type="button"
                                   onClick={() => openUserReport(m)}
-                                  className="underline-offset-2 hover:underline focus:underline outline-none"
+                                  className="underline-offset-2 hover:underline focus:underline outline-none cursor-pointer"
                                   title="작성자 신고하기"
                                   aria-label={`${displayName} 사용자 신고`}
                                 >
@@ -987,7 +986,7 @@ export default function DiscussionDetailPage() {
               {showTopPanel && (
                 <button
                   onClick={scrollPanelTop}
-                  className="absolute bottom-3 right-3 z-10 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
+                  className="absolute bottom-3 right-3 z-10 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50 cursor-pointer"
                   aria-label="패널 맨 위로"
                 >
                   <ChevronUp className="h-5 w-5" strokeWidth={3} />
@@ -1023,7 +1022,7 @@ export default function DiscussionDetailPage() {
               <button
                 onClick={onSubmit}
                 disabled={!input.trim() || status === "closed" || posting}
-                className="h-10 w-[clamp(92px,12vw,116px)] rounded-xl bg-[color:var(--uniwikicolor,#2c80a0)] px-5 text-white disabled:opacity-50 disabled:cursor-not-allowed text-[18px] leading-tight"
+                className="h-10 w-[clamp(92px,12vw,116px)] rounded-xl bg-[color:var(--uniwikicolor,#2c80a0)] px-5 text-white disabled:opacity-50 disabled:cursor-not-allowed text-[18px] leading-tight cursor-pointer"
               >
                 {posting ? "생성 중…" : "생성"}
               </button>
@@ -1036,7 +1035,7 @@ export default function DiscussionDetailPage() {
       {showTopPage && (
         <button
           onClick={scrollPageTop}
-          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
+          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50 cursor-pointer"
           aria-label="문서 상단으로 이동"
           title="문서 상단으로 이동"
         >
@@ -1048,7 +1047,7 @@ export default function DiscussionDetailPage() {
       {reportOpen && (
         <div className="fixed inset-0 z-[100]">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/50 cursor-pointer"
             onClick={closeReport}
           />
           <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -1060,7 +1059,7 @@ export default function DiscussionDetailPage() {
                 <button
                   onClick={closeReport}
                   aria-label="닫기"
-                  className="h-8 w-8 -mr-2 -mt-2 text-gray-500 hover:text-gray-700"
+                  className="h-8 w-8 -mr-2 -mt-2 text-gray-500 hover:text-gray-700 cursor-pointer"
                 >
                   ×
                 </button>
@@ -1094,14 +1093,14 @@ export default function DiscussionDetailPage() {
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   onClick={closeReport}
-                  className="h-10 min-w-[80px] rounded-xl border border-[#B3B3B3] bg-white px-4 text-[16px]"
+                  className="h-10 min-w-[80px] rounded-xl border border-[#B3B3B3] bg-white px-4 text-[16px] cursor-pointer"
                 >
                   취소
                 </button>
                 <button
                   onClick={submitReport}
                   disabled={!reportReason.trim() || reportPosting}
-                  className="h-10 min-w-[80px] rounded-xl bg-[#E45757] px-4 text-white disabled:opacity-50"
+                  className="h-10 min-w-[80px] rounded-xl bg-[#E45757] px-4 text-white disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {reportPosting ? "전송 중…" : "신고"}
                 </button>
@@ -1115,7 +1114,7 @@ export default function DiscussionDetailPage() {
       {userReportOpen && (
         <div className="fixed inset-0 z-[110]">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/50 cursor-pointer"
             onClick={closeUserReport}
           />
           <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -1127,7 +1126,7 @@ export default function DiscussionDetailPage() {
                 <button
                   onClick={closeUserReport}
                   aria-label="닫기"
-                  className="h-8 w-8 -mr-2 -mt-2 text-gray-500 hover:text-gray-700"
+                  className="h-8 w-8 -mr-2 -mt-2 text-gray-500 hover:text-gray-700 cursor-pointer"
                 >
                   ×
                 </button>
@@ -1158,7 +1157,7 @@ export default function DiscussionDetailPage() {
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   onClick={closeUserReport}
-                  className="h-10 min-w-[80px] rounded-xl border border-[#B3B3B3] bg-white px-4 text-[16px]"
+                  className="h-10 min-w-[80px] rounded-xl border border-[#B3B3B3] bg-white px-4 text-[16px] cursor-pointer"
                 >
                   취소
                 </button>
@@ -1169,7 +1168,7 @@ export default function DiscussionDetailPage() {
                     userReportPosting ||
                     !userReportTarget?.id
                   }
-                  className="h-10 min-w-[80px] rounded-xl bg-[#E45757] px-4 text-white disabled:opacity-50"
+                  className="h-10 min-w-[80px] rounded-xl bg-[#E45757] px-4 text-white disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {userReportPosting ? "전송 중…" : "신고"}
                 </button>

@@ -1,5 +1,5 @@
 // src/pages/DocumentViewPage.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronUp } from 'lucide-react';
 
@@ -21,6 +21,13 @@ type DocumentDto = {
 
 type Status = 'loading' | 'ok' | 'notfound' | 'error';
 
+type TocItem = {
+  id: string;
+  text: string;
+  level: number;   // 1~6
+  number: string;  // 1. / 2.1. / 3.4.2. 등
+};
+
 const API_BASE = 'https://k13d104.p.ssafy.io/api';
 
 /** ===== Auth utils ===== */
@@ -30,19 +37,23 @@ function decodeJwtPayload(token: string): any | null {
   try {
     const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
     return JSON.parse(json);
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 function getAccessToken() {
   try {
     const t = localStorage.getItem('accessToken') || '';
     if (!t) return '';
     const p = decodeJwtPayload(t);
-    if (p?.exp && Math.floor(Date.now()/1000) >= p.exp) {
+    if (p?.exp && Math.floor(Date.now() / 1000) >= p.exp) {
       localStorage.removeItem('accessToken');
       return '';
     }
     return t;
-  } catch { return ''; }
+  } catch {
+    return '';
+  }
 }
 function authHeaders(extra: HeadersInit = {}) {
   const token = getAccessToken();
@@ -65,7 +76,24 @@ const enc = (s: string) => encodeURIComponent(s || '');
 /** 차단 응답 여부 판별 */
 function isBanned(status: number, bodyText: string) {
   const t = (bodyText || '').toLowerCase();
-  return status === 423 || status === 451 || t.includes('user_banned') || t.includes('banned') || t.includes('차단');
+  return (
+    status === 423 ||
+    status === 451 ||
+    t.includes('user_banned') ||
+    t.includes('banned') ||
+    t.includes('차단')
+  );
+}
+
+// 단순 slug 함수(한글/영문 공통 사용)
+function slugify(raw: string) {
+  const base = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+  return base || 'section';
 }
 
 export default function DocumentViewPage() {
@@ -90,7 +118,9 @@ export default function DocumentViewPage() {
   const [content, setContent] = useState<string>('');
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [apiError, setApiError] = useState<string | null>(null);
-  const [meta, setMeta] = useState<Pick<DocumentDto, 'universityName' | 'categoryName'> | null>(null);
+  const [meta, setMeta] = useState<Pick<DocumentDto, 'universityName' | 'categoryName'> | null>(
+    null,
+  );
 
   const [docId, setDocId] = useState<number | null>(null);
   const [docUniId, setDocUniId] = useState<number | null>(null);
@@ -163,7 +193,11 @@ export default function DocumentViewPage() {
 
         // 열린 토론 여부
         try {
-          const qs = new URLSearchParams({ document: String(data.documentId), page: '0', size: '1' }).toString();
+          const qs = new URLSearchParams({
+            document: String(data.documentId),
+            page: '0',
+            size: '1',
+          }).toString();
           const talkRes = await fetch(`${API_BASE}/v1/discussions?${qs}`, {
             headers: { Accept: 'application/json' },
             signal: controller.signal,
@@ -172,7 +206,9 @@ export default function DocumentViewPage() {
             const j = await talkRes.json();
             setHasTalk(Array.isArray(j?.content) && j.content.length > 0);
           } else setHasTalk(false);
-        } catch { setHasTalk(false); }
+        } catch {
+          setHasTalk(false);
+        }
 
         // 즐겨찾기 여부
         try {
@@ -188,10 +224,14 @@ export default function DocumentViewPage() {
             if (favRes.status === 401) return; // 로그인 필요
             if (favRes.ok) {
               const list: Array<{ documentId: number }> = await favRes.json();
-              setFavOn(Array.isArray(list) && list.some((it) => Number(it.documentId) === data.documentId));
+              setFavOn(
+                Array.isArray(list) && list.some((it) => Number(it.documentId) === data.documentId),
+              );
             } else setFavOn(false);
           }
-        } catch { setFavOn(false); }
+        } catch {
+          setFavOn(false);
+        }
       } catch (e: any) {
         if (controller.signal.aborted) return;
         setApiError(e?.message || '문서를 불러오는 중 오류가 발생했습니다.');
@@ -304,7 +344,7 @@ export default function DocumentViewPage() {
       },
       tagNames: [...(((defaultSchema as any).tagNames) || []), 'img'],
     }),
-    []
+    [],
   );
 
   // 링크 정규화 (+ 대학 ID 동반 전달)
@@ -312,10 +352,63 @@ export default function DocumentViewPage() {
   const cateNameSafe = meta?.categoryName || '카테고리';
   const univHref = `/univ/${enc(univNameSafe)}`;
   const catePathBase = `/univ/${enc(univNameSafe)}/category/${enc(cateNameSafe)}`;
-  const cateHref = typeof docUniId === 'number' ? `${catePathBase}?universityId=${docUniId}` : catePathBase;
-  const docBase  = `${univHref}/docs/${docTitleParam}`;
+  const cateHref =
+    typeof docUniId === 'number' ? `${catePathBase}?universityId=${docUniId}` : catePathBase;
+  const docBase = `${univHref}/docs/${docTitleParam}`;
 
   const showCard = status === 'ok' || status === 'loading';
+
+  /** ===== 목차 생성 ===== */
+  const articleRef = useRef<HTMLElement | null>(null);
+  const [tocItems, setTocItems] = useState<TocItem[]>([]);
+
+  useEffect(() => {
+    if (status !== 'ok') {
+      setTocItems([]);
+      return;
+    }
+    const root = articleRef.current;
+    if (!root) {
+      setTocItems([]);
+      return;
+    }
+
+    const headings = Array.from(
+      root.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6'),
+    );
+    if (!headings.length) {
+      setTocItems([]);
+      return;
+    }
+
+    const slugCounts: Record<string, number> = {};
+    const levelCounters = [0, 0, 0, 0, 0, 0, 0];
+    const items: TocItem[] = [];
+
+    headings.forEach((el, idx) => {
+      const level = Math.min(Math.max(Number(el.tagName.slice(1)) || 1, 1), 6);
+      const text = el.textContent?.trim() || `제목 ${idx + 1}`;
+
+      let baseSlug = slugify(text);
+      if (slugCounts[baseSlug] == null) slugCounts[baseSlug] = 0;
+      else slugCounts[baseSlug] += 1;
+      const slug = slugCounts[baseSlug] === 0 ? baseSlug : `${baseSlug}-${slugCounts[baseSlug]}`;
+
+      el.id = slug;
+
+      levelCounters[level] += 1;
+      for (let i = level + 1; i <= 6; i += 1) levelCounters[i] = 0;
+      const num = levelCounters
+        .slice(1, level + 1)
+        .filter((n) => n > 0)
+        .join('.');
+
+      items.push({ id: slug, text, level, number: num });
+    });
+
+    setTocItems(items);
+  }, [content, status]);
+  /** ===================== */
 
   return (
     <div className="bg-white">
@@ -328,7 +421,10 @@ export default function DocumentViewPage() {
             >
               <span className="text-[15px]">{flashMsg}</span>
               <div className="flex items-center gap-4">
-                <button onClick={() => setFlashMsg(null)} className="hover:opacity-80">
+                <button
+                  onClick={() => setFlashMsg(null)}
+                  className="hover:opacity-80 cursor-pointer"
+                >
                   닫기
                 </button>
               </div>
@@ -368,7 +464,7 @@ export default function DocumentViewPage() {
               </h1>
 
               {/* 날짜 + 액션바 */}
-              <div className="mb-20 flex items-center gap-4 min-w-0">
+              <div className="mb-6 flex items-center gap-4 min-w-0">
                 {lastUpdated && status === 'ok' && (
                   <p className="text-md text-gray-800 whitespace-nowrap">
                     최근 수정 시각 : {lastUpdated}
@@ -387,7 +483,7 @@ export default function DocumentViewPage() {
                     title={favOn ? '즐겨찾기 해제' : '즐겨찾기 추가'}
                     className={`h-9 px-2 text-md leading-tight flex items-center justify-center
                       ${favOn ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg-white/60'}
-                      ${favBusy ? 'opacity-60 cursor-wait' : ''}`}
+                      ${favBusy ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
                   >
                     ★
                   </button>
@@ -396,7 +492,7 @@ export default function DocumentViewPage() {
                   <button
                     role="tab"
                     onClick={handleEditClick}
-                    className="h-9 px-2 text-md leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60"
+                    className="h-9 px-2 text-md leading-tight flex items-center justify-center border-l border-[#B3B3B3] text-[#7F7F7F] hover:bg-white/60 cursor-pointer"
                   >
                     편집
                   </button>
@@ -420,8 +516,37 @@ export default function DocumentViewPage() {
                 </div>
               </div>
 
+              {/* ===== 목차 영역 (상자 없이) ===== */}
+              {status === 'ok' && tocItems.length > 0 && (
+                <section className="mb-8">
+                  <h2 className="mb-2 text-lg font-semibold text-gray-900"></h2>
+                  <ol className="space-y-1 text-sm">
+                    {tocItems.map((item) => (
+                      <li
+                        key={item.id}
+                        style={{ marginLeft: (item.level - 1) * 16 }}
+                        className="leading-snug"
+                      >
+                        <a
+                          href={`#${item.id}`}
+                          className="text-[#2C80A0] hover:underline"
+                        >
+                          <span className="mr-1">{item.number}</span>
+                          {item.text}
+                        </a>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
+              {/* ==================== */}
+
               {/* 본문 */}
-              <article data-color-mode="light" className="prose max-w-none">
+              <article
+                ref={articleRef}
+                data-color-mode="light"
+                className="prose max-w-none"
+              >
                 {status === 'loading' ? (
                   <div className="animate-pulse">
                     <div className="mb-3 h-6 w-1/3 rounded bg-gray-200" />
@@ -435,7 +560,7 @@ export default function DocumentViewPage() {
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
                     style={{
-                      backgroundColor: '#F9FAFB', // gray-50
+                      backgroundColor: '#F9FAFB',
                       ['--color-canvas-default' as any]: '#F9FAFB',
                       ['--color-canvas-subtle' as any]: '#F9FAFB',
                     }}
@@ -450,7 +575,7 @@ export default function DocumentViewPage() {
       {showTop && (
         <button
           onClick={scrollTop}
-          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50"
+          className="fixed bottom-6 right-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#5C5C5C] bg-white text-[#5C5C5C] shadow-sm hover:bg-gray-50 cursor-pointer"
           aria-label="문서 상단으로 이동"
           title="문서 상단으로 이동"
         >

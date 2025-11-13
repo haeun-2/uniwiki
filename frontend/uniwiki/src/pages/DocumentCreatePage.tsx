@@ -311,7 +311,6 @@ export default function DocumentCreatePage() {
         return;
       }
       if (msg.startsWith("E403_BANNED")) {
-        // 플래시로 이미 표시됨. 추가 동작 없음.
         return;
       }
       if (msg.startsWith("E403")) {
@@ -350,7 +349,7 @@ export default function DocumentCreatePage() {
             navigate("/login", { replace: true, state: { from: location.pathname } });
             return;
           }
-          if (msg.startsWith("E403_BANNED")) return; // 플래시 이미 표시
+          if (msg.startsWith("E403_BANNED")) return;
           if (msg.startsWith("E403")) {
             alert(msg.replace(/^E403:/, "") || "이미지 업로드 권한이 없습니다.");
             return;
@@ -413,7 +412,6 @@ export default function DocumentCreatePage() {
 
       const text = await res.clone().text().catch(() => "");
 
-      // ✅ 차단 사용자 처리: 플래시 팝업
       if (looksBanned(res.status, text)) {
         setFlash("차단된 사용자입니다.");
         return;
@@ -460,20 +458,18 @@ export default function DocumentCreatePage() {
           {/* 레일 토글 버튼 */}
           <button
             onClick={() => setRailCollapsed((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
             aria-pressed={railCollapsed}
             aria-label={railCollapsed ? "우측 레일 펼치기" : "우측 레일 접기"}
             title={railCollapsed ? "우측 레일 펼치기" : "우측 레일 접기"}
           >
             {railCollapsed ? (
               <>
-                {/* 접힘 상태 => << 아이콘 */}
                 <ChevronsLeft size={16} />
                 <span className="hidden sm:inline">펼치기</span>
               </>
             ) : (
               <>
-                {/* 펼침 상태 => >> 아이콘 */}
                 <ChevronsRight size={16} />
                 <span className="hidden sm:inline">접기</span>
               </>
@@ -484,14 +480,17 @@ export default function DocumentCreatePage() {
 
       {/* 본문 영역 */}
       <div className="mx-auto w-full max-w-6xl px-4">
-        {/* 플래시 배너 (문서 조회/토론 화면과 동일 양식) */}
+        {/* 플래시 배너 */}
         {flash && (
           <div
             role="status"
             className="mb-3 flex items-center justify-between rounded-xl bg-[#2C80A0] px-4 py-3 text-white"
           >
             <span className="text-[16px]">{flash}</span>
-            <button onClick={() => setFlash("")} className="hover:opacity-80">
+            <button
+              onClick={() => setFlash("")}
+              className="hover:opacity-80 cursor-pointer"
+            >
               닫기
             </button>
           </div>
@@ -582,7 +581,7 @@ export default function DocumentCreatePage() {
         {/* 버튼 */}
         <div className="mt-5 flex justify-end gap-3">
           <Link
-            to={`/univ/${enc(univName)}`}
+            to={cancelHref}
             className="inline-flex min-w-[104px] items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50"
           >
             취소
@@ -590,7 +589,7 @@ export default function DocumentCreatePage() {
           <button
             onClick={onCreate}
             disabled={!canSave}
-            className="inline-flex min-w-[104px] items-center justify-center rounded-xl bg-[#2C80A0] px-5 py-2 font-medium text-white hover:bg-[#276E86] disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex min-w-[104px] items-center justify-center rounded-xl bg-[#2C80A0] px-5 py-2 font-medium text-white hover:bg-[#276E86] cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             title={
               !agree
                 ? "라이선스 동의가 필요합니다."

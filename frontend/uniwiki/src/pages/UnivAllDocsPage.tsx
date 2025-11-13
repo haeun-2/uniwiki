@@ -1,25 +1,28 @@
-// src/pages/CategoryPage.tsx
-import { useState, useEffect } from "react";
-import { Link, useParams, useLocation } from "react-router-dom";
+// src/pages/UnivAllDocsPage.tsx
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 
-interface CategoryItem {
+type UnivDocItem = {
   documentTitle: string;
   updatedAt: string;
-}
+  viewCount?: number;
+};
 
-interface Category {
-  categoryId: number;
-  categoryName: string;
-}
-
-export default function CategoryPage() {
-  const { univName, categoryName = "" } = useParams<{ univName?: string; categoryName: string }>();
+export default function UnivAllDocsPage() {
+  const { univName } = useParams<{ univName: string }>();
   const location = useLocation();
+
+  const decodedUnivName = useMemo(
+    () => (univName ? decodeURIComponent(univName) : ""),
+    [univName]
+  );
 
   // --- universityId 결정: state 우선, 없으면 ?universityId= 쿼리 사용 ---
   const searchParams = new URLSearchParams(location.search);
   const queryUnivId = searchParams.get("universityId");
-  const universityIdFromQuery = queryUnivId != null && queryUnivId !== "" ? Number(queryUnivId) : undefined;
+  const universityIdFromQuery =
+    queryUnivId != null && queryUnivId !== "" ? Number(queryUnivId) : undefined;
+
   const universityId =
     (location.state as any)?.universityId != null
       ? Number((location.state as any).universityId)
@@ -27,82 +30,96 @@ export default function CategoryPage() {
 
   const [isEnglish, setIsEnglish] = useState<boolean>(false);
   const [selectedLetter, setSelectedLetter] = useState<string>("ㄱ");
-  const [documents, setDocuments] = useState<CategoryItem[]>([]);
+  const [documents, setDocuments] = useState<UnivDocItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentCategoryId, setCurrentCategoryId] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
-  const koreanConsonants = ["ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+  const koreanConsonants = [
+    "ㄱ",
+    "ㄴ",
+    "ㄷ",
+    "ㄹ",
+    "ㅁ",
+    "ㅂ",
+    "ㅅ",
+    "ㅇ",
+    "ㅈ",
+    "ㅊ",
+    "ㅋ",
+    "ㅌ",
+    "ㅍ",
+    "ㅎ",
+  ];
   const englishAlphabets = [
-    "A","B","C","D","E","F","G","H","I","J","K","L",
-    "M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
   ];
 
   const letters = isEnglish ? englishAlphabets : koreanConsonants;
 
-  // 1) 카테고리 목록 조회 → 현재 URL의 categoryName과 이름 매칭해 categoryId 결정
+  // 전체 문서 조회
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/categories", {
-          method: "GET",
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) {
-          alert("카테고리 목록을 불러오는데 실패했습니다.");
-          return;
-        }
-        const all: Category[] = await res.json();
-        const matched = all.find((c) => c.categoryName === categoryName);
-        if (matched) {
-          setCurrentCategoryId(matched.categoryId);
-        } else {
-          console.error("카테고리 이름 매칭 실패:", categoryName);
-        }
-      } catch (e) {
-        console.error("Fetch categories error:", e);
-        alert("서버와의 연결에 실패했습니다.");
-      }
-    };
-    fetchCategories();
-  }, [categoryName]);
-
-  // 2) 특정 카테고리의 문서 목록 조회(배열 응답 + universityId 필터)
-  const fetchDocuments = async () => {
-    if (currentCategoryId === null) return;
-
-    setIsLoading(true);
-    try {
-      const base = `https://k13d104.p.ssafy.io/api/v1/categories/${currentCategoryId}`;
-      const qs = new URLSearchParams();
-      if (Number.isFinite(universityId as number)) {
-        qs.set("universityId", String(universityId));
-      }
-      const url = qs.toString() ? `${base}?${qs.toString()}` : base;
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
-
-      if (!response.ok) {
-        alert("문서 목록을 불러오는데 실패했습니다.");
-        return;
-      }
-
-      const data: CategoryItem[] = await response.json();
-      setDocuments(data || []);
-    } catch (error) {
-      console.error("Fetch documents error:", error);
-      alert("서버와의 연결에 실패했습니다.");
-    } finally {
+    if (!universityId) {
       setIsLoading(false);
+      setErr("대학교 정보가 필요합니다.");
+      return;
     }
-  };
 
-  useEffect(() => {
-    fetchDocuments();
-    // universityId는 쿼리/상태로 변할 수 있으니 의존성 포함
-  }, [currentCategoryId, universityId, location.search]);
+    let mounted = true;
+    (async () => {
+      try {
+        setIsLoading(true);
+        setErr(null);
+
+        // 실제 전체 문서 조회 API
+        const baseUrl = "https://k13d104.p.ssafy.io/api/v1/documents";
+        const url = `${baseUrl}?universityId=${universityId}`;
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { Accept: "*/*" },
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data: UnivDocItem[] = await res.json();
+        if (mounted) setDocuments(Array.isArray(data) ? data : []);
+      } catch (e: any) {
+        if (mounted)
+          setErr(e?.message ?? "문서 목록을 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [universityId, location.search]);
 
   // 한글 초성 / 알파벳 추출
   const getKoreanConsonant = (text: string): string => {
@@ -110,7 +127,27 @@ export default function CategoryPage() {
     const code = firstChar.charCodeAt(0);
 
     if (code >= 0xac00 && code <= 0xd7a3) {
-      const consonants = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+      const consonants = [
+        "ㄱ",
+        "ㄲ",
+        "ㄴ",
+        "ㄷ",
+        "ㄸ",
+        "ㄹ",
+        "ㅁ",
+        "ㅂ",
+        "ㅃ",
+        "ㅅ",
+        "ㅆ",
+        "ㅇ",
+        "ㅈ",
+        "ㅉ",
+        "ㅊ",
+        "ㅋ",
+        "ㅌ",
+        "ㅍ",
+        "ㅎ",
+      ];
       const consonantIndex = Math.floor((code - 0xac00) / 588);
       return consonants[consonantIndex];
     }
@@ -119,7 +156,7 @@ export default function CategoryPage() {
   };
 
   const groupDocumentsByLetter = () => {
-    const grouped: Record<string, CategoryItem[]> = {};
+    const grouped: Record<string, UnivDocItem[]> = {};
     letters.forEach((letter) => (grouped[letter] = []));
     documents.forEach((doc) => {
       const key = getKoreanConsonant(doc.documentTitle);
@@ -131,9 +168,9 @@ export default function CategoryPage() {
   const groupedDocuments = groupDocumentsByLetter();
   const currentDocuments = groupedDocuments[selectedLetter] || [];
 
-  const splitIntoColumns = (items: CategoryItem[]) => {
+  const splitIntoColumns = (items: UnivDocItem[]) => {
     const columnCount = 3;
-    const columns: CategoryItem[][] = [[], [], []];
+    const columns: UnivDocItem[][] = [[], [], []];
     items.forEach((item, index) => {
       columns[index % columnCount].push(item);
     });
@@ -145,7 +182,9 @@ export default function CategoryPage() {
   const getLatestUpdateTime = () => {
     if (documents.length === 0) return "정보 없음";
     const latestDoc = documents.reduce((latest, current) =>
-      new Date(current.updatedAt) > new Date(latest.updatedAt) ? current : latest
+      new Date(current.updatedAt) > new Date(latest.updatedAt)
+        ? current
+        : latest
     );
     const date = new Date(latestDoc.updatedAt);
     return date
@@ -169,7 +208,15 @@ export default function CategoryPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="text-gray-500">로딩 중...</div>
+        <div className="text-gray-500 text-sm">불러오는 중...</div>
+      </div>
+    );
+  }
+
+  if (err) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="text-red-500 text-sm">{err}</div>
       </div>
     );
   }
@@ -179,7 +226,7 @@ export default function CategoryPage() {
       {/* 페이지 헤더 */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          분류 : {categoryName || "카테고리"}
+          {decodedUnivName || "대학교"} 전체 문서
         </h1>
         <div className="flex items-center gap-4 text-sm text-gray-400">
           <span>최근 수정 시각 {getLatestUpdateTime()}</span>
@@ -231,7 +278,7 @@ export default function CategoryPage() {
           </div>
         </div>
 
-        {/* 중앙: 카테고리 항목들 */}
+        {/* 중앙: 전체 문서 항목들 */}
         <div className="lg:col-span-3">
           <div className="mb-6 pb-4 border-b-2 border-gray-300">
             <h2 className="text-2xl font-bold text-gray-900">
@@ -247,7 +294,9 @@ export default function CategoryPage() {
                     <Link
                       to={
                         univName
-                          ? `/univ/${encodeURIComponent(univName)}/docs/${encodeURIComponent(item.documentTitle)}`
+                          ? `/univ/${encodeURIComponent(
+                              univName
+                            )}/docs/${encodeURIComponent(item.documentTitle)}`
                           : `/docs/${encodeURIComponent(item.documentTitle)}`
                       }
                       className="text-sm text-blue-600 hover:underline block py-1"
