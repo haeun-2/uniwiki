@@ -17,9 +17,8 @@ public interface DocumentSearchRepository extends ElasticsearchRepository<Docume
           {
             "multi_match": {
               "query": "?0",
+              "type": "cross_fields",
               "fields": ["title", "content", "universityName"],
-              "type": "most_fields",
-              "operator": "and",
               "minimum_should_match": "100%"
             }
           }

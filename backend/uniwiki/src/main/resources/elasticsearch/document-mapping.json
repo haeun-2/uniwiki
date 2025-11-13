@@ -31,8 +31,8 @@
     },
     "universityName": {
       "type": "text",
-      "analyzer": "univ_keyword_analyzer",
-      "search_analyzer": "standard"
+      "analyzer": "nori_content_analyzer",
+      "search_analyzer": "nori_content_analyzer"
     },
     "categoryName": {
       "type": "keyword"
