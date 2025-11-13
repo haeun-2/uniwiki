@@ -140,11 +140,11 @@ function ReasonModal({
   const canSubmit = reason.trim().length > 0;
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[480px]">
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center cursor-pointer">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[480px] cursor-pointer">
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <button className="text-gray-400 text-xl" onClick={onClose}>×</button>
+          <button className="text-gray-400 text-xl cursor-pointer" onClick={onClose}>×</button>
         </div>
         <div className="space-y-3">
           <label className="text-sm block">사유</label>
@@ -156,14 +156,14 @@ function ReasonModal({
             className="w-full h-28 border rounded-lg px-3 py-2 text-sm resize-none"
           />
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={onClose} className="px-3 py-2 border rounded-lg">취소</button>
+            <button onClick={onClose} className="px-3 py-2 border rounded-lg cursor-pointer">취소</button>
             <button
               disabled={!canSubmit}
               onClick={() => {
                 onConfirm(reason.trim());
                 onClose();
               }}
-              className={`px-3 py-2 rounded-lg text-white ${
+              className={`px-3 py-2 rounded-lg text-white cursor-pointer ${
                 canSubmit ? "bg-uniwikicolor hover:bg-uniwikicolor_hover" : "bg-gray-300 cursor-not-allowed"
               }`}
             >
@@ -227,10 +227,10 @@ function EditDiscussionModal({
   };
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center cursor-pointer">
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl p-6 w-[480px] max-h-[80vh] flex flex-col shadow-xl"
+        className="bg-white rounded-2xl p-6 w-[480px] max-h-[80vh] flex flex-col shadow-xl cursor-pointer"
       >
         {/* 헤더 */}
         <div className="flex items-start justify-between mb-4">
@@ -243,7 +243,7 @@ function EditDiscussionModal({
             </p>
           </div>
           <button
-            className="text-gray-400 text-xl leading-none hover:text-gray-600"
+            className="text-gray-400 text-xl leading-none hover:text-gray-600 cursor-pointer"
             onClick={onClose}
             aria-label="닫기"
             title="닫기"
@@ -276,7 +276,7 @@ function EditDiscussionModal({
           <div className="flex gap-2">
             <button
               type="button"
-              className="px-3 py-2 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+              className="px-3 py-2 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 cursor-pointer"
               onClick={handleSoftDelete}
             >
               내용 삭제
@@ -285,7 +285,7 @@ function EditDiscussionModal({
           <div>
             <button
               type="button"
-              className="px-3 py-2 text-sm rounded-lg border border-black-200 text-black-600 hover:bg-gray-200"
+              className="px-3 py-2 text-sm rounded-lg border border-black-200 text-black-600 hover:bg-gray-200 cursor-pointer"
               onClick={onClose}
             >
               확인
@@ -327,7 +327,7 @@ function ReportedDiscussionSection({
     <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
       {/* 헤더 */}
       <div
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50"
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 cursor-pointer"
         role="button"
         tabIndex={0}
         aria-expanded={open}
@@ -367,21 +367,21 @@ function ReportedDiscussionSection({
             target="_blank"
             to={href}
             onClick={(e) => e.stopPropagation()}
-            className="px-3 py-2 text-sm rounded-lg border hover:bg-gray-200"
+            className="px-3 py-2 text-sm rounded-lg border hover:bg-gray-200 cursor-pointer"
             title="토론 페이지로 이동"
           >
             바로가기
           </Link>
 
           <button
-            className="px-3 py-2 text-sm rounded-lg text-uniwikicolor border hover:bg-gray-200 disabled:opacity-40 cursor-pointer"
+            className="px-3 py-2 text-sm rounded-lg text-uniwikicolor border hover:bg-gray-200 cursor-pointer disabled:opacity-40"
             onClick={(e) => { e.stopPropagation(); onOpenReject(item); }}
             disabled={!hasPending}
           >
             기각하기
           </button>
           <button
-            className="px-3 py-2 text-sm rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover disabled:opacity-40 cursor-pointer"
+            className="px-3 py-2 text-sm rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover cursor-pointer disabled:opacity-40"
             onClick={(e) => { e.stopPropagation(); onOpenResolve(item); }}
             disabled={!hasPending}
           >
@@ -391,7 +391,7 @@ function ReportedDiscussionSection({
           <button
             aria-expanded={open}
             onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-            className="ml-2 text-gray-400 hover:text-gray-600"
+            className="ml-2 text-gray-400 hover:text-gray-600 cursor-pointer"
             title={open ? "접기" : "펼치기"}
           >
             <span className={`inline-block transition-transform ${open ? "rotate-180" : "rotate-0"}`}>▼</span>
@@ -433,7 +433,7 @@ function ReportedDiscussionSection({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="group absolute left-1/2 -translate-x-1/2 -top-3 focus:outline-none"
+                className="group absolute left-1/2 -translate-x-1/2 -top-3 cursor-pointer focus:outline-none"
               >
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white text-xs text-gray-500 shadow-sm group-hover:bg-gray-50">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -599,7 +599,7 @@ export default function AdminDiscussionReportPageGrouped() {
         <button
           disabled={loading || !(data?.hasPre)}
           onClick={() => setPage((p) => Math.max(0, p - 1))}
-          className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40"
+          className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default"
         >
           &lt; 이전
         </button>
@@ -609,7 +609,7 @@ export default function AdminDiscussionReportPageGrouped() {
         <button
           disabled={loading || !(data?.hasNext)}
           onClick={() => setPage((p) => p + 1)}
-          className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40"
+          className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default"
         >
           다음 &gt;
         </button>

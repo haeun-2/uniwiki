@@ -222,7 +222,7 @@ const getFlashStyle = () => {
                   supports-[backdrop-filter]:backdrop-blur-md
                   hover:bg-white hover:border-white/70
                   focus:outline-none focus:ring-2 focus:ring-uniwikicolor/30
-                  transition-all
+                  transition-all cursor-pointer
                 "
                 title="AI 자연어 검색"
               >
@@ -241,7 +241,7 @@ const getFlashStyle = () => {
                 aria-haspopup="menu"
                 aria-expanded={open}
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white hover:bg-gray-50 hover:text-gray-600 focus:bg-gray-50 focus:text-gray-600"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white hover:bg-gray-50 hover:text-gray-600 focus:bg-gray-50 focus:text-gray-600 cursor-pointer"
               >
                 <UserRound size={18} />
               </button>
@@ -318,7 +318,7 @@ const getFlashStyle = () => {
                       <button
                         type="button"
                         role="menuitem"
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 cursor-pointer"
                         onClick={handleLogout}
                       >
                         <LogOut size={16} />

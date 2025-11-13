@@ -106,11 +106,11 @@ function BlockModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (d
   const [days, setDays] = useState("");
   const [reason, setReason] = useState("");
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[420px]">
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center cursor-pointer">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[420px] cursor-pointer">
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-lg font-semibold">유저 차단</h3>
-          <button className="text-gray-400 text-xl" onClick={onClose}>×</button>
+          <button className="text-gray-400 text-xl cursor-pointer" onClick={onClose}>×</button>
         </div>
         <div className="space-y-4">
           <div>
@@ -135,8 +135,8 @@ function BlockModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (d
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={onClose} className="px-3 py-2 border rounded-lg">취소</button>
-            <button onClick={() => { onConfirm(days, reason); onClose(); }} className="px-3 py-2 rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover">확인</button>
+            <button onClick={onClose} className="px-3 py-2 border rounded-lg cursor-pointer">취소</button>
+            <button onClick={() => { onConfirm(days, reason); onClose(); }} className="px-3 py-2 rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover cursor-pointer">확인</button>
           </div>
         </div>
       </div>
@@ -149,11 +149,11 @@ function RejectModal({ onClose, onConfirm, defaultReason }: { onClose: () => voi
   const [reason, setReason] = useState(defaultReason ?? "");
   const canSubmit = reason.trim().length > 0;
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[480px]">
+    <div onClick={onClose} className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center cursor-pointer">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-6 w-[480px] cursor-pointer">
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-lg font-semibold">신고 기각</h3>
-          <button className="text-gray-400 text-xl" onClick={onClose}>×</button>
+          <button className="text-gray-400 text-xl cursor-pointer" onClick={onClose}>×</button>
         </div>
         <div className="space-y-3">
           <label className="text-sm block">사유</label>
@@ -165,11 +165,11 @@ function RejectModal({ onClose, onConfirm, defaultReason }: { onClose: () => voi
             className="w-full h-28 border rounded-lg px-3 py-2 text-sm resize-none"
           />
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={onClose} className="px-3 py-2 border rounded-lg">취소</button>
+            <button onClick={onClose} className="px-3 py-2 border rounded-lg cursor-pointer">취소</button>
             <button
               disabled={!canSubmit}
               onClick={() => { onConfirm(reason.trim()); onClose(); }}
-              className={`px-3 py-2 rounded-lg text-white ${canSubmit ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-300 cursor-not-allowed"}`}
+              className={`px-3 py-2 rounded-lg text-white cursor-pointer ${canSubmit ? "bg-gray-700 hover:bg-gray-800" : "bg-gray-300 cursor-not-allowed"}`}
             >
               기각하기
             </button>
@@ -219,7 +219,7 @@ function ReportedUserSection({ user, defaultOpen = true, onOpenBlock, onOpenReje
             setOpen((v) => !v);
           }
         }}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50"
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 cursor-pointer"
       >
         <div className="flex items-center gap-3 text-left">
           <div>
@@ -277,7 +277,7 @@ function ReportedUserSection({ user, defaultOpen = true, onOpenBlock, onOpenReje
                 onClick={(e) => { e.stopPropagation(); setOpen(false); }}
                 className="group absolute left-1/2 -translate-x-1/2 -top-3 focus:outline-none"
               >
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white text-xs text-gray-500 shadow-sm group-hover:bg-gray-50">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white text-xs text-gray-500 shadow-sm group-hover:bg-gray-50 cursor-pointer">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path fillRule="evenodd" d="M5.22 12.78a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L10 8.81l-3.97 3.97a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
                   </svg>
@@ -424,9 +424,9 @@ export default function AdminUserReportPageGrouped() {
 
       {/* 페이지네이션 */}
       <div className="pt-2 flex items-center gap-1 text-xs">
-        <button disabled={loading || !(data?.hasPre)} onClick={() => setPage((p) => Math.max(0, p - 1))} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">&lt; 이전</button>
+        <button disabled={loading || !(data?.hasPre)} onClick={() => setPage((p) => Math.max(0, p - 1))} className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default">&lt; 이전</button>
         <span className="px-2 py-1 rounded border bg-gray-100 font-semibold">{data ? data.page + 1 : page + 1}</span>
-        <button disabled={loading || !(data?.hasNext)} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">다음 &gt;</button>
+        <button disabled={loading || !(data?.hasNext)} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default">다음 &gt;</button>
       </div>
 
       {/* 모달 */}

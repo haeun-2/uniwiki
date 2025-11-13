@@ -460,7 +460,7 @@ export default function ProfilePage() {
             </span>
             <button
               onClick={closeFlash}
-              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              className="text-white hover:text-gray-200 transition-colors cursor-pointer flex-shrink-0"
               aria-label="닫기"
             >
               <X className="h-5 w-5" />
@@ -496,7 +496,7 @@ export default function ProfilePage() {
                     setNickAvailable(null);
                     setIsNicknameModalOpen(true);
                   }}
-                  className="text-sm text-gray-400 hover:text-gray-600"
+                  className="text-sm text-gray-400 hover:text-gray-600 cursor-pointer"
                 >
                   수정
                 </button>
@@ -517,7 +517,7 @@ export default function ProfilePage() {
               {isEditing ? (
                 <button
                   onClick={() => setIsPasswordModalOpen(true)}
-                  className="text-gray-600 hover:text-gray-900 underline"
+                  className="text-gray-600 hover:text-gray-900 underline cursor-pointer"
                 >
                   비밀번호 변경
                 </button>
@@ -571,7 +571,7 @@ export default function ProfilePage() {
                 <button
                   onClick={handleSave}
                   disabled={isPushSaving}
-                  className="rounded-lg bg-[#5b7c99] px-8 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:opacity-50"
+                  className="rounded-lg bg-[#5b7c99] px-8 py-2.5 font-medium text-white hover:bg-[#4a6578] cursor-pointer disabled:opacity-50"
                 >
                   {isPushSaving ? "저장 중..." : "저장"}
                 </button>
@@ -580,7 +580,7 @@ export default function ProfilePage() {
               <div className="flex justify-center">
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="rounded-lg bg-[#5b7c99] px-8 py-2.5 font-medium text-white hover:bg-[#4a6578]"
+                  className="rounded-lg bg-[#5b7c99] px-8 py-2.5 font-medium text-white cursor-pointer hover:bg-[#4a6578]"
                 >
                   수정
                 </button>
@@ -596,7 +596,7 @@ export default function ProfilePage() {
           <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <button
               onClick={() => setIsNicknameModalOpen(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 cursor-pointer"
             >
               <X className="h-6 w-6" />
             </button>
@@ -642,7 +642,7 @@ export default function ProfilePage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setIsNicknameModalOpen(false)}
-                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 cursor-pointer hover:bg-gray-50"
               >
                 취소
               </button>
@@ -653,7 +653,7 @@ export default function ProfilePage() {
                   !isNicknameValid ||
                   (newNickname.trim() !== nickname && nickAvailable !== true)
                 }
-                className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
+                className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] cursor-pointer disabled:bg-gray-400"
               >
                 {isNickChecking ? "확인 중..." : "저장"}
               </button>
@@ -668,7 +668,7 @@ export default function ProfilePage() {
           <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <button
               onClick={() => setIsPasswordModalOpen(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 cursor-pointer hover:text-gray-600"
               disabled={isPasswordLoading}
             >
               <X className="h-6 w-6" />
@@ -751,14 +751,14 @@ export default function ProfilePage() {
               <button
                 onClick={() => setIsPasswordModalOpen(false)}
                 disabled={isPasswordLoading}
-                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={handlePasswordSave}
                 disabled={!isPasswordValid || !isPasswordMatch || isPasswordLoading}
-                className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
+                className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] cursor-pointer disabled:bg-gray-400"
               >
                 {isPasswordLoading ? "변경 중..." : "저장"}
               </button>
@@ -776,7 +776,7 @@ export default function ProfilePage() {
                 setIsDeleteModalOpen(false);
                 setDeleteConfirmText("");
               }}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 cursor-pointer hover:text-gray-600"
             >
               <X className="h-6 w-6" />
             </button>
@@ -806,13 +806,13 @@ export default function ProfilePage() {
                   setIsDeleteModalOpen(false);
                   setDeleteConfirmText("");
                 }}
-                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 cursor-pointer hover:bg-gray-50"
               >
                 취소
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="rounded-lg bg-red-500 px-6 py-2.5 font-medium text-white hover:bg-red-600"
+                className="rounded-lg bg-red-500 px-6 py-2.5 font-medium text-white cursor-pointer hover:bg-red-600"
               >
                 계정 삭제
               </button>

@@ -211,7 +211,7 @@ export default function AiSearchPage() {
                 <button
                   onClick={handleSearch}
                   disabled={!query.trim() || isSearching}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-uniwikicolor p-2.5 text-white hover:bg-uniwikicolor_hover disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-uniwikicolor p-2.5 text-white hover:bg-uniwikicolor_hover disabled:bg-gray-300 disabled:cursor-not-allowed transition-all cursor-pointer"
                 >
                   <Send size={18} />
                 </button>
@@ -239,7 +239,7 @@ export default function AiSearchPage() {
                   <button
                     key={idx}
                     onClick={() => handleExampleClick(item.question)}
-                    className="group text-left rounded-2xl border-2 border-gray-200 bg-white p-4 transition-all hover:shadow-md hover:border-uniwikicolor"
+                    className="group text-left rounded-2xl border-2 border-gray-200 bg-white p-4 transition-all hover:shadow-md hover:border-uniwikicolor cursor-pointer"
                   >
                     <div className="flex items-start gap-3">
                       <span className="text-2xl flex-shrink-0">{item.icon}</span>
@@ -347,7 +347,7 @@ export default function AiSearchPage() {
                             { state: { from: "ai-chat" } }
                           )
                         }
-                        className="w-full text-left bg-white rounded-xl p-4 hover:shadow-md transition-all border border-gray-200 hover:border-uniwikicolor"
+                        className="w-full text-left bg-white rounded-xl p-4 hover:shadow-md transition-all border border-gray-200 hover:border-uniwikicolor cursor-pointer"
                       >
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-semibold text-gray-900 text-sm">{doc.title}</h4>
@@ -388,7 +388,7 @@ export default function AiSearchPage() {
               <button
                 onClick={handleSearch}
                 disabled={!query.trim() || isSearching}
-                className="absolute right-2 bottom-1.5 rounded-full bg-uniwikicolor p-2.5 text-white hover:bg-uniwikicolor_hover disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
+                className="absolute right-2 bottom-1.5 rounded-full bg-uniwikicolor p-2.5 text-white hover:bg-uniwikicolor_hover disabled:bg-gray-300 disabled:cursor-not-allowed transition-all cursor-pointer"
                 aria-label="전송"
               >
                 <Send size={18} />

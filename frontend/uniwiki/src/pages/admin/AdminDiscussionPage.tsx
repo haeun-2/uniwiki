@@ -189,7 +189,7 @@ export default function AdminDiscussionPage() {
                           setEndModalOpen(true);
                         }}
                         disabled={!canEnd}
-                        className={`px-3 py-1.5 rounded-md text-sm border
+                        className={`px-3 py-1.5 rounded-md text-sm border cursor-pointer
                           ${!canEnd
                             ? "opacity-40 cursor-not-allowed"
                             : "hover:bg-gray-50 border-gray-300 bg-white"
@@ -228,7 +228,7 @@ export default function AdminDiscussionPage() {
         <button
           disabled={loading || !(data?.hasPre)}
           onClick={() => setPage((p) => Math.max(0, p - 1))}
-          className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40"
+          className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default"
         >
           &lt; 이전
         </button>
@@ -238,7 +238,7 @@ export default function AdminDiscussionPage() {
         <button
           disabled={loading || !(data?.hasNext)}
           onClick={() => setPage((p) => p + 1)}
-          className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40"
+          className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default"
         >
           다음 &gt;
         </button>
@@ -247,13 +247,13 @@ export default function AdminDiscussionPage() {
       {/* 토론 종료 모달 */}
       {endModalOpen && targetDiscussion && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 cursor-pointer"
           onClick={() => setEndModalOpen(false)}
           role="dialog"
           aria-modal="true"
         >
           <div
-            className="w-[520px] max-w-[92vw] rounded-2xl bg-white shadow-xl border border-gray-200 p-5"
+            className="w-[520px] max-w-[92vw] rounded-2xl bg-white shadow-xl border border-gray-200 p-5 cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold">토론 종료</h3>
@@ -270,7 +270,7 @@ export default function AdminDiscussionPage() {
             <div className="mt-6 flex items-center justify-end gap-2">
               <button
                 type="button"
-                className="px-3 py-2 text-sm rounded-md border hover:bg-gray-50"
+                className="px-3 py-2 text-sm rounded-md border hover:bg-gray-50 cursor-pointer"
                 onClick={() => setEndModalOpen(false)}
               >
                 취소
@@ -279,8 +279,6 @@ export default function AdminDiscussionPage() {
                 type="button"
                 className="px-3 py-2 text-sm rounded-md bg-rose-600 text-white hover:bg-rose-700"
                 onClick={async () => {
-                  // TODO: 종료 API 연동 필요 시 여기서 호출
-                  // 예: await fetch(`${API_BASE}/admin/discussions/${targetDiscussion.discussionId}/close`, { method: "PATCH", headers: { Authorization: `Bearer ${getToken()}` }})
                   setEndModalOpen(false);
                 }}
               >
