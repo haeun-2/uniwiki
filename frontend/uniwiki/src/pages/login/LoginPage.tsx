@@ -344,7 +344,7 @@ const getFlashStyle = () => {
             </span>
             <button
               onClick={closeFlash}
-              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              className="text-white hover:text-gray-200 transition-colors flex-shrink-0 cursor-pointer"
               aria-label="닫기"
             >
               <X className="h-5 w-5" />
@@ -433,7 +433,7 @@ const getFlashStyle = () => {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="text-sm font-medium text-uniwikicolor hover:text-uniwikicolor_hover"
+                className="text-sm font-medium text-uniwikicolor hover:text-uniwikicolor_hover cursor-pointer"
               >
                 비밀번호를 잊으셨나요?
               </button>
@@ -463,7 +463,7 @@ const getFlashStyle = () => {
           <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <button
               onClick={handleCloseModal}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 cursor-pointer"
               disabled={isVerifying}
             >
               <X className="h-6 w-6" />
@@ -491,7 +491,7 @@ const getFlashStyle = () => {
                     type="button"
                     onClick={handleSendCode}
                     disabled={isCodeSent || isVerifying}
-                    className="rounded-lg bg-[#5b7c99] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
+                    className="rounded-lg bg-[#5b7c99] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#4a6578] cursor-pointer disabled:bg-gray-400 disabled:cursor-default"
                   >
                     {isVerifying ? "발송 중..." : "인증번호 발송"}
                   </button>
@@ -586,7 +586,7 @@ const getFlashStyle = () => {
                   type="button"
                   onClick={handleCloseModal}
                   disabled={isVerifying}
-                  className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-default"
                 >
                   취소
                 </button>

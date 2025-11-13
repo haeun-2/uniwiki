@@ -70,7 +70,7 @@ export default function RulePage() {
                 <a
                   href={`#${t.id}`}
                   onClick={(e) => handleAnchor(e, t.id)}
-                  className="block text-sm text-gray-700 hover:text-uniwikicolor hover:underline"
+                  className="block text-sm text-gray-700 hover:text-uniwikicolor hover:underline cursor-pointer"
                 >
                   {t.label}
                 </a>

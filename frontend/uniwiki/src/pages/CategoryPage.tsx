@@ -232,7 +232,7 @@ export default function CategoryPage() {
           <div className="w-full lg:w-[80%] lg:mx-auto">
             <button
               onClick={handleLanguageToggle}
-              className="w-full h-12 flex items-center justify-center border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 transition mb-2"
+              className="w-full h-12 flex items-center justify-center border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-50 transition mb-2 cursor-pointer"
             >
               {isEnglish ? "한글 변환 / KR" : "영문 변환 / EN"}
             </button>
@@ -252,7 +252,7 @@ export default function CategoryPage() {
                   <button
                     key={letter}
                     onClick={() => setSelectedLetter(letter)}
-                    className={`w-full h-12 flex items-center justify-between px-4 border rounded transition font-medium flex-shrink-0 ${
+                    className={`w-full h-12 flex items-center justify-between px-4 border rounded transition font-medium flex-shrink-0 cursor-pointer ${
                       selectedLetter === letter
                         ? "bg-[rgba(44,128,160,0.1)] border-uniwikicolor text-uniwikicolor hover:bg-[rgba(44,128,160,0.15)]"
                         : "border-gray-300 text-gray-600 hover:bg-gray-50"
@@ -319,7 +319,7 @@ export default function CategoryPage() {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={!pagination.hasNext}
-                className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition"
+                className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed disabled:hover:bg-white transition"
               >
                 다음
               </button>

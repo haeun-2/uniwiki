@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 
 /* ====== 타입 ====== */
@@ -134,6 +134,7 @@ export default function AdminDocumentPage() {
   const [regions, setRegions] = useState<Region[]>([]);
   const regionChips = useMemo(() => [{ regionId: 0, regionName: "전체" } as Region, ...regions], [regions]);
   const [selectedRegionId, setSelectedRegionId] = useState<number>(0);
+  const univCacheRef = useRef<Record<number, University[]>>({});
 
   const [universities, setUniversities] = useState<University[]>([]);
   const [loadingRegions, setLoadingRegions] = useState(false);
@@ -162,25 +163,48 @@ export default function AdminDocumentPage() {
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
+      const cached = univCacheRef.current[selectedRegionId];
+      if (cached) {
+        setUniversities(cached);
+        setLoadingUniversities(false);
+        return;
+      }
+
       try {
         setLoadingUniversities(true);
         setUnivError(null);
-        const url = selectedRegionId === 0
-          ? `${API_BASE}/universities`
-          : `${API_BASE}/universities?region=${selectedRegionId}`;
+
+        const url =
+          selectedRegionId === 0
+            ? `${API_BASE}/universities`
+            : `${API_BASE}/universities?region=${selectedRegionId}`;
+
         const res = await fetch(url, { headers: { accept: "*/*" } });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const data: University[] = await res.json();
-        if (mounted) setUniversities(data);
+
+        if (!mounted) return;
+
+        setUniversities(data);
+
+        univCacheRef.current[selectedRegionId] = data;
       } catch (e: any) {
-        if (mounted) setUnivError(e?.message ?? "대학교 목록을 불러오지 못했습니다.");
+        if (mounted) {
+          setUnivError(e?.message ?? "대학교 목록을 불러오지 못했습니다.");
+        }
       } finally {
         if (mounted) setLoadingUniversities(false);
       }
     })();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, [selectedRegionId]);
+
 
   /* 쿼리스트링(적용된 값 기준) */
   const queryString = useMemo(() => {
@@ -330,7 +354,7 @@ export default function AdminDocumentPage() {
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50"
+                className="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer"
                 aria-label="필터 접기"
                 title="필터 접기"
               >
@@ -361,7 +385,7 @@ export default function AdminDocumentPage() {
                       key={r.regionId}
                       onClick={() => setSelectedRegionId(r.regionId)}
                       className={[
-                        "rounded-full border px-3 py-1 text-xs transition",
+                        "rounded-full border px-3 py-1 text-xs transition cursor-pointer",
                         isActive
                           ? "border-[#2C80A0] bg-[#2C80A0] text-white"
                           : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100",
@@ -398,7 +422,7 @@ export default function AdminDocumentPage() {
                               "block w-full truncate text-left",
                               "text-[13px] leading-6",
                               "px-1 py-0.5",
-                              active ? "text-[#2C80A0] font-medium underline" : "hover:underline",
+                              active ? "text-[#2C80A0] cursor-pointer font-medium underline" : "hover:underline",
                             ].join(" ")}
                             title={u.universityName}
                           >
@@ -463,14 +487,14 @@ export default function AdminDocumentPage() {
                     <button
                       key={c.key}
                       onClick={() => removeOneFilter(c.key)}
-                      className="group inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs hover:bg-gray-50"
+                      className="group inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs hover:bg-gray-50 cursor-pointer"
                       title="이 필터 제거"
                     >
                       <span>{c.label}</span>
                       <span className="text-gray-400 group-hover:text-gray-600">✕</span>
                     </button>
                   ))}
-                  <button onClick={resetFilters} className="text-xs text-gray-500 hover:underline">모두 지우기</button>
+                  <button onClick={resetFilters} className="text-xs text-gray-500 hover:underline cursor-pointer">모두 지우기</button>
                 </div>
               </div>
             )}
@@ -494,13 +518,13 @@ export default function AdminDocumentPage() {
               <div className="ml-auto flex items-center gap-2">
                 <button
                   onClick={applyFilters}
-                  className="px-3 py-1.5 rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover text-sm"
+                  className="px-3 py-1.5 rounded-lg bg-uniwikicolor text-white hover:bg-uniwikicolor_hover text-sm cursor-pointer"
                 >
                   적용
                 </button>
                 <button
                   onClick={resetFilters}
-                  className="px-3 py-1.5 rounded-lg border hover:bg-gray-50 text-sm"
+                  className="px-3 py-1.5 rounded-lg border hover:bg-gray-50 text-sm cursor-pointer"
                 >
                   초기화
                 </button>
@@ -513,7 +537,7 @@ export default function AdminDocumentPage() {
               <div className="ml-auto">
                 <button
                   onClick={() => setOpen(true)}
-                  className="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50"
+                  className="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer"
                   aria-label="필터 펼치기"
                   title="필터 펼치기"
                 >
@@ -603,19 +627,19 @@ export default function AdminDocumentPage() {
       {/* 페이지네이션 */}
       <div className="pt-2 flex flex-wrap items-center text-sm">
         <div className="flex flex-wrap items-center gap-1">
-          <button disabled={loading || page === 0} onClick={() => setPage(0)} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">« 처음</button>
-          <button disabled={loading || !(data?.hasPre)} onClick={() => setPage(p => Math.max(0, p - 1))} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">‹ 이전</button>
+          <button disabled={loading || page === 0} onClick={() => setPage(0)} className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default">« 처음</button>
+          <button disabled={loading || !(data?.hasPre)} onClick={() => setPage(p => Math.max(0, p - 1))} className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default">‹ 이전</button>
           {buildPageItems(page, totalPages).map((it, i) =>
             it === "..." ? (
               <span key={`dots-${i}`} className="px-2 py-1 text-gray-400">…</span>
             ) : (
-              <button key={it} onClick={() => setPage(it)} className={`px-2 py-1 rounded border ${it === page ? "bg-gray-100 font-semibold" : "hover:bg-gray-50"}`} disabled={loading}>
+              <button key={it} onClick={() => setPage(it)} className={`px-2 py-1 rounded border cursor-pointer ${it === page ? "bg-gray-100 font-semibold" : "hover:bg-gray-50"}`} disabled={loading}>
                 {it + 1}
               </button>
             )
           )}
-          <button disabled={loading || !(data?.hasNext)} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">다음 ›</button>
-          <button disabled={loading || page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} className="px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-40">끝 »</button>
+          <button disabled={loading || !(data?.hasNext)} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default">다음 ›</button>
+          <button disabled={loading || page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} className="px-2 py-1 rounded border hover:bg-gray-50 cursor-pointer disabled:opacity-40 disabled:cursor-default">끝 »</button>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <input
@@ -626,7 +650,7 @@ export default function AdminDocumentPage() {
             className="w-28 border rounded-lg px-3 py-2 text-sm text-right"
             inputMode="numeric"
           />
-          <button onClick={handleGoto} className="px-2 py-1 rounded border text-xs hover:bg-gray-50">
+          <button onClick={handleGoto} className="px-2 py-1 rounded border text-xs hover:bg-gray-50 cursor-pointer">
             이동
           </button>
         </div>
