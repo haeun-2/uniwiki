@@ -2,11 +2,10 @@ package com.kiwi.uniwiki.domain.document.repository;
 
 import com.kiwi.uniwiki.domain.document.entity.Document;
 import io.lettuce.core.dynamic.annotation.Param;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface DocumentRepository extends JpaRepository<Document, Integer>, CustomDocumentRepository {
@@ -23,11 +22,16 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>, Cu
 
     boolean existsByTitle(String title);
 
-    Page<Document> findAllByUniversityIdAndIsDeletedFalse(Short universityId, Pageable pageable);
+    List<Document> findAllByUniversityIdAndIsDeletedFalseOrderByTitleAsc(Short universityId);
 
-    Page<Document> findAllByCategoryId(Short categoryId, Pageable pageable);
+    List<Document> findAllByCategoryIdOrderByTitleAsc(Short categoryId);
 
-    Page<Document> findAllByCategoryIdAndUniversityId(Short categoryId, Short universityId, Pageable pageable);
+    List<Document> findAllByCategoryIdAndUniversityIdOrderByTitleAsc(Short categoryId, Short universityId);
+
+    /**
+     * 최근 수정 문서 10개 조회
+     */
+    List<Document> findTop10ByUniversityIdAndIsDeletedFalseOrderByUpdatedAtDesc(Short universityId);
 
     @Query("SELECT d FROM Document d " +
             "JOIN FETCH d.university u " +
