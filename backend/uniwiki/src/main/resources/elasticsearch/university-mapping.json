@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "id": {
+      "type": "short"
+    },
+    "name": {
+      "type": "text",
+      "analyzer": "univ_keyword_analyzer",
+      "search_analyzer": "standard"
+    },
+    "logoUlr": {
+      "type": "keyword"
+    }
+  }
+}
