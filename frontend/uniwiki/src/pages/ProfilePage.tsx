@@ -362,8 +362,12 @@ export default function ProfilePage() {
       showFlash("비밀번호가 일치하지 않습니다.", "error");
       return;
     }
-    if (newPassword.length < 8) {
-      showFlash("비밀번호는 8자 이상이어야 합니다.", "error");
+    // ✅ 8~16자, 영문자 + 숫자 + 특수문자(~!@#$%^&*)
+    if (!isPasswordValid) {
+      showFlash(
+        "비밀번호는 영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리여야 합니다.",
+        "error"
+      );
       return;
     }
 
@@ -405,7 +409,7 @@ export default function ProfilePage() {
         const errorData = await response.json();
         showFlash(
           errorData.message ||
-            "비밀번호 형식이 올바르지 않습니다.\n영문, 숫자, 특수문자를 포함하여 8자 이상 입력해주세요.",
+            "비밀번호 형식이 올바르지 않습니다.\n영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리로 입력해주세요.",
           "error"
         );
       } else {
@@ -420,11 +424,13 @@ export default function ProfilePage() {
   };
 
   const isNicknameValid = newNickname.trim().length >= 2;
+
+  // ✅ 새 비밀번호 규칙: 8~16자, 영문자 + 숫자 + 특수문자(~!@#$%^&*)
   const isPasswordValid =
-    newPassword.length >= 8 &&
-    /[A-Za-z]/.test(newPassword) &&
-    /\d/.test(newPassword) &&
-    /[^A-Za-z\d]/.test(newPassword);
+    /^(?=.*[A-Za-z])(?=.*\d)(?=.*[~!@#$%^&*])[A-Za-z\d~!@#$%^&*]{8,16}$/.test(
+      newPassword
+    );
+
   const isPasswordMatch =
     newPassword === confirmPassword && confirmPassword !== "";
 
@@ -566,8 +572,9 @@ export default function ProfilePage() {
 
           {/* 버튼 */}
           <div className="pt-8">
-            {isEditing ? (
-              <div className="flex justify-end">
+            <div className="flex justify-center">
+              {isEditing ? (
+                // 편집 중일 때: 저장 버튼 (프라이머리)
                 <button
                   onClick={handleSave}
                   disabled={isPushSaving}
@@ -575,17 +582,16 @@ export default function ProfilePage() {
                 >
                   {isPushSaving ? "저장 중..." : "저장"}
                 </button>
-              </div>
-            ) : (
-              <div className="flex justify-center">
+              ) : (
+                // 기본 상태: 수정 버튼 (아웃라인)
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="rounded-lg bg-[#5b7c99] px-8 py-2.5 font-medium text-white hover:bg-[#4a6578]"
+                  className="rounded-lg border border-[#5b7c99] bg-white px-8 py-2.5 font-medium text-[#5b7c99] hover:bg-[#f3f6fa]"
                 >
                   수정
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -624,16 +630,22 @@ export default function ProfilePage() {
               {newNickname && (
                 <p className="text-xs">
                   {!isNicknameValid && (
-                    <span className="text-red-600">닉네임은 2자 이상이어야 합니다.</span>
+                    <span className="text-red-600">
+                      닉네임은 2자 이상이어야 합니다.
+                    </span>
                   )}
                   {isNicknameValid && isNickChecking && (
                     <span className="text-gray-500">중복 확인 중…</span>
                   )}
                   {isNicknameValid && !isNickChecking && nickAvailable === true && (
-                    <span className="text-green-600">사용 가능한 닉네임입니다.</span>
+                    <span className="text-green-600">
+                      사용 가능한 닉네임입니다.
+                    </span>
                   )}
                   {isNicknameValid && !isNickChecking && nickAvailable === false && (
-                    <span className="text-red-600">이미 사용 중인 닉네임입니다.</span>
+                    <span className="text-red-600">
+                      이미 사용 중인 닉네임입니다.
+                    </span>
                   )}
                 </p>
               )}
@@ -703,7 +715,8 @@ export default function ProfilePage() {
                   type="password"
                   placeholder="••••••••••"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => setNewPassword(e.target.value.slice(0, 16))}
+                  maxLength={16}
                   disabled={isPasswordLoading}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
                 />
@@ -715,7 +728,7 @@ export default function ProfilePage() {
                   >
                     {isPasswordValid
                       ? "안전한 비밀번호입니다."
-                      : "영문, 숫자, 특수문자를 포함하여 8자리 이상"}
+                      : "영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리"}
                   </p>
                 )}
               </div>
@@ -729,7 +742,8 @@ export default function ProfilePage() {
                   type="password"
                   placeholder="••••••••••"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => setConfirmPassword(e.target.value.slice(0, 16))}
+                  maxLength={16}
                   disabled={isPasswordLoading}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
                 />

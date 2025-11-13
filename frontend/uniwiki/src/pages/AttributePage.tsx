@@ -24,8 +24,15 @@ interface PaginationResponse {
   content: Contribution[];
 }
 
+// 버전 정보 추가
+interface ContributionWithVersion extends Contribution {
+  versionNumber?: number;
+  realDocumentId?: number; // 실제 문서 ID (API에서 조회한 것)
+}
+
 const FLASH_AUTO_MS = 1800;
 const REDIRECT_AFTER_MS = FLASH_AUTO_MS + 50;
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 
 export default function AttributePage() {
   const navigate = useNavigate();
@@ -78,7 +85,7 @@ export default function AttributePage() {
     }
   };
 
-  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [contributions, setContributions] = useState<ContributionWithVersion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [pagination, setPagination] = useState({
@@ -102,6 +109,43 @@ export default function AttributePage() {
     return accessToken;
   };
 
+  const authHeaders = () => {
+    const token = ensureAuthed();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // 문서 정보 조회 (실제 documentId와 최신 versionNumber 획득)
+  const fetchDocumentInfo = async (documentName: string): Promise<{ docId: number; latestVersion: number } | null> => {
+    try {
+      // 1. 문서 기본 정보 조회
+      const docRes = await fetch(
+        `${API_BASE}/v1/documents/${encodeURIComponent(documentName)}`,
+        { headers: { "Content-Type": "application/json", ...authHeaders() } }
+      );
+      if (!docRes.ok) return null;
+      const docData = await docRes.json();
+      const docId = docData.documentId;
+
+      // 2. 버전 목록 조회 (최신 버전 1개만)
+      const versionRes = await fetch(
+        `${API_BASE}/v1/documents/${docId}/versions?page=0&size=1`,
+        { headers: { ...authHeaders() } }
+      );
+      if (!versionRes.ok) return null;
+      const versionData = await versionRes.json();
+      
+      if (versionData.content && versionData.content.length > 0) {
+        const latestVersion = versionData.content[0].versionNumber;
+        return { docId, latestVersion };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch document info:', error);
+      return null;
+    }
+  };
+
   // 목록 조회
   const fetchContributions = async (page: number) => {
     const accessToken = ensureAuthed();
@@ -110,7 +154,7 @@ export default function AttributePage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `https://k13d104.p.ssafy.io/api/v1/users/me/documents?page=${page}&size=15`,
+        `${API_BASE}/v1/users/me/documents?page=${page}&size=15`,
         {
           method: "GET",
           headers: {
@@ -122,7 +166,20 @@ export default function AttributePage() {
 
       if (response.ok) {
         const data: PaginationResponse = await response.json();
-        setContributions(data.content || []);
+        
+        // 각 contribution에 대해 버전 정보 추가
+        const contributionsWithVersions: ContributionWithVersion[] = await Promise.all(
+          (data.content || []).map(async (contribution) => {
+            const info = await fetchDocumentInfo(contribution.documentName);
+            return {
+              ...contribution,
+              versionNumber: info?.latestVersion,
+              realDocumentId: info?.docId,
+            };
+          })
+        );
+
+        setContributions(contributionsWithVersions);
         setPagination({
           page: data.page,
           size: data.size,
@@ -258,7 +315,7 @@ export default function AttributePage() {
 
         {/* 기여 목록 */}
         <div className="space-y-4">
-          {contributions.map((contribution) => {
+          {contributions.map((contribution, index) => {
             const byteChange = getByteChange(
               contribution.plusCount,
               contribution.minusCount
@@ -267,9 +324,14 @@ export default function AttributePage() {
             const univ = enc(contribution.universityName);
             const doc = enc(contribution.documentName);
 
+            // 비교 링크: versionNumber가 2 이상이고 realDocumentId가 있으면 비교 페이지로, 아니면 역사 페이지로
+            const compareLink = contribution.versionNumber && contribution.versionNumber > 1 && contribution.realDocumentId
+              ? `/univ/${univ}/docs/${doc}/versions/${contribution.versionNumber}/diff?docId=${contribution.realDocumentId}`
+              : `/univ/${univ}/docs/${doc}/history`;
+
             return (
               <div
-                key={contribution.documentId}
+                key={`${contribution.documentId}-${contribution.updateAt}-${index}`}
                 className="border-b border-gray-200 pb-4"
               >
                 {/* 문서 제목 */}
@@ -307,7 +369,7 @@ export default function AttributePage() {
                     ({contribution.editMemo || "수정 내용 없음"})
                   </span>
 
-                  {/* 오른쪽 링크들 (기능 연결 유지) */}
+                  {/* 오른쪽 링크들 */}
                   <div className="ml-auto flex gap-2 text-gray-600">
                     <Link
                       to={`/univ/${univ}/docs/${doc}/history`}
@@ -324,8 +386,15 @@ export default function AttributePage() {
                     </Link>
                     <span>|</span>
                     <Link
-                      to={`/univ/${univ}/docs/${doc}/history`}
+                      to={compareLink}
                       className="hover:underline"
+                      title={
+                        contribution.versionNumber && contribution.versionNumber > 1 && contribution.realDocumentId
+                          ? `r${contribution.versionNumber} 버전과 이전 버전 비교`
+                          : contribution.versionNumber === 1
+                          ? "첫 번째 버전은 비교할 수 없습니다"
+                          : "역사 페이지에서 버전을 선택하여 비교할 수 있습니다"
+                      }
                     >
                       비교
                     </Link>

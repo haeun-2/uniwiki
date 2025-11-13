@@ -1,3 +1,5 @@
+// src/layout/Header.tsx (혹은 현재 Header 위치)
+
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Search, UserRound, LogOut, Sparkles, X } from "lucide-react";
@@ -32,12 +34,21 @@ export default function Header({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
 
+  // ✅ 현재 경로가 AI 페이지인지 체크
+  const isAiPage = location.pathname.startsWith("/ai-search");
+
   // ===== 플래시 팝업 상태 =====
   const [flash, setFlash] = useState("");
-  const [flashType, setFlashType] = useState<"success" | "error" | "info">("info");
+  const [flashType, setFlashType] = useState<"success" | "error" | "info">(
+    "info"
+  );
   const flashTimerRef = useRef<number | null>(null);
 
-  const showFlash = (msg: string, type: "success" | "error" | "info" = "info", ms = FLASH_AUTO_MS) => {
+  const showFlash = (
+    msg: string,
+    type: "success" | "error" | "info" = "info",
+    ms = FLASH_AUTO_MS
+  ) => {
     setFlash(msg);
     setFlashType(type);
     if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
@@ -51,22 +62,24 @@ export default function Header({
     setFlash("");
   };
 
-  useEffect(() => () => {
-    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    },
+    []
+  );
 
-  // 플래시 타입별 스타일 
-const getFlashStyle = () => {
-  switch (flashType) {
-    case "success":
-      return "bg-green-500/80 border-green-600/40"; // 80% 배경, 40% 보더
-    case "error":
-      return "bg-red-500/80 border-red-600/40";
-    default:
-      return "bg-blue-500/80 border-blue-600/40";   // info
-  }
-};
-
+  // 플래시 타입별 스타일
+  const getFlashStyle = () => {
+    switch (flashType) {
+      case "success":
+        return "bg-green-500/80 border-green-600/40";
+      case "error":
+        return "bg-red-500/80 border-red-600/40";
+      default:
+        return "bg-blue-500/80 border-blue-600/40"; // info
+    }
+  };
 
   // accessToken 존재 여부로 로그인 상태 판단
   useEffect(() => {
@@ -132,19 +145,20 @@ const getFlashStyle = () => {
 
   return (
     <>
-      {/* ===== 플래시 팝업 (화면 상단 중앙, 고정) ===== */}
+      {/* ===== 플래시 팝업 ===== */}
       {flash && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
-          <div className={`
-  ${getFlashStyle()}
-  min-w-[320px] max-w-md
-  rounded-xl border                    /* ← border-2 → border */
-  px-6 py-4
-  shadow-lg                            /* ← shadow-2xl → shadow-lg */
-  backdrop-blur-[2px]                  /* (선택) 살짝 유리 느낌 */
-  flex items-center justify-between gap-4
-`}>
-
+          <div
+            className={`
+              ${getFlashStyle()}
+              min-w-[320px] max-w-md
+              rounded-xl border
+              px-6 py-4
+              shadow-lg
+              backdrop-blur-[2px]
+              flex items-center justify-between gap-4
+            `}
+          >
             <span className="text-white font-medium text-base flex-1">
               {flash}
             </span>
@@ -162,18 +176,10 @@ const getFlashStyle = () => {
       {/* 애니메이션 */}
       <style>{`
         @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-20px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
-        .animate-slideDown {
-          animation: slideDown 0.3s ease-out;
-        }
+        .animate-slideDown { animation: slideDown 0.3s ease-out; }
       `}</style>
 
       <header className="top-0 z-30 w-full border-b border-gray-200 bg-uniwikicolor backdrop-blur">
@@ -190,8 +196,10 @@ const getFlashStyle = () => {
             />
           </Link>
 
-          {/* 검색창 */}
-          {showSearch && (
+          {/* 가운데 검색바 + AI 모드 버튼
+              → 일반 페이지에서만 보이고,
+              → /ai-search 에서는 숨김 */}
+          {showSearch && !isAiPage && (
             <div className="mx-3 flex-1 flex items-center gap-2">
               <label className="relative block flex-1">
                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -232,9 +240,9 @@ const getFlashStyle = () => {
             </div>
           )}
 
-          {/* 사용자 버튼 */}
+          {/* 오른쪽 사용자 버튼은 항상 (showUserButton이 true일 때) 그대로 */}
           {showUserButton && (
-            <div className="relative">
+            <div className="relative ml-auto">
               <button
                 ref={btnRef}
                 type="button"
@@ -246,7 +254,6 @@ const getFlashStyle = () => {
                 <UserRound size={18} />
               </button>
 
-              {/* 드롭다운 메뉴 */}
               {open && (
                 <div
                   ref={menuRef}
@@ -258,7 +265,8 @@ const getFlashStyle = () => {
                     <div className="py-1">
                       {(() => {
                         const role =
-                          localStorage.getItem("role") || sessionStorage.getItem("role");
+                          localStorage.getItem("role") ||
+                          sessionStorage.getItem("role");
                         if (role === "ADMIN") {
                           return (
                             <>
@@ -329,7 +337,12 @@ const getFlashStyle = () => {
                     <div className="py-1">
                       <Link
                         to="/login"
-                        state={{ from: location.pathname + location.search + location.hash }}
+                        state={{
+                          from:
+                            location.pathname +
+                            location.search +
+                            location.hash,
+                        }}
                         role="menuitem"
                         className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         onClick={() => setOpen(false)}

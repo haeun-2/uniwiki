@@ -23,8 +23,13 @@ export default function SignupCompletePage() {
 
   // 유효성
   const isNicknameValid = nickname.trim().length >= 2;
+
+  // ✅ 비밀번호: 8~16자, 영문자 + 숫자 + 특수문자(~!@#$%^&*)
   const isPasswordValid =
-    /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/.test(password);
+    /^(?=.*[A-Za-z])(?=.*\d)(?=.*[~!@#$%^&*])[A-Za-z\d~!@#$%^&*]{8,16}$/.test(
+      password
+    );
+
   const isPasswordMatch = password === passwordConfirm && passwordConfirm !== "";
 
   // 닉네임 자동 중복 체크(400ms 디바운스)
@@ -90,7 +95,9 @@ export default function SignupCompletePage() {
       return;
     }
     if (!isPasswordValid) {
-      alert("비밀번호는 영문 대/소문자, 숫자, 특수문자를 포함하여 8자 이상이어야 합니다.");
+      alert(
+        "비밀번호는 영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리여야 합니다."
+      );
       return;
     }
     if (!isPasswordMatch) {
@@ -100,16 +107,19 @@ export default function SignupCompletePage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch("https://k13d104.p.ssafy.io/api/v1/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          nickname: nickname.trim(),
-          password,
-          pushAgree, // ← 회원가입에 함께 전달
-        }),
-      });
+      const response = await fetch(
+        "https://k13d104.p.ssafy.io/api/v1/auth/signup",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            nickname: nickname.trim(),
+            password,
+            pushAgree, // ← 회원가입에 함께 전달
+          }),
+        }
+      );
 
       if (response.ok) {
         alert("회원가입이 완료되었습니다!");
@@ -135,7 +145,10 @@ export default function SignupCompletePage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 이메일 (읽기 전용) */}
           <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="email"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
               이메일
             </label>
             <input
@@ -149,7 +162,10 @@ export default function SignupCompletePage() {
 
           {/* 사용자 닉네임 (자동 중복 체크) */}
           <div>
-            <label htmlFor="nickname" className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="nickname"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
               사용자 닉네임
             </label>
             <input
@@ -163,23 +179,38 @@ export default function SignupCompletePage() {
             />
             {nickname && (
               <p className="mt-1 text-xs">
-                {!isNicknameValid && <span className="text-red-600">닉네임은 2자 이상이어야 합니다.</span>}
+                {!isNicknameValid && (
+                  <span className="text-red-600">
+                    닉네임은 2자 이상이어야 합니다.
+                  </span>
+                )}
                 {isNicknameValid && isCheckingNickname && (
                   <span className="text-gray-500">중복 확인 중…</span>
                 )}
-                {isNicknameValid && !isCheckingNickname && nicknameAvailable === true && (
-                  <span className="text-green-600">✓ 사용 가능한 닉네임입니다.</span>
-                )}
-                {isNicknameValid && !isCheckingNickname && nicknameAvailable === false && (
-                  <span className="text-red-600">✗ 이미 사용 중인 닉네임입니다.</span>
-                )}
+                {isNicknameValid &&
+                  !isCheckingNickname &&
+                  nicknameAvailable === true && (
+                    <span className="text-green-600">
+                      ✓ 사용 가능한 닉네임입니다.
+                    </span>
+                  )}
+                {isNicknameValid &&
+                  !isCheckingNickname &&
+                  nicknameAvailable === false && (
+                    <span className="text-red-600">
+                      ✗ 이미 사용 중인 닉네임입니다.
+                    </span>
+                  )}
               </p>
             )}
           </div>
 
           {/* 비밀번호 */}
           <div>
-            <label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="password"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
               비밀번호
             </label>
             <input
@@ -187,22 +218,30 @@ export default function SignupCompletePage() {
               type="password"
               placeholder="••••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value.slice(0, 16))}
+              maxLength={16}
               required
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
             {password && (
-              <p className={`mt-1 text-xs ${isPasswordValid ? "text-green-600" : "text-orange-600"}`}>
+              <p
+                className={`mt-1 text-xs ${
+                  isPasswordValid ? "text-green-600" : "text-orange-600"
+                }`}
+              >
                 {isPasswordValid
                   ? "안전한 비밀번호입니다."
-                  : "영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함하여 8자리 이상"}
+                  : "영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리"}
               </p>
             )}
           </div>
 
           {/* 비밀번호 확인 */}
           <div>
-            <label htmlFor="passwordConfirm" className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="passwordConfirm"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
               비밀번호 확인
             </label>
             <input
@@ -210,13 +249,20 @@ export default function SignupCompletePage() {
               type="password"
               placeholder="••••••••••"
               value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
+              onChange={(e) => setPasswordConfirm(e.target.value.slice(0, 16))}
+              maxLength={16}
               required
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
             {passwordConfirm && (
-              <p className={`mt-1 text-xs ${isPasswordMatch ? "text-green-600" : "text-red-600"}`}>
-                {isPasswordMatch ? "비밀번호가 일치합니다." : "비밀번호가 일치하지 않습니다."}
+              <p
+                className={`mt-1 text-xs ${
+                  isPasswordMatch ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {isPasswordMatch
+                  ? "비밀번호가 일치합니다."
+                  : "비밀번호가 일치하지 않습니다."}
               </p>
             )}
           </div>
