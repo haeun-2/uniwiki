@@ -90,6 +90,7 @@ type TalkMessage = {
   body: string;
   createdAt: string;
   writerId?: string | number | null;
+  type?: string; // USER / SYSTEM
 };
 type TalkDetail = {
   id: string;
@@ -123,7 +124,12 @@ export default function DiscussionDetailPage() {
     if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
     setFlash("");
   };
-  useEffect(() => () => { if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    },
+    []
+  );
 
   // 데이터
   const [data, setData] = useState<TalkDetail>({
@@ -158,7 +164,9 @@ export default function DiscussionDetailPage() {
       const norm = iso.replace(/(\.\d{3})\d+$/, "$1");
       const hasTZ = /Z$|[+\-]\d{2}:\d{2}$/.test(norm);
       if (hasTZ) return new Date(norm);
-      const m = norm.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(\.\d+)?$/);
+      const m = norm.match(
+        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(\.\d+)?$/
+      );
       if (!m) return new Date(norm + "Z");
       const [, y, mo, d, h, mi, s, ms] = m;
       const sec = s ? +s : 0;
@@ -166,7 +174,10 @@ export default function DiscussionDetailPage() {
       return new Date(Date.UTC(+y, +mo - 1, +d, +h - 9, +mi, sec, milli));
     };
     return (iso: string) =>
-      parseKST(iso).toLocaleString("sv-SE", { timeZone: "Asia/Seoul", hour12: false });
+      parseKST(iso).toLocaleString("sv-SE", {
+        timeZone: "Asia/Seoul",
+        hour12: false,
+      });
   }, []);
 
   // ===== 댓글 DOM 참조 & 하이라이트 대상 파싱 =====
@@ -197,37 +208,65 @@ export default function DiscussionDetailPage() {
   ): Promise<void> {
     return new Promise((resolve) => {
       let done = false;
-      const finish = () => { if (!done) { done = true; resolve(); } };
+      const finish = () => {
+        if (!done) {
+          done = true;
+          resolve();
+        }
+      };
 
       if ("IntersectionObserver" in window && container instanceof HTMLElement) {
         const io = new IntersectionObserver(
           (entries) => {
             const e = entries[0];
-            if (e && e.isIntersecting && e.intersectionRatio >= Math.min(Math.max(ratio, 0.05), 1)) {
+            if (
+              e &&
+              e.isIntersecting &&
+              e.intersectionRatio >= Math.min(Math.max(ratio, 0.05), 1)
+            ) {
               io.disconnect();
               finish();
             }
           },
-          { root: container, threshold: Array.from({ length: 20 }, (_, i) => (i + 1) / 20) }
+          {
+            root: container,
+            threshold: Array.from({ length: 20 }, (_, i) => (i + 1) / 20),
+          }
         );
         io.observe(el);
-        setTimeout(() => { io.disconnect(); finish(); }, timeoutMs);
+        setTimeout(() => {
+          io.disconnect();
+          finish();
+        }, timeoutMs);
         return;
       }
 
-      const root = container instanceof HTMLElement ? container : document.documentElement;
+      const root =
+        container instanceof HTMLElement
+          ? container
+          : (document.documentElement as HTMLElement);
       const start = performance.now();
       const tick = () => {
         const now = performance.now();
         if (now - start >= timeoutMs) return finish();
 
-        const rootRect = container instanceof HTMLElement
-          ? container.getBoundingClientRect()
-          : { top: 0, bottom: window.innerHeight, height: window.innerHeight } as any;
+        const rootRect =
+          container instanceof HTMLElement
+            ? container.getBoundingClientRect()
+            : ({
+                top: 0,
+                bottom: window.innerHeight,
+                height: window.innerHeight,
+              } as any);
 
         const r = el.getBoundingClientRect();
         const h = Math.max(r.height, 1);
-        const visible = Math.max(0, Math.min(r.bottom, rootRect.bottom) - Math.max(r.top, rootRect.top)) / h;
+        const visible =
+          Math.max(
+            0,
+            Math.min(r.bottom, rootRect.bottom) -
+              Math.max(r.top, rootRect.top)
+          ) / h;
 
         if (visible >= ratio) return finish();
         requestAnimationFrame(tick);
@@ -268,7 +307,8 @@ export default function DiscussionDetailPage() {
     return () => el.removeEventListener("scroll", onPanelScroll);
   }, []);
   const scrollPageTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
-  const scrollPanelTop = () => panelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  const scrollPanelTop = () =>
+    panelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 
   // ----- 상세 조회 -----
   const loadDetail = async () => {
@@ -308,6 +348,7 @@ export default function DiscussionDetailPage() {
             c.writerUserId ??
             (c.writer && (c.writer.id ?? c.writer.userId)) ??
             null,
+          type: String(c.type || "USER"), // SYSTEM / USER
         })),
       };
 
@@ -327,6 +368,7 @@ export default function DiscussionDetailPage() {
   const evtSrcRef = useRef<EventSource | null>(null);
   const retryTimerRef = useRef<number | null>(null);
   const retryAttemptRef = useRef(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sseState, setSseState] = useState<0 | 1 | 2>(2);
 
   const mapIncoming = (c: any): TalkMessage => ({
@@ -342,6 +384,7 @@ export default function DiscussionDetailPage() {
       c.writerUserId ??
       (c.writer && (c.writer.id ?? c.writer.userId)) ??
       null,
+    type: String(c.type || "USER"),
   });
 
   function closeStream() {
@@ -350,7 +393,9 @@ export default function DiscussionDetailPage() {
       retryTimerRef.current = null;
     }
     if (evtSrcRef.current) {
-      try { evtSrcRef.current.close(); } catch {}
+      try {
+        evtSrcRef.current.close();
+      } catch {}
       evtSrcRef.current = null;
     }
     setSseState(2);
@@ -389,9 +434,17 @@ export default function DiscussionDetailPage() {
         });
         const el = panelRef.current;
         if (el) {
-          const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+          const nearBottom =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 120;
           if (nearBottom) {
-            setTimeout(() => el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }), 0);
+            setTimeout(
+              () =>
+                el.scrollTo({
+                  top: el.scrollHeight,
+                  behavior: "smooth",
+                }),
+              0
+            );
           }
         }
       } catch {}
@@ -400,9 +453,9 @@ export default function DiscussionDetailPage() {
     es.addEventListener("status-change", (ev: MessageEvent) => {
       try {
         const payload = JSON.parse(ev.data);
-        const next = (String(payload.status || "").toUpperCase() === "OPEN" ? "open" : "closed") as
-          | "open"
-          | "closed";
+        const next = (String(payload.status || "").toUpperCase() === "OPEN"
+          ? "open"
+          : "closed") as "open" | "closed";
         setStatus(next);
         setData((prev) => ({ ...prev, status: next }));
         if (next === "closed") {
@@ -416,7 +469,9 @@ export default function DiscussionDetailPage() {
 
     es.onerror = () => {
       if (DEBUG_SSE) console.debug("[SSE] error, will retry…");
-      try { es.close(); } catch {}
+      try {
+        es.close();
+      } catch {}
       evtSrcRef.current = null;
       setSseState(2);
 
@@ -531,7 +586,10 @@ export default function DiscussionDetailPage() {
 
   // ====== 사용자 신고 모달 상태 ======
   const [userReportOpen, setUserReportOpen] = useState(false);
-  const [userReportTarget, setUserReportTarget] = useState<{ id: string | number | null; nickname: string } | null>(null);
+  const [userReportTarget, setUserReportTarget] = useState<{
+    id: string | number | null;
+    nickname: string;
+  } | null>(null);
   const [userReportReason, setUserReportReason] = useState("");
   const [userReportPosting, setUserReportPosting] = useState(false);
 
@@ -592,7 +650,6 @@ export default function DiscussionDetailPage() {
         return;
       }
       if (looksBanned(res.status, txt)) {
-        // ✅ 차단 시: 플래시 후 모달 자동 닫기
         showFlash("차단된 사용자입니다.");
         setReportOpen(false);
         setReportPosting(false);
@@ -675,7 +732,6 @@ export default function DiscussionDetailPage() {
         return;
       }
       if (looksBanned(res.status, txt)) {
-        // ✅ 차단 시: 플래시 후 모달 자동 닫기
         showFlash("차단된 사용자입니다.");
         setUserReportOpen(false);
         setUserReportPosting(false);
@@ -737,7 +793,9 @@ export default function DiscussionDetailPage() {
         color: status === "open" ? "#2C80A0" : "#B3B3B3",
         backgroundColor: "#FFFFFF",
       }}
-      aria-label={`토론 상태: ${status === "open" ? "열림" : "종료"}`}
+      aria-label={`토론 상태: ${
+        status === "open" ? "열림" : "종료"
+      }`}
     >
       {status === "open" ? "열림" : "종료"}
     </span>
@@ -760,8 +818,13 @@ export default function DiscussionDetailPage() {
                 role="status"
                 className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
               >
-                <span className="text-[16px]">{errorMsg || flash}</span>
-                <button onClick={closeFlash} className="hover:opacity-80">
+                <span className="text-[16px]">
+                  {errorMsg || flash}
+                </span>
+                <button
+                  onClick={closeFlash}
+                  className="hover:opacity-80"
+                >
                   닫기
                 </button>
               </div>
@@ -822,11 +885,39 @@ export default function DiscussionDetailPage() {
                 style={{ maxHeight: "72vh" }}
               >
                 {loading ? (
-                  <div className="px-3 py-2 text-[18px] text-[#7F7F7F]">불러오는 중…</div>
+                  <div className="px-3 py-2 text-[18px] text-[#7F7F7F]">
+                    불러오는 중…
+                  </div>
                 ) : (
                   <ul className="space-y-3">
                     {data.messages.map((m) => {
                       const isBlink = blinkId === String(m.id);
+                      const isSystem =
+                        (m.type || "").toUpperCase() === "SYSTEM";
+                      const displayName = isSystem ? "SYSTEM" : m.author;
+
+                      const headerClass = isSystem
+                        ? "bg-[#FFF7D1] text-[#8A6D1A]"
+                        : m.isCreator
+                        ? "bg-[color:var(--uniwikicolor,#2c80a0)] text-white"
+                        : "bg-gray-200 text-gray-700";
+
+                      const bodyBase =
+                        "whitespace-pre-wrap rounded-b-lg px-3 py-3 cursor-pointer";
+                      const bodyClass = isSystem
+                        ? `${bodyBase} bg-[#FFFBEB] text-[#8A6D1A] text-sm`
+                        : `${bodyBase} bg-white text-gray-800`;
+
+                      const bodyStyle = isBlink
+                        ? {
+                            animation:
+                              "flashOnce 0.7s ease-in-out 1",
+                            backgroundColor: isSystem
+                              ? "#FFE8A3"
+                              : "#FFEDD5",
+                          }
+                        : undefined;
+
                       return (
                         <li
                           key={m.id}
@@ -835,43 +926,48 @@ export default function DiscussionDetailPage() {
                             if (el) map.set(String(m.id), el);
                             else map.delete(String(m.id));
                           }}
-                          className={`rounded-lg border border-[#B3B3B3] ${isBlink ? "ring-2 ring-orange-300" : ""}`}
+                          className={`rounded-lg border border-[#B3B3B3] ${
+                            isBlink ? "ring-2 ring-orange-300" : ""
+                          }`}
                         >
                           <div
                             className={
                               "flex items-center justify-between rounded-t-lg px-3 py-2 text-sm " +
-                              (m.isCreator
-                                ? "bg-[color:var(--uniwikicolor,#2c80a0)] text-white"
-                                : "bg-gray-200 text-gray-700")
+                              headerClass
                             }
                           >
                             <div className="font-semibold flex items-center gap-2">
                               <span>#{m.no}</span>
-                              <button
-                                type="button"
-                                onClick={() => openUserReport(m)}
-                                className="underline-offset-2 hover:underline focus:underline outline-none"
-                                title="작성자 신고하기"
-                                aria-label={`${m.author} 사용자 신고`}
-                              >
-                                {m.author}
-                              </button>
+                              {isSystem ? (
+                                <span>{displayName}</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => openUserReport(m)}
+                                  className="underline-offset-2 hover:underline focus:underline outline-none"
+                                  title="작성자 신고하기"
+                                  aria-label={`${displayName} 사용자 신고`}
+                                >
+                                  {displayName}
+                                </button>
+                              )}
                             </div>
-                            <div className="opacity-80">{formatKST(m.createdAt)}</div>
+                            <div className="opacity-80">
+                              {formatKST(m.createdAt)}
+                            </div>
                           </div>
 
                           <div
-                            className="whitespace-pre-wrap rounded-b-lg bg-white px-3 py-3 text-gray-800 cursor-pointer"
-                            style={
-                              isBlink
-                                ? { animation: "flashOnce 0.7s ease-in-out 1", backgroundColor: "#FFEDD5" }
-                                : undefined
-                            }
+                            className={bodyClass}
+                            style={bodyStyle}
                             onClick={() => openReport(m)}
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
+                              if (
+                                e.key === "Enter" ||
+                                e.key === " "
+                              ) {
                                 e.preventDefault();
                                 openReport(m);
                               }
@@ -903,7 +999,9 @@ export default function DiscussionDetailPage() {
           {/* 의견 작성 */}
           <section className="pt-2">
             <header className="mb-4">
-              <h2 className="text-[28px] leading-tight font-semibold text-gray-900">의견 작성</h2>
+              <h2 className="text-[28px] leading-tight font-semibold text-gray-900">
+                의견 작성
+              </h2>
             </header>
 
             <textarea
@@ -918,7 +1016,9 @@ export default function DiscussionDetailPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
             />
-            <div className="mt-2 text-sm text-gray-600">내용 수정 및 삭제가 불가능합니다.</div>
+            <div className="mt-2 text-sm text-gray-600">
+              내용 수정 및 삭제가 불가능합니다.
+            </div>
             <div className="mt-3 flex justify-end">
               <button
                 onClick={onSubmit}
@@ -947,11 +1047,16 @@ export default function DiscussionDetailPage() {
       {/* ===== 콘텐츠 신고 모달 ===== */}
       {reportOpen && (
         <div className="fixed inset-0 z-[100]">
-          <div className="absolute inset-0 bg-black/50" onClick={closeReport} />
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={closeReport}
+          />
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
               <div className="mb-4 flex items-start justify-between">
-                <h3 className="text-[22px] font-semibold">토론 내용 신고하기</h3>
+                <h3 className="text-[22px] font-semibold">
+                  토론 내용 신고하기
+                </h3>
                 <button
                   onClick={closeReport}
                   aria-label="닫기"
@@ -966,7 +1071,9 @@ export default function DiscussionDetailPage() {
                   <div className="mb-1 font-medium">
                     #{reportTarget.no} {reportTarget.author}
                   </div>
-                  <div className="whitespace-pre-wrap">{reportTarget.body}</div>
+                  <div className="whitespace-pre-wrap">
+                    {reportTarget.body}
+                  </div>
                 </div>
               )}
 
@@ -974,10 +1081,14 @@ export default function DiscussionDetailPage() {
                 className="mb-1 h-12 w-full rounded-lg border border-[#B3B3B3] bg-white px-3 outline-none focus:ring-2 focus:ring-[#2C80A0]"
                 placeholder="신고 사유를 입력해주세요."
                 value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
+                onChange={(e) =>
+                  setReportReason(e.target.value)
+                }
               />
               {!reportReason.trim() && (
-                <div className="text-sm text-[#E45757]">신고 사유를 입력해주세요.</div>
+                <div className="text-sm text-[#E45757]">
+                  신고 사유를 입력해주세요.
+                </div>
               )}
 
               <div className="mt-5 flex justify-end gap-2">
@@ -1003,11 +1114,16 @@ export default function DiscussionDetailPage() {
       {/* ===== 사용자 신고 모달 ===== */}
       {userReportOpen && (
         <div className="fixed inset-0 z-[110]">
-          <div className="absolute inset-0 bg-black/50" onClick={closeUserReport} />
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={closeUserReport}
+          />
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
               <div className="mb-4 flex items-start justify-between">
-                <h3 className="text-[22px] font-semibold">사용자 신고하기</h3>
+                <h3 className="text-[22px] font-semibold">
+                  사용자 신고하기
+                </h3>
                 <button
                   onClick={closeUserReport}
                   aria-label="닫기"
@@ -1019,7 +1135,9 @@ export default function DiscussionDetailPage() {
 
               {userReportTarget && (
                 <div className="mb-3 rounded-lg border border-[#E5E5E5] bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                  <div className="font-medium">대상: {userReportTarget.nickname}</div>
+                  <div className="font-medium">
+                    대상: {userReportTarget.nickname}
+                  </div>
                 </div>
               )}
 
@@ -1027,10 +1145,14 @@ export default function DiscussionDetailPage() {
                 className="mb-1 h-12 w-full rounded-lg border border-[#B3B3B3] bg-white px-3 outline-none focus:ring-2 focus:ring-[#2C80A0]"
                 placeholder="신고 사유를 입력해주세요."
                 value={userReportReason}
-                onChange={(e) => setUserReportReason(e.target.value)}
+                onChange={(e) =>
+                  setUserReportReason(e.target.value)
+                }
               />
               {!userReportReason.trim() && (
-                <div className="text-sm text-[#E45757]">신고 사유를 입력해주세요.</div>
+                <div className="text-sm text-[#E45757]">
+                  신고 사유를 입력해주세요.
+                </div>
               )}
 
               <div className="mt-5 flex justify-end gap-2">
@@ -1043,7 +1165,9 @@ export default function DiscussionDetailPage() {
                 <button
                   onClick={submitUserReport}
                   disabled={
-                    !userReportReason.trim() || userReportPosting || !userReportTarget?.id
+                    !userReportReason.trim() ||
+                    userReportPosting ||
+                    !userReportTarget?.id
                   }
                   className="h-10 min-w-[80px] rounded-xl bg-[#E45757] px-4 text-white disabled:opacity-50"
                 >
