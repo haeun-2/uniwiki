@@ -2,6 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 export default function WelcomePage() {
+  const accessToken = localStorage.getItem("accessToken");
+
   return (
     <div className="space-y-10">
       {/* Hero */}
@@ -12,6 +14,7 @@ export default function WelcomePage() {
           학교·학과·강의·시설·행사 등 대학 생활 전반의 정보를 한곳에서 찾아보고,
           필요하면 바로 고칠 수 있습니다.
         </p>
+        {!accessToken && (
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             to="/login"
@@ -20,6 +23,7 @@ export default function WelcomePage() {
             로그인하고 시작하기
           </Link>
         </div>
+        )}
       </section>
 
       {/* 목적 · 배경 · 타겟 */}
@@ -118,6 +122,7 @@ export default function WelcomePage() {
           <li>학교 페이지에서 필요한 문서를 검색하거나 새로 작성합니다.</li>
           <li>사실 확인이 필요하면 토론에서 합의를 거쳐 문서를 개선합니다.</li>
         </ol>
+        {!accessToken && (
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             to="/login"
@@ -126,6 +131,7 @@ export default function WelcomePage() {
             로그인
           </Link>
         </div>
+        )}
       </section>
     </div>
   );
@@ -168,14 +174,6 @@ function Feature({ title, points }: { title: string; points: string[] }) {
           <li key={i}>{p}</li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function CircleIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-      {children}
     </div>
   );
 }

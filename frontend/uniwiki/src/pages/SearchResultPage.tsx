@@ -102,7 +102,7 @@ export default function SearchResultPage() {
         <button
           key="prev"
           onClick={() => handlePageChange(currentPage - 1)}
-          className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition"
+          className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 cursor-pointer transition"
         >
           &lt; 이전
         </button>
@@ -115,7 +115,7 @@ export default function SearchResultPage() {
         <button
           key={i}
           onClick={() => handlePageChange(i)}
-          className={`px-3 py-1 text-sm border rounded transition ${
+          className={`px-3 py-1 text-sm border rounded transition cursor-pointer ${
             i === currentPage
               ? "bg-uniwikicolor text-white border-uniwikicolor"
               : "border-gray-300 hover:bg-gray-50"
@@ -132,7 +132,7 @@ export default function SearchResultPage() {
         <button
           key="next"
           onClick={() => handlePageChange(currentPage + 1)}
-          className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition"
+          className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 cursor-pointer transition"
         >
           다음 &gt;
         </button>

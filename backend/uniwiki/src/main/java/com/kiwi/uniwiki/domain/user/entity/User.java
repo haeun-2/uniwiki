@@ -2,6 +2,9 @@ package com.kiwi.uniwiki.domain.user.entity;
 
 import com.kiwi.uniwiki.domain.university.entity.University;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -27,12 +30,19 @@ public class User {
     @JoinColumn(name = "university_id")
     private University university;
 
+    @NotBlank(message = "이메일은 필수입니다")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    @Size(max = 320, message = "이메일은 320자를 초과할 수 없습니다")
     @Column(name = "email", nullable = false, unique = true, length = 320)
     private String email;
 
+    @NotBlank(message = "비밀번호는 필수입니다")
+    @Size(max = 64, message = "비밀번호는 64자를 초과할 수 없습니다")
     @Column(name = "password", nullable = false, length = 64)
     private String password;
 
+    @NotBlank(message = "닉네임은 필수입니다")
+    @Size(min = 2, max = 20, message = "닉네임은 2자 이상 20자 이하여야 합니다")
     @Column(name = "nickname", nullable = false, unique = true, length = 20)
     private String nickname;
 
@@ -76,5 +86,7 @@ public class User {
         this.isPushAgree = isPushAgree;
     }
 
-    public void changeNickname(String nickname) { this.nickname = nickname; }
+    public void changeNickname(String nickname) {
+        this.nickname = nickname;
+    }
 }

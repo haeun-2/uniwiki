@@ -295,7 +295,7 @@ export default function FavoritePage() {
               </span>
               <button
                 onClick={closeFlash}
-                className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+                className="text-white hover:text-gray-200 transition-colors cursor-pointer flex-shrink-0"
                 aria-label="닫기"
               >
                 <X className="h-5 w-5" />
@@ -325,7 +325,7 @@ export default function FavoritePage() {
             </span>
             <button
               onClick={closeFlash}
-              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              className="text-white hover:text-gray-200 transition-colors cursor-pointer flex-shrink-0"
               aria-label="닫기"
             >
               <X className="h-5 w-5" />
@@ -341,7 +341,7 @@ export default function FavoritePage() {
         {/* 탭 토글 */}
         <div className="mb-6 inline-flex rounded-lg border border-gray-300 overflow-hidden">
           <button
-            className={`px-4 py-2 text-sm font-medium ${
+            className={`px-4 py-2 text-sm font-medium cursor-pointer ${
               view === "documents"
                 ? "bg-uniwikicolor text-white"
                 : "bg-white text-gray-700 hover:bg-gray-50"
@@ -352,7 +352,7 @@ export default function FavoritePage() {
           </button>
           <div className="w-px bg-gray-300" />
           <button
-            className={`px-4 py-2 text-sm font-medium ${
+            className={`px-4 py-2 text-sm font-medium cursor-pointer ${
               view === "universities"
                 ? "bg-uniwikicolor text-white"
                 : "bg-white text-gray-700 hover:bg-gray-50"

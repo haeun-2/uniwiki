@@ -98,6 +98,11 @@ public enum ErrorCode {
     // ======================================
 
     /**
+     * 400 BAD_REQUEST - 입력값 검증 오류
+     */
+    DOCUMENT_SAME_VERSION_REVERT(HttpStatus.BAD_REQUEST, "DOCUMENT_400_01", "되돌리려는 버전이 현재 버전입니다."),
+
+    /**
      * 403 FORBIDDEN - 접근 권한 없음
      */
     DOCUMENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "DOCUMENT_403_01", "소속 대학생만 문서 작업을 할 수 있습니다."),

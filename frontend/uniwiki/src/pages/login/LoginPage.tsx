@@ -16,8 +16,8 @@ export default function LoginPage() {
     "caret-uniwikicolor " +
     "ring-1 ring-inset ring-transparent " +
     "focus:outline-none focus:border-uniwikicolor " +
-    "focus:ring-2 focus:ring-uniwikicolor/70 " +                // 또렷한 링
-    "focus:bg-uniwikicolor/2 " +                                // 포커스 시 아주 옅은 채움
+    "focus:ring-2 focus:ring-uniwikicolor/70 " + // 또렷한 링
+    "focus:bg-uniwikicolor/2 " + // 포커스 시 아주 옅은 채움
     "transition-colors";
 
   const INPUT_PLAIN =
@@ -137,11 +137,8 @@ export default function LoginPage() {
 
         window.dispatchEvent(new Event("uniwiki:auth-changed"));
 
-        showFlash(`${data.nickName}님, 환영합니다!`, "success");
-
-        setTimeout(() => {
-          navigate("/", { replace: true });
-        }, 1500);
+        // ✅ 로그인 성공 시에는 플래시 없이 바로 메인으로 이동
+        navigate("/", { replace: true });
       } else {
         const error = await response.json();
         showFlash(
@@ -225,11 +222,13 @@ export default function LoginPage() {
       return;
     }
 
+    // ✅ 8~16자, 영문자 + 숫자 + 특수문자(~!@#$%^&*)
     const passwordRegex =
-      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[~!@#$%^&*])[A-Za-z\d~!@#$%^&*]{8,16}$/;
+
     if (!passwordRegex.test(newPassword)) {
       showFlash(
-        "비밀번호는 영문 대/소문자, 숫자, 특수문자를 포함하여 8자 이상이어야 합니다.",
+        "비밀번호는 영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리여야 합니다.",
         "error"
       );
       return;
@@ -301,27 +300,25 @@ export default function LoginPage() {
     setIsCodeSent(false);
   };
 
+  // ✅ 새 비밀번호 규칙: 8~16자, 영문자 + 숫자 + 특수문자(~!@#$%^&*)
   const isPasswordValid =
-    newPassword.length >= 8 &&
-    /[A-Z]/.test(newPassword) &&
-    /[a-z]/.test(newPassword) &&
-    /\d/.test(newPassword) &&
-    /[^A-Za-z\d]/.test(newPassword);
+    /^(?=.*[A-Za-z])(?=.*\d)(?=.*[~!@#$%^&*])[A-Za-z\d~!@#$%^&*]{8,16}$/.test(
+      newPassword
+    );
   const isPasswordMatch =
     newPassword === confirmPassword && confirmPassword !== "";
 
   // 플래시 타입별 스타일
-const getFlashStyle = () => {
-  switch (flashType) {
-    case "success":
-      return "bg-green-500/80 border-green-600/40"; // 80% 배경, 40% 테두리
-    case "error":
-      return "bg-red-500/80 border-red-600/40";
-    default:
-      return "bg-blue-500/80 border-blue-600/40";   // info
-  }
-};
-
+  const getFlashStyle = () => {
+    switch (flashType) {
+      case "success":
+        return "bg-green-500/80 border-green-600/40"; // 80% 배경, 40% 테두리
+      case "error":
+        return "bg-red-500/80 border-red-600/40";
+      default:
+        return "bg-blue-500/80 border-blue-600/40"; // info
+    }
+  };
 
   return (
     <>
@@ -329,22 +326,22 @@ const getFlashStyle = () => {
       {flash && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
           <div
-  className={`
+            className={`
     ${getFlashStyle()}
     min-w-[320px] max-w-md
-    rounded-xl border            /* ← border-2 에서 얇게 */
+    rounded-xl border
     px-6 py-4
-    shadow-lg                    /* ← shadow-2xl 에서 약하게 */
-    backdrop-blur-[2px]          /* (선택) 살짝 유리 느낌 */
+    shadow-lg
+    backdrop-blur-[2px]
     flex items-center justify-between gap-4
-  `}>
-
+  `}
+          >
             <span className="text-white font-medium text-base flex-1">
               {flash}
             </span>
             <button
               onClick={closeFlash}
-              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              className="text-white hover:text-gray-200 transition-colors flex-shrink-0 cursor-pointer"
               aria-label="닫기"
             >
               <X className="h-5 w-5" />
@@ -403,7 +400,9 @@ const getFlashStyle = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   /* 값이 채워지면 은은한 브랜드 틴트(3%) */
-                  className={`${INPUT_ICON} ${email ? "bg-uniwikicolor/3" : "bg-white"}`}
+                  className={`${INPUT_ICON} ${
+                    email ? "bg-uniwikicolor/3" : "bg-white"
+                  }`}
                 />
               </div>
             </div>
@@ -424,7 +423,9 @@ const getFlashStyle = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className={`${INPUT_ICON} ${password ? "bg-uniwikicolor/3" : "bg-white"}`}
+                  className={`${INPUT_ICON} ${
+                    password ? "bg-uniwikicolor/3" : "bg-white"
+                  }`}
                 />
               </div>
             </div>
@@ -433,7 +434,7 @@ const getFlashStyle = () => {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="text-sm font-medium text-uniwikicolor hover:text-uniwikicolor_hover"
+                className="text-sm font-medium text-uniwikicolor hover:text-uniwikicolor_hover cursor-pointer"
               >
                 비밀번호를 잊으셨나요?
               </button>
@@ -463,7 +464,7 @@ const getFlashStyle = () => {
           <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <button
               onClick={handleCloseModal}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 cursor-pointer"
               disabled={isVerifying}
             >
               <X className="h-6 w-6" />
@@ -488,13 +489,14 @@ const getFlashStyle = () => {
                     className={`${INPUT_PLAIN} disabled:bg-gray-100`}
                   />
                   <button
-                    type="button"
-                    onClick={handleSendCode}
-                    disabled={isCodeSent || isVerifying}
-                    className="rounded-lg bg-[#5b7c99] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
-                  >
-                    {isVerifying ? "발송 중..." : "인증번호 발송"}
-                  </button>
+  type="button"
+  onClick={handleSendCode}
+  disabled={isCodeSent || isVerifying}
+  className="whitespace-nowrap rounded-lg bg-[#5b7c99] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#4a6578] cursor-pointer disabled:bg-gray-400 disabled:cursor-default"
+>
+  {isVerifying ? "발송중..." : "인증번호 발송"}
+</button>
+
                 </div>
               </div>
 
@@ -509,7 +511,9 @@ const getFlashStyle = () => {
                         type="text"
                         placeholder="6자리 인증번호"
                         value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value)}
+                        onChange={(e) =>
+                          setVerificationCode(e.target.value.slice(0, 6))
+                        }
                         disabled={isVerifying}
                         maxLength={6}
                         className={`${INPUT_PLAIN} disabled:bg-gray-100`}
@@ -535,7 +539,10 @@ const getFlashStyle = () => {
                       type="password"
                       placeholder="••••••••••"
                       value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      onChange={(e) =>
+                        setNewPassword(e.target.value.slice(0, 16))
+                      }
+                      maxLength={16}
                       disabled={isVerifying}
                       className={`${INPUT_PLAIN} disabled:bg-gray-100`}
                     />
@@ -549,7 +556,7 @@ const getFlashStyle = () => {
                       >
                         {isPasswordValid
                           ? "안전한 비밀번호입니다."
-                          : "영문 대/소문자, 숫자, 특수문자를 포함하여 8자 이상"}
+                          : "영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리"}
                       </p>
                     )}
                   </div>
@@ -562,7 +569,10 @@ const getFlashStyle = () => {
                       type="password"
                       placeholder="••••••••••"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) =>
+                        setConfirmPassword(e.target.value.slice(0, 16))
+                      }
+                      maxLength={16}
                       disabled={isVerifying}
                       className={`${INPUT_PLAIN} disabled:bg-gray-100`}
                     />
@@ -586,7 +596,7 @@ const getFlashStyle = () => {
                   type="button"
                   onClick={handleCloseModal}
                   disabled={isVerifying}
-                  className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-default"
                 >
                   취소
                 </button>
@@ -612,4 +622,3 @@ const getFlashStyle = () => {
     </>
   );
 }
-                       

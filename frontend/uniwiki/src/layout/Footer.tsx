@@ -51,12 +51,19 @@ export default function Footer() {
         </div>
         <div>
           <div className="mb-2 font-semibold">고지</div>
-            <Link
-              to=""
-              className="text-xs hover:underline"
-            >
-              © 2025 UniWiki. 일부 콘텐츠는 CC BY-SA 기반일 수 있습니다.
-            </Link>
+            <p className="text-xs mb-3">
+              유니위키의 모든 저작물은
+              <Link
+                to="https://creativecommons.org/licenses/by-nc-sa/2.0/kr/"
+                target="_blank"
+                className="text-xs hover:underline ms-1 text-uniwikicolor"
+              >
+              CC BY-NC-SA 2.0 KR
+              </Link>
+              를 따릅니다.
+            </p>
+            <p className="text-xs mb-1">모든 문서의 저작권은 문서의 기여자에게 있으며,</p>
+            <p className="text-xs mb-1">각 기여자는 기여하신 부분의 저작권만을 가집니다.</p>
         </div>
       </div>
     </footer>

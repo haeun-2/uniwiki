@@ -362,8 +362,12 @@ export default function ProfilePage() {
       showFlash("비밀번호가 일치하지 않습니다.", "error");
       return;
     }
-    if (newPassword.length < 8) {
-      showFlash("비밀번호는 8자 이상이어야 합니다.", "error");
+    // ✅ 8~16자, 영문자 + 숫자 + 특수문자(~!@#$%^&*)
+    if (!isPasswordValid) {
+      showFlash(
+        "비밀번호는 영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리여야 합니다.",
+        "error"
+      );
       return;
     }
 
@@ -405,7 +409,7 @@ export default function ProfilePage() {
         const errorData = await response.json();
         showFlash(
           errorData.message ||
-            "비밀번호 형식이 올바르지 않습니다.\n영문, 숫자, 특수문자를 포함하여 8자 이상 입력해주세요.",
+            "비밀번호 형식이 올바르지 않습니다.\n영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리로 입력해주세요.",
           "error"
         );
       } else {
@@ -420,11 +424,13 @@ export default function ProfilePage() {
   };
 
   const isNicknameValid = newNickname.trim().length >= 2;
+
+  // ✅ 새 비밀번호 규칙: 8~16자, 영문자 + 숫자 + 특수문자(~!@#$%^&*)
   const isPasswordValid =
-    newPassword.length >= 8 &&
-    /[A-Za-z]/.test(newPassword) &&
-    /\d/.test(newPassword) &&
-    /[^A-Za-z\d]/.test(newPassword);
+    /^(?=.*[A-Za-z])(?=.*\d)(?=.*[~!@#$%^&*])[A-Za-z\d~!@#$%^&*]{8,16}$/.test(
+      newPassword
+    );
+
   const isPasswordMatch =
     newPassword === confirmPassword && confirmPassword !== "";
 
@@ -460,7 +466,7 @@ export default function ProfilePage() {
             </span>
             <button
               onClick={closeFlash}
-              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              className="text-white hover:text-gray-200 transition-colors cursor-pointer flex-shrink-0"
               aria-label="닫기"
             >
               <X className="h-5 w-5" />
@@ -496,7 +502,7 @@ export default function ProfilePage() {
                     setNickAvailable(null);
                     setIsNicknameModalOpen(true);
                   }}
-                  className="text-sm text-gray-400 hover:text-gray-600"
+                  className="text-sm text-gray-400 hover:text-gray-600 cursor-pointer"
                 >
                   수정
                 </button>
@@ -517,7 +523,7 @@ export default function ProfilePage() {
               {isEditing ? (
                 <button
                   onClick={() => setIsPasswordModalOpen(true)}
-                  className="text-gray-600 hover:text-gray-900 underline"
+                  className="text-gray-600 hover:text-gray-900 underline cursor-pointer"
                 >
                   비밀번호 변경
                 </button>
@@ -566,26 +572,27 @@ export default function ProfilePage() {
 
           {/* 버튼 */}
           <div className="pt-8">
-            {isEditing ? (
-              <div className="flex justify-end">
+            <div className="flex justify-center">
+              {isEditing ? (
+                // 편집 중일 때: 저장 버튼 (프라이머리)
                 <button
                   onClick={handleSave}
                   disabled={isPushSaving}
-                  className="rounded-lg bg-[#5b7c99] px-8 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:opacity-50"
+                  className="rounded-lg bg-[#5b7c99] px-8 py-2.5 font-medium text-white hover:bg-[#4a6578] cursor-pointer disabled:opacity-50"
                 >
                   {isPushSaving ? "저장 중..." : "저장"}
                 </button>
-              </div>
-            ) : (
-              <div className="flex justify-center">
+              ) : (
+                // 기본 상태: 수정 버튼 (아웃라인)
                 <button
-                  onClick={() => setIsEditing(true)}
-                  className="rounded-lg bg-[#5b7c99] px-8 py-2.5 font-medium text-white hover:bg-[#4a6578]"
-                >
-                  수정
-                </button>
-              </div>
-            )}
+  onClick={() => setIsEditing(true)}
+  className="rounded-lg border border-[#5b7c99] bg-white px-8 py-2.5 font-medium text-[#5b7c99] hover:bg-[#f3f6fa] cursor-pointer"
+>
+  수정
+</button>
+
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -596,7 +603,7 @@ export default function ProfilePage() {
           <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <button
               onClick={() => setIsNicknameModalOpen(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 cursor-pointer"
             >
               <X className="h-6 w-6" />
             </button>
@@ -624,16 +631,22 @@ export default function ProfilePage() {
               {newNickname && (
                 <p className="text-xs">
                   {!isNicknameValid && (
-                    <span className="text-red-600">닉네임은 2자 이상이어야 합니다.</span>
+                    <span className="text-red-600">
+                      닉네임은 2자 이상이어야 합니다.
+                    </span>
                   )}
                   {isNicknameValid && isNickChecking && (
                     <span className="text-gray-500">중복 확인 중…</span>
                   )}
                   {isNicknameValid && !isNickChecking && nickAvailable === true && (
-                    <span className="text-green-600">사용 가능한 닉네임입니다.</span>
+                    <span className="text-green-600">
+                      사용 가능한 닉네임입니다.
+                    </span>
                   )}
                   {isNicknameValid && !isNickChecking && nickAvailable === false && (
-                    <span className="text-red-600">이미 사용 중인 닉네임입니다.</span>
+                    <span className="text-red-600">
+                      이미 사용 중인 닉네임입니다.
+                    </span>
                   )}
                 </p>
               )}
@@ -642,7 +655,7 @@ export default function ProfilePage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setIsNicknameModalOpen(false)}
-                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 cursor-pointer hover:bg-gray-50"
               >
                 취소
               </button>
@@ -653,7 +666,7 @@ export default function ProfilePage() {
                   !isNicknameValid ||
                   (newNickname.trim() !== nickname && nickAvailable !== true)
                 }
-                className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
+                className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] cursor-pointer disabled:bg-gray-400"
               >
                 {isNickChecking ? "확인 중..." : "저장"}
               </button>
@@ -668,7 +681,7 @@ export default function ProfilePage() {
           <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <button
               onClick={() => setIsPasswordModalOpen(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 cursor-pointer hover:text-gray-600"
               disabled={isPasswordLoading}
             >
               <X className="h-6 w-6" />
@@ -703,7 +716,8 @@ export default function ProfilePage() {
                   type="password"
                   placeholder="••••••••••"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => setNewPassword(e.target.value.slice(0, 16))}
+                  maxLength={16}
                   disabled={isPasswordLoading}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
                 />
@@ -715,7 +729,7 @@ export default function ProfilePage() {
                   >
                     {isPasswordValid
                       ? "안전한 비밀번호입니다."
-                      : "영문, 숫자, 특수문자를 포함하여 8자리 이상"}
+                      : "영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리"}
                   </p>
                 )}
               </div>
@@ -729,7 +743,8 @@ export default function ProfilePage() {
                   type="password"
                   placeholder="••••••••••"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => setConfirmPassword(e.target.value.slice(0, 16))}
+                  maxLength={16}
                   disabled={isPasswordLoading}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
                 />
@@ -751,14 +766,14 @@ export default function ProfilePage() {
               <button
                 onClick={() => setIsPasswordModalOpen(false)}
                 disabled={isPasswordLoading}
-                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={handlePasswordSave}
                 disabled={!isPasswordValid || !isPasswordMatch || isPasswordLoading}
-                className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] disabled:bg-gray-400"
+                className="rounded-lg bg-[#5b7c99] px-6 py-2.5 font-medium text-white hover:bg-[#4a6578] cursor-pointer disabled:bg-gray-400"
               >
                 {isPasswordLoading ? "변경 중..." : "저장"}
               </button>
@@ -776,7 +791,7 @@ export default function ProfilePage() {
                 setIsDeleteModalOpen(false);
                 setDeleteConfirmText("");
               }}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 cursor-pointer hover:text-gray-600"
             >
               <X className="h-6 w-6" />
             </button>
@@ -806,13 +821,13 @@ export default function ProfilePage() {
                   setIsDeleteModalOpen(false);
                   setDeleteConfirmText("");
                 }}
-                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 cursor-pointer hover:bg-gray-50"
               >
                 취소
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="rounded-lg bg-red-500 px-6 py-2.5 font-medium text-white hover:bg-red-600"
+                className="rounded-lg bg-red-500 px-6 py-2.5 font-medium text-white cursor-pointer hover:bg-red-600"
               >
                 계정 삭제
               </button>

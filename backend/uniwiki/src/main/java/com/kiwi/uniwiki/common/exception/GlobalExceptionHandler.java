@@ -2,6 +2,8 @@ package com.kiwi.uniwiki.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -9,12 +11,15 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -109,6 +114,63 @@ public class GlobalExceptionHandler {
         log.error("요청 URL: {}", requestURI);
 
         return ErrorResponse.toResponseEntity(ErrorCode.INTERNAL_SERVER_ERROR);
+    }
+
+
+    // Bean Validation 오류 처리
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(
+            MethodArgumentNotValidException ex) {
+
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                errors.put(error.getField(), error.getDefaultMessage())
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.builder()
+                        .code("VALIDATION_ERROR")
+                        .message("입력값 검증 실패")
+                        .build());
+    }
+
+    // JPA 제약조건 위반 오류 처리 (DB 레벨)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex) {
+
+        String message = "데이터 제약조건 위반";
+
+        if (ex.getMessage().contains("Duplicate entry")) {
+            message = "이미 존재하는 값입니다";
+        } else if (ex.getMessage().contains("Data too long")) {
+            message = "입력값이 허용된 길이를 초과했습니다";
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.builder()
+                        .code("DATA_INTEGRITY_VIOLATION")
+                        .message(message)
+                        .build());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException ex,
+            HttpServletRequest request) {
+
+        log.error("=== IllegalArgumentException 발생 ===");
+        log.error("에러 메시지: {}", ex.getMessage());
+        log.error("요청 URL: {}", request.getRequestURI());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.builder()
+                        .code("BAD_REQUEST")
+                        .message("올바르지 않은 입력값 형식 입니다.")
+                        .build());
     }
 
 }
