@@ -1,9 +1,11 @@
 package com.kiwi.uniwiki.domain.document.repository;
 
+import com.kiwi.uniwiki.domain.document.entity.Document;
 import com.kiwi.uniwiki.domain.document.entity.DocumentBookmark;
 import com.kiwi.uniwiki.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,6 +18,12 @@ public interface DocumentBookmarkRepository extends JpaRepository<DocumentBookma
             "WHERE db.userId = :userId")
     List<DocumentBookmark> findByUserId(Integer userId);
     boolean existsByUserIdAndDocumentId(Integer userId, Integer documentId);
+
+    @Query("SELECT DISTINCT db FROM DocumentBookmark db " +
+            "JOIN FETCH db.document d " +
+            "JOIN FETCH db.user " +
+            "WHERE db.documentId = :documentId")
+    List<DocumentBookmark> findByDocumentId(@Param("documentId") Integer documentId);
 
 
 }
