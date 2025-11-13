@@ -71,11 +71,15 @@ public class DocumentBookmarkService {
     }
 
     //해당 문서가 수정됬을때 즐겨찾기 한 회원에게 메일 알림 발송
-    public void sendEmail(Integer documentId){
+    public void  sendEmail(Integer documentId){
         List<DocumentBookmark> documentBookmarksByDocument = documentBookmarkRepository.findByDocumentId(documentId);
 
         for(DocumentBookmark bookmark : documentBookmarksByDocument){
-            mailService.sendChangeDocumentMail(bookmark.getUser().getEmail(), bookmark.getDocument().getTitle());
+            //push에 동의한 사람들만 메일 발송
+            if(bookmark.getUser().getIsPushAgree()){
+                mailService.sendChangeDocumentMail(bookmark.getUser().getEmail(), bookmark.getDocument().getTitle());
+            }
+
         }
     }
 }

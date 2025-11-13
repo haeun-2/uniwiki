@@ -139,6 +139,7 @@ public class DocumentService {
                 request.getEditMemo()
         );
 
+
         documentBookmarkService.sendEmail(documentId);
 
         return document.getTitle();
