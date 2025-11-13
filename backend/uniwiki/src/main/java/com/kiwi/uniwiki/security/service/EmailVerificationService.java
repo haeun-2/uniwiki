@@ -50,6 +50,7 @@ public class EmailVerificationService {
         log.info("인증번호 발송 및 저장 완료 - Email: {}", email);
     }
 
+
     /**
      * 인증번호 검증
      */

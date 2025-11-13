@@ -41,6 +41,25 @@ public class MailService {
 
         return message;
     }
+    //변경 메일 생성
+    private MimeMessage createChangeDocumentMail(String recipientEmail, String documentTitle){
+        MimeMessage message = javaMailSender.createMimeMessage();
+
+        try {
+            message.setFrom(senderEmail);
+            message.setRecipients(MimeMessage.RecipientType.TO, recipientEmail);
+            message.setSubject("UNIWIKI 즐겨찾기 알림");
+
+            String body = documentChangeEmail(documentTitle);
+            message.setText(body, "UTF-8", "html");
+
+        } catch (MessagingException e) {
+            log.error("메일 생성 실패: {}", e.getMessage());
+            throw new RuntimeException("메일 생성에 실패했습니다.", e);
+        }
+
+        return message;
+    }
 
     /**
      * 이메일 본문 구성
@@ -60,6 +79,43 @@ public class MailService {
         body.append("<p>감사합니다.</p>");
         body.append("</div>");
         return body.toString();
+    }
+
+    private String documentChangeEmail(String documentTitle) {
+        StringBuilder body = new StringBuilder();
+        body.append("<div style='margin:20px;'>");
+        body.append("<h2>즐겨찾기 문서 변경 알림</h2>");
+        body.append("<p>안녕하세요.</p>");
+        body.append("<p>즐겨찾기하신 문서에 변경사항이 발생했습니다.</p>");
+        body.append("<div style='background-color:#f8f9fa; padding:20px; border-radius:5px; margin:20px 0;'>");
+        body.append("<h3 style='color:#007bff; margin:0;'>📄 ");
+        body.append(documentTitle);
+        body.append("</h3>");
+        body.append("</div>");
+        body.append("<p>문서를 확인하시려면 아래 링크를 클릭해주세요.</p>");
+        body.append("<div style='text-align:center; margin:20px 0;'>");
+        body.append("<a href='https://k13d104.p.ssafy.io/' ");
+        body.append("style='display:inline-block; padding:12px 30px; background-color:#007bff; color:white; ");
+        body.append("text-decoration:none; border-radius:5px; font-weight:bold;'>");
+        body.append("문서 확인하기");
+        body.append("</a>");
+        body.append("</div>");
+        body.append("<p>감사합니다.</p>");
+        body.append("</div>");
+        return body.toString();
+    }
+
+    //문서 변경 알림 시 메일 전송
+    public void sendChangeDocumentMail(String email, String documentTitle){
+        try {
+            MimeMessage message = createChangeDocumentMail(email, documentTitle);
+            javaMailSender.send(message);
+            log.info("인증 메일 발송 성공: {}", email);
+
+        } catch (Exception e) {
+            log.error("메일 발송 실패: {}", e.getMessage());
+            throw new CustomException(ErrorCode.MAIL_SEND_FAILED);
+        }
     }
 
     /**
