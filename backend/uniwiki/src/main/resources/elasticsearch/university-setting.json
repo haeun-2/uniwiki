@@ -1,0 +1,17 @@
+{
+  "analysis": {
+    "filter": {
+      "univ_synonym_filter": {
+        "type": "synonym",
+        "synonyms_path": "synonyms.txt"
+      }
+    },
+    "analyzer": {
+      "univ_keyword_analyzer": {
+        "type": "custom",
+        "tokenizer": "keyword",
+        "filter": ["lowercase", "univ_synonym_filter"]
+      }
+    }
+  }
+}
