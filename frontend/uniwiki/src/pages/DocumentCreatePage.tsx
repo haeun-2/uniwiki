@@ -467,12 +467,14 @@ export default function DocumentCreatePage() {
           >
             {railCollapsed ? (
               <>
-                <ChevronsRight size={16} />
+                {/* 접힘 상태 => << 아이콘 */}
+                <ChevronsLeft size={16} />
                 <span className="hidden sm:inline">펼치기</span>
               </>
             ) : (
               <>
-                <ChevronsLeft size={16} />
+                {/* 펼침 상태 => >> 아이콘 */}
+                <ChevronsRight size={16} />
                 <span className="hidden sm:inline">접기</span>
               </>
             )}

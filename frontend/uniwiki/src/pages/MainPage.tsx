@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom"
 
 // 지역
@@ -137,27 +137,53 @@ export default function MainPage() {
   const [universities, setUniversities] = useState<University[]>([]);
   const [loadingUniversities, setLoadingUniversities] = useState(false);
   const [univError, setUnivError] = useState<string | null>(null);
+  const univCacheRef = useRef<Record<number, University[]>>({});
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
+      // 1) 캐시에 있으면 네트워크 요청 없이 바로 사용
+      const cached = univCacheRef.current[selectedRegionId];
+      if (cached) {
+        setUniversities(cached);
+        setLoadingUniversities(false);
+        return;
+      }
+
+      // 2) 없으면 서버에서 요청 후 캐시에 저장
       try {
         setLoadingUniversities(true);
         setUnivError(null);
-        const url = selectedRegionId === 0
-          ? `https://k13d104.p.ssafy.io/api/v1/universities`
-          : `https://k13d104.p.ssafy.io/api/v1/universities?region=${selectedRegionId}`;
+
+        const url =
+          selectedRegionId === 0
+            ? `https://k13d104.p.ssafy.io/api/v1/universities`
+            : `https://k13d104.p.ssafy.io/api/v1/universities?region=${selectedRegionId}`;
+
         const res = await fetch(url, { headers: { accept: "*/*" } });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const data: University[] = await res.json();
-        if (mounted) setUniversities(data);
+        if (!mounted) return;
+
+        setUniversities(data);
+        // 캐시에 저장
+        univCacheRef.current[selectedRegionId] = data;
       } catch (e: any) {
-        if (mounted) setUnivError(e?.message ?? "대학교 목록을 불러오지 못했습니다.");
+        if (mounted) {
+          setUnivError(e?.message ?? "대학교 목록을 불러오지 못했습니다.");
+        }
       } finally {
-        if (mounted) setLoadingUniversities(false);
+        if (mounted) {
+          setLoadingUniversities(false);
+        }
       }
     })();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, [selectedRegionId]);
 
 
@@ -589,7 +615,7 @@ export default function MainPage() {
                 key={r.regionId}
                 onClick={() => setSelectedRegionId(r.regionId)}
                 className={[
-                  "rounded-full border px-3 py-1 text-xs transition",
+                  "rounded-full border px-3 py-1 text-xs transition cursor-pointer",
                   isActive
                     ? "border-[#2C80A0] bg-[#2C80A0] text-white"
                     : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
@@ -604,21 +630,36 @@ export default function MainPage() {
 
         {/* 대학교 목록 */}
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          {!loadingUniversities && !univError && universities.length > 0 && (
-            <div className="max-h-96 overflow-y-auto pr-2">
-              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 text-sm text-gray-700">
-                {universities.map((u) => (
-                  <div key={u.universityId} className="truncate">
-                    <Link
-                      to={`/univ/${encodeURIComponent(u.universityName)}`}
-                      state={{ universityId: u.universityId }}
-                      className="cursor-pointer hover:underline"
-                      title={u.universityName}
-                    >
-                      {u.universityName}
-                    </Link>
-                  </div>
-                ))}
+          {univError && (
+            <p className="text-xs text-red-500">
+              대학교 목록을 불러오지 못했습니다. 새로고침 해주세요.
+            </p>
+          )}
+
+          {!univError && universities.length > 0 && (
+            <div className="relative">
+              {/* 로딩 중 오버레이 (이 부분은 취향에 따라 문구/스타일 조정 가능) */}
+              {loadingUniversities && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white text-xs text-gray-400">
+                  불러오는 중...
+                </div>
+              )}
+
+              <div className="max-h-96 overflow-y-auto pr-2">
+                <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 text-sm text-gray-700">
+                  {universities.map((u) => (
+                    <div key={u.universityId} className="truncate">
+                      <Link
+                        to={`/univ/${encodeURIComponent(u.universityName)}`}
+                        state={{ universityId: u.universityId }}
+                        className="cursor-pointer hover:underline"
+                        title={u.universityName}
+                      >
+                        {u.universityName}
+                      </Link>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

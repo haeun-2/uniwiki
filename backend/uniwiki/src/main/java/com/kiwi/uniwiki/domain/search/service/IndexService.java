@@ -7,10 +7,10 @@ import com.kiwi.uniwiki.domain.document.entity.DocumentVersion;
 import com.kiwi.uniwiki.domain.document.repository.DocumentVersionRepository;
 import com.kiwi.uniwiki.domain.search.document.DocumentIndex;
 import com.kiwi.uniwiki.domain.search.repository.DocumentSearchRepository;
+import com.kiwi.uniwiki.domain.search.util.CustomTokenTextSplitter;
 import com.kiwi.uniwiki.domain.search.util.MarkdownUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStore;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -28,6 +28,7 @@ public class IndexService {
     private final DocumentSearchRepository documentSearchRepository;
     private final ElasticsearchVectorStore vectorStore;
     private final DocumentVersionRepository documentVersionRepository;
+    private final CustomTokenTextSplitter tokenTextSplitter;
 
     @Transactional(readOnly = true)
     public void indexDocument(Integer documentId) {
@@ -107,7 +108,7 @@ public class IndexService {
         org.springframework.ai.document.Document vectorDocument = new org.springframework.ai.document.Document(content, metadata);
         
         // 2. chunk 단위로 분할
-        List<org.springframework.ai.document.Document> chunks = new TokenTextSplitter().apply(List.of(vectorDocument));
+        List<org.springframework.ai.document.Document> chunks = tokenTextSplitter.split(vectorDocument);
         return chunks.isEmpty() ? List.of(vectorDocument) : chunks; // 청크가 없으면 원본 문서를 그대로 반환
     }
 

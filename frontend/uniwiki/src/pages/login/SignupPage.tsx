@@ -305,7 +305,7 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => setIsCodeSent(false)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
               >
                 이전
               </button>

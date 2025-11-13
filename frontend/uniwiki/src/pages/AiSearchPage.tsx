@@ -230,8 +230,6 @@ export default function AiSearchPage() {
         {/* AI 결과 영역 */}
         {result && (
           <section className="w-full max-w-3xl mx-auto space-y-6 mb-14">
-           
-
             {/* AI 요약 답변 */}
             <div className="rounded-2xl bg-white border border-uniwikicolor/40 shadow-sm p-6">
               <div className="flex items-center gap-2 mb-3">

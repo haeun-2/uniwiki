@@ -247,7 +247,7 @@ export default function AttributePage() {
               </span>
               <button
                 onClick={closeFlash}
-                className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+                className="text-white hover:text-gray-200 transition-colors flex-shrink-0 cursor-pointer"
                 aria-label="닫기"
               >
                 <X className="h-5 w-5" />
@@ -277,7 +277,7 @@ export default function AttributePage() {
             </span>
             <button
               onClick={closeFlash}
-              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              className="text-white hover:text-gray-200 transition-colors flex-shrink-0 cursor-pointer"
               aria-label="닫기"
             >
               <X className="h-5 w-5" />
@@ -299,14 +299,14 @@ export default function AttributePage() {
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={!pagination.hasPre}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               &lt; 이전
             </button>
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={!pagination.hasNext}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               다음 &gt;
             </button>
@@ -417,14 +417,14 @@ export default function AttributePage() {
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={!pagination.hasPre}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               &lt; 이전
             </button>
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={!pagination.hasNext}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               다음 &gt;
             </button>
