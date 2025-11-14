@@ -68,6 +68,13 @@ import WelcomePage from './pages/footer/WelcomePage'
 import GuidePage from './pages/footer/GuidePage'
 import RulePage from './pages/footer/RulePage'
 
+// tutorial
+import TutorialLayout from './layout/TutorialLayout'
+import TutorialMenuBarPage from './pages/tutorial/TutorialMenuBarPage'
+import TutorialMainPage from './pages/tutorial/TutorialMainPage'
+import TutorialUnivMainPage from './pages/tutorial/TutorialUnivMainPage'
+
+
 const router = createBrowserRouter([
   // 메인 페이지
   {
@@ -84,7 +91,7 @@ const router = createBrowserRouter([
       { path: 'profile', element: <ProfilePage /> },
       { path: 'ai-search', element: <AiSearchPage /> },
       { path: 'search', element: <SearchResultPage /> },
-
+      
       // footer 내용
       { path: 'welcome', element: <WelcomePage /> },
       { path: 'guide', element: <GuidePage /> },
@@ -154,6 +161,17 @@ const router = createBrowserRouter([
       },
     ],
   },
+
+  {
+    path: '/tutorial',
+    element: <TutorialLayout />,
+    children: [
+      { path: 'menu_bar', element: <TutorialMenuBarPage /> },
+      { path: 'menu_bar/main', element: <TutorialMainPage /> },
+      { path: 'menu_bar/main/univ_main', element: <TutorialUnivMainPage /> },
+
+    ]
+  }
 ])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
