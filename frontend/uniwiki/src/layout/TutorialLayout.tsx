@@ -16,41 +16,41 @@ const MENU: MenuNode[] = [
     label: "메뉴 바",
     path: "/tutorial/menu_bar",
     children: [
+      { label: "AI 검색 페이지", path: "/tutorial/menu_bar/ai_search" },
+      { label: "내 정보", path: "/tutorial/menu_bar/my_page" },
+    ],
+  }, 
+  {
+    label: "전체 메인 페이지",
+    path: "/tutorial/main",
+    children: [
       {
-        label: "전체 메인 페이지",
-        path: "/tutorial/menu_bar/main",
+        label: "학교 메인 페이지",
+        path: "/tutorial/main/univ_main",
         children: [
           {
-            label: "학교 메인 페이지",
-            path: "/tutorial/menu_bar/main/univ_main",
+            label: "문서 열람 페이지",
+            path: "/tutorial/main/univ_main/document",
             children: [
               {
-                label: "문서 열람 페이지",
-                path: "/tutorial/menu_bar/main/univ_main/document",
+                label: "토론 페이지",
+                path: "/tutorial/main/univ_main/document/discussion",
                 children: [
                   {
-                    label: "토론 페이지",
-                    path: "/tutorial/menu_bar/main/univ_main/document/discussion",
-                    children: [
-                      {
-                        label: "진행 중인 토론",
-                        path: "/tutorial/menu_bar/main/univ_main/document/discussion/discussion_now",
-                      },
-                    ],
+                    label: "진행 중인 토론",
+                    path: "/tutorial/main/univ_main/document/discussion/discussion_now",
                   },
                 ],
               },
-              {
-                label: "문서 역사 페이지",
-                path: "/tutorial/menu_bar/main/univ_main/document_history",
-              },
             ],
+          },
+          {
+            label: "문서 역사 페이지",
+            path: "/tutorial/main/univ_main/document/history",
           },
         ],
       },
-      { label: "검색 페이지", path: "/tutorial/menu_bar/search" },
-      { label: "내 정보", path: "/tutorial/menu_bar/my_page" },
-    ]
+    ],
   }
 ];
 
@@ -163,7 +163,7 @@ function TreeItem({
 }) {
   const hasChildren = (node.children?.length ?? 0) > 0;
   const expanded = expandedPaths.has(node.path);
-  const paddingLeft = 8 + level * 16;
+  const paddingLeft = level * 8;
   const isSelfActiveNode = activeNodePath === node.path;
 
   return (
@@ -176,7 +176,7 @@ function TreeItem({
           to={node.path}
           className={({ isActive }) =>
             [
-              "block rounded-md py-2 text-sm transition",
+              "block rounded-2xl ps-2 py-2 text-md transition",
               (isActive || isActivePath(node.path))
                 ? "text-uniwikicolor"
                 : "text-gray-700 hover:text-uniwikicolor hover:bg-gray-50",
@@ -190,8 +190,8 @@ function TreeItem({
       {/* 현재 페이지에 해당하는 MenuNode 바로 아래에 목차 표시 */}
       {isSelfActiveNode && toc.length > 0 && (
         <div
-          className="my-2 pl-3 py-2 border rounded-2xl border-gray-200"
-          style={{ marginLeft: paddingLeft }}  
+          className="ps-2 py-1 border-l border-gray-200"
+          style={{ marginLeft: paddingLeft + 20 }}  
         >
           <ul className="space-y-1">
             {toc.map((t) => (
@@ -199,7 +199,7 @@ function TreeItem({
                 <a
                   href={`#${t.id}`}
                   onClick={(e) => onTocClick(e, t.id)}
-                  className="text-sm text-gray-700 hover:text-uniwikicolor hover:underline"
+                  className="block text-sm ps-2 py-1 rounded-2xl text-gray-700 hover:text-uniwikicolor hover:bg-gray-50 hover:underline"
                 >
                   {t.label}
                 </a>

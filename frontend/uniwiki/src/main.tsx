@@ -73,6 +73,12 @@ import TutorialLayout from './layout/TutorialLayout'
 import TutorialMenuBarPage from './pages/tutorial/TutorialMenuBarPage'
 import TutorialMainPage from './pages/tutorial/TutorialMainPage'
 import TutorialUnivMainPage from './pages/tutorial/TutorialUnivMainPage'
+import TutorialDocumentPage from './pages/tutorial/TutorialDocumentPage'
+import TutorialDiscussionPage from './pages/tutorial/TutorialDiscussionPage'
+import TutorialDiscussionNowPage from './pages/tutorial/TutorialDiscussionNowPage'
+import TutorialHistoryPage from './pages/tutorial/TutorialHistoryPage'
+import TutorialAISearchPage from './pages/tutorial/TutorialAISearchPage'
+import TutorialMyPage from './pages/tutorial/TutorialMyPage'
 
 
 const router = createBrowserRouter([
@@ -167,9 +173,14 @@ const router = createBrowserRouter([
     element: <TutorialLayout />,
     children: [
       { path: 'menu_bar', element: <TutorialMenuBarPage /> },
-      { path: 'menu_bar/main', element: <TutorialMainPage /> },
-      { path: 'menu_bar/main/univ_main', element: <TutorialUnivMainPage /> },
-
+      { path: 'main', element: <TutorialMainPage /> },
+      { path: 'main/univ_main', element: <TutorialUnivMainPage /> },
+      { path: 'main/univ_main/document', element: <TutorialDocumentPage /> },
+      { path: 'main/univ_main/document/discussion', element: <TutorialDiscussionPage /> }, 
+      { path: 'main/univ_main/document/discussion/discussion_now', element: <TutorialDiscussionNowPage /> },
+      { path: 'main/univ_main/document/history', element: <TutorialHistoryPage /> },
+      { path: 'menu_bar/ai_search', element: <TutorialAISearchPage /> },
+      { path: 'menu_bar/my_page', element: <TutorialMyPage /> },
     ]
   }
 ])
