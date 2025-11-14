@@ -42,11 +42,11 @@ const MENU: MenuNode[] = [
                   },
                 ],
               },
+              {
+                label: "문서 역사 페이지",
+                path: "/tutorial/main/univ_main/document/history",
+              },
             ],
-          },
-          {
-            label: "문서 역사 페이지",
-            path: "/tutorial/main/univ_main/document/history",
           },
         ],
       },
@@ -66,19 +66,12 @@ export default function TutorialLayout() {
     return normCurrent.startsWith(normTarget + "/");
   }, []);
 
-  const expandedPaths = useMemo(() => {
-    const result = new Set<string>();
-    const visit = (node: MenuNode, parents: string[]) => {
-      if (isActivePath(location.pathname, node.path)) {
-        parents.forEach(p => result.add(p));
-        result.add(node.path);
-      }
-      node.children?.forEach(child => visit(child, [...parents, node.path]));
-    };
+  const expandedPaths = new Set<string>(); 
 
-    MENU.forEach(n => visit(n, []));
-    return result;
-  }, [location.pathname, isActivePath]);
+  MENU.forEach(function expandAll(node) {
+    expandedPaths.add(node.path);
+    node.children?.forEach(expandAll);
+  });
 
   // 현재 경로와 가장 잘 맞는(가장 깊은) MenuNode의 path
   const activeNodePath = useMemo(() => {
@@ -163,7 +156,7 @@ function TreeItem({
 }) {
   const hasChildren = (node.children?.length ?? 0) > 0;
   const expanded = expandedPaths.has(node.path);
-  const paddingLeft = level * 8;
+  const paddingLeft = level * 12;
   const isSelfActiveNode = activeNodePath === node.path;
 
   return (
@@ -174,9 +167,12 @@ function TreeItem({
       >
         <NavLink
           to={node.path}
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: "auto"});
+          }}
           className={({ isActive }) =>
             [
-              "block rounded-2xl ps-2 py-2 text-md transition",
+              "block rounded-2xl ps-2 py-1 text-md transition",
               (isActive || isActivePath(node.path))
                 ? "text-uniwikicolor"
                 : "text-gray-700 hover:text-uniwikicolor hover:bg-gray-50",
@@ -209,7 +205,7 @@ function TreeItem({
         </div>
       )}
 
-      {hasChildren && expanded && (
+      {hasChildren && (
         <ul className="mt-1 space-y-1">
           {node.children!.map((child) => (
             <TreeItem
