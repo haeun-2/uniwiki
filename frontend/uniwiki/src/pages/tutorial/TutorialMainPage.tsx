@@ -1,8 +1,6 @@
-// src/pages/tutorial/TutorialMainPage.tsx
 import React, { useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 
-// 실제 경로로 조정
 import fullImg from "/tutorial/02_main/full.png";
 import popularImg from "/tutorial/02_main/popular_univ.png";
 import univAllImg from "/tutorial/02_main/univ_all.png";

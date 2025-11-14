@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 
-// 실제 경로로 조정
 import univMainImg from "/tutorial/03_univ_main/univ_main.png";
 import univInfoImg from "/tutorial/03_univ_main/univ_info.png";
 import categoryImg from "/tutorial/03_univ_main/category.png";
