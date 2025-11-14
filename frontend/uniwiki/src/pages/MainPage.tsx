@@ -680,7 +680,7 @@ export default function MainPage() {
             </div>
           </Link>
           <Link
-            to="/tutorial/menu_bar"
+            to="/tutorial"
             className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
           >
             <div className="min-w-0">

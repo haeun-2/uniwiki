@@ -79,6 +79,7 @@ import TutorialDiscussionNowPage from './pages/tutorial/TutorialDiscussionNowPag
 import TutorialHistoryPage from './pages/tutorial/TutorialHistoryPage'
 import TutorialAISearchPage from './pages/tutorial/TutorialAISearchPage'
 import TutorialMyPage from './pages/tutorial/TutorialMyPage'
+import TutorialPage from './pages/tutorial/TutorialPage'
 
 
 const router = createBrowserRouter([
@@ -172,6 +173,8 @@ const router = createBrowserRouter([
     path: '/tutorial',
     element: <TutorialLayout />,
     children: [
+      { index: true, element: <TutorialPage /> },
+
       { path: 'menu_bar', element: <TutorialMenuBarPage /> },
       { path: 'main', element: <TutorialMainPage /> },
       { path: 'main/univ_main', element: <TutorialUnivMainPage /> },

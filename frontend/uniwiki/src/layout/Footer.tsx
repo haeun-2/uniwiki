@@ -18,7 +18,7 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="" className="hover:underline" onClick={scrollToTop}>
+              <Link to="/tutorial" className="hover:underline" onClick={scrollToTop}>
                 기능 설명
               </Link>
             </li>
