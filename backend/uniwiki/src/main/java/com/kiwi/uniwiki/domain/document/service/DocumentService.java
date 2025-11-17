@@ -50,9 +50,9 @@ public class DocumentService {
     public String createDocument(DocumentCreateRequestDTO request, User user) {
 
         // 대학 확인
-        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), request.getUniversityId())) {
-            throw new CustomException(ErrorCode.DOCUMENT_ACCESS_DENIED);
-        }
+//        if (!user.getIsUniversityVerified() || !Objects.equals(user.getUniversity().getId(), request.getUniversityId())) {
+//            throw new CustomException(ErrorCode.DOCUMENT_ACCESS_DENIED);
+//        }
 
         // 제목 중복 검사
         if (documentRepository.existsByTitle(request.getDocumentTitle())) {

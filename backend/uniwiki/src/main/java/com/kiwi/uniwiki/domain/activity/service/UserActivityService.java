@@ -78,6 +78,7 @@ public class UserActivityService {
 
                     return new UserActivityResponseDTO.UserDocumentActivityResponse(
                             document.getId(),
+                            documentVersion.getVersionNumber(),
                             document.getTitle(),
                             document.getUniversity().getName(),
                             documentVersion.getEditMemo(),

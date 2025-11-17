@@ -24,6 +24,7 @@ public class UserActivityResponseDTO {
     @NoArgsConstructor
     public static class UserDocumentActivityResponse {
         private Integer documentId;
+        private Integer documentVersionNumber;
         private String documentName;
         private String universityName;
         private String editMemo;
