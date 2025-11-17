@@ -128,13 +128,15 @@ export default function RecentEdit({ univName: propUnivName }: Props) {
         {recentEdits.slice(0, 10).map((item, idx) => (
           <li key={idx}>
             <Link
-              to={`/univ/${encodeURIComponent(effectiveUnivName)}/docs/${encodeURIComponent(
-                item.documentTitle
-              )}`}
-              className="group truncate flex justify-between"
+              to={`/univ/${encodeURIComponent(effectiveUnivName)}/docs/${encodeURIComponent(item.documentTitle)}`}
+              className="group truncate flex justify-between items-center"
               title={item.documentTitle}
             >
-              <span className="group-hover:underline">{item.documentTitle}</span>
+              <span className="group-hover:underline">
+                {item.documentTitle.length > 16
+                  ? item.documentTitle.slice(0, 16) + "…"
+                  : item.documentTitle}
+              </span>
               <span className="text-xs text-gray-400">{timeAgo(item.updatedAt)}</span>
             </Link>
           </li>

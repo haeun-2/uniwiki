@@ -100,15 +100,24 @@ export default function RecentDiscuss({ univName: propUnivName }: Props) {
 
       {loading && <p className="text-xs text-gray-500">로딩 중…</p>}
 
-      <ul className="space-y-2 text-sm text-gray-700">
-        {items.slice(0, 10).map((d) => (
+      <ul className="space-y-3 text-sm text-gray-700">
+        {items.slice(0, 5).map((d) => (
           <li key={d.discussionId} className="flex flex-col">
             <Link
-              className="truncate flex justify-between hover:underline"
+              className="truncate hover:underline"
               to={`/univ/${encodeURIComponent(effectiveUnivName)}/docs/${encodeURIComponent(d.documentTitle)}/discussions/${d.discussionId}`}
+              title={d.discussionTitle}
             >
-              <span>{d.discussionTitle}</span>
-              <span className="text-xs text-gray-400">{d.documentTitle}</span>
+              <p className="group-hover:underline">
+                {d.discussionTitle.length > 19
+                  ? d.discussionTitle.slice(0, 19) + "…"
+                  : d.discussionTitle}
+              </p>
+              <p className="text-xs text-gray-400">
+                {d.documentTitle.length > 22
+                  ? d.documentTitle.slice(0, 22) + "…"
+                  : d.documentTitle}
+              </p>
             </Link>
           </li>
         ))}
