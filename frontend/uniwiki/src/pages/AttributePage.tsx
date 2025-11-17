@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
-import { authHeaders, clearAuthStorage, getAccessToken } from "@/utils/auth";
 
 interface Contribution {
   documentId: number;
@@ -25,12 +24,6 @@ interface PaginationResponse {
   content: Contribution[];
 }
 
-// 버전 정보 추가
-interface ContributionWithVersion extends Contribution {
-  versionNumber?: number;
-  realDocumentId?: number; // 실제 문서 ID (API에서 조회한 것)
-}
-
 const FLASH_AUTO_MS = 1800;
 const REDIRECT_AFTER_MS = FLASH_AUTO_MS + 50;
 const API_BASE = "https://k13d104.p.ssafy.io/api";
@@ -40,9 +33,7 @@ export default function AttributePage() {
 
   // ── Flash
   const [flash, setFlash] = useState("");
-  const [flashType, setFlashType] = useState<"success" | "error" | "info">(
-    "info"
-  );
+  const [flashType, setFlashType] = useState<"success" | "error" | "info">("info");
   const flashTimerRef = useRef<number | null>(null);
   const redirectTimerRef = useRef<number | null>(null);
 
@@ -88,9 +79,7 @@ export default function AttributePage() {
     }
   };
 
-  const [contributions, setContributions] = useState<ContributionWithVersion[]>(
-    []
-  );
+  const [contributions, setContributions] = useState<Contribution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [pagination, setPagination] = useState({
@@ -102,82 +91,27 @@ export default function AttributePage() {
     hasNext: false,
   });
 
+  // 버전 정보 캐시 (documentName → { docId, versionNumber })
+  const [versionCache, setVersionCache] = useState<Record<string, { docId: number; versionNumber: number }>>({});
+
   const enc = (s: string) => encodeURIComponent(s || "");
 
-  // 인증 체크: 토큰 없으면 로그인으로
+  // 인증 체크
   const ensureAuthed = () => {
-    const token = getAccessToken();
-    if (!token) {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
       scheduleRedirectToLogin("로그인이 필요한 페이지입니다.");
       return null;
     }
-    return token;
+    return accessToken;
   };
 
-  // 문서 정보 조회 (실제 documentId와 최신 versionNumber 획득)
-  const fetchDocumentInfo = async (
-    documentName: string
-  ): Promise<{ docId: number; latestVersion: number } | null> => {
-    try {
-      // 1. 문서 기본 정보 조회
-      const docRes = await fetch(
-        `${API_BASE}/v1/documents/${encodeURIComponent(documentName)}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...authHeaders(),
-          },
-        }
-      );
-
-      if (docRes.status === 401) {
-        clearAuthStorage();
-        scheduleRedirectToLogin(
-          "로그인이 만료되었습니다. 다시 로그인해주세요."
-        );
-        return null;
-      }
-
-      if (!docRes.ok) return null;
-
-      const docData = await docRes.json();
-      const docId = docData.documentId;
-
-      // 2. 버전 목록 조회 (최신 버전 1개만)
-      const versionRes = await fetch(
-        `${API_BASE}/v1/documents/${docId}/versions?page=0&size=1`,
-        {
-          headers: {
-            ...authHeaders(),
-          },
-        }
-      );
-
-      if (versionRes.status === 401) {
-        clearAuthStorage();
-        scheduleRedirectToLogin(
-          "로그인이 만료되었습니다. 다시 로그인해주세요."
-        );
-        return null;
-      }
-
-      if (!versionRes.ok) return null;
-
-      const versionData = await versionRes.json();
-
-      if (versionData.content && versionData.content.length > 0) {
-        const latestVersion = versionData.content[0].versionNumber;
-        return { docId, latestVersion };
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Failed to fetch document info:", error);
-      return null;
-    }
+  const authHeaders = () => {
+    const token = ensureAuthed();
+    return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // 목록 조회
+  // 목록 조회 (버전 정보는 조회하지 않음 - 빠른 로딩!)
   const fetchContributions = async (page: number) => {
     const accessToken = ensureAuthed();
     if (!accessToken) return;
@@ -189,7 +123,7 @@ export default function AttributePage() {
         {
           method: "GET",
           headers: {
-            ...authHeaders(),
+            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
           },
         }
@@ -197,21 +131,7 @@ export default function AttributePage() {
 
       if (response.ok) {
         const data: PaginationResponse = await response.json();
-
-        // 각 contribution에 대해 버전 정보 추가
-        const contributionsWithVersions: ContributionWithVersion[] =
-          await Promise.all(
-            (data.content || []).map(async (contribution) => {
-              const info = await fetchDocumentInfo(contribution.documentName);
-              return {
-                ...contribution,
-                versionNumber: info?.latestVersion,
-                realDocumentId: info?.docId,
-              };
-            })
-          );
-
-        setContributions(contributionsWithVersions);
+        setContributions(data.content || []);
         setPagination({
           page: data.page,
           size: data.size,
@@ -221,11 +141,8 @@ export default function AttributePage() {
           hasNext: data.hasNext,
         });
       } else if (response.status === 401) {
-        // ✅ 토큰 만료/무효: 스토리지 싹 제거 후 로그인으로
-        clearAuthStorage();
-        scheduleRedirectToLogin(
-          "로그인이 만료되었습니다. 다시 로그인해주세요."
-        );
+        localStorage.removeItem("accessToken");
+        scheduleRedirectToLogin("로그인이 만료되었습니다. 다시 로그인해주세요.");
       } else {
         console.error("기여 문서 목록을 불러오는데 실패했습니다.");
         showFlash("목록을 불러오지 못했습니다.", "error");
@@ -235,6 +152,89 @@ export default function AttributePage() {
       showFlash("서버와의 연결에 실패했습니다.", "error");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 문서 정보 조회 (비교 버튼 클릭 시에만 호출)
+  const fetchDocumentInfo = async (documentName: string): Promise<{ docId: number; latestVersion: number } | null> => {
+    // 캐시에 있으면 반환
+    if (versionCache[documentName]) {
+      return {
+        docId: versionCache[documentName].docId,
+        latestVersion: versionCache[documentName].versionNumber,
+      };
+    }
+
+    try {
+      // 1. 문서 기본 정보 조회
+      const docRes = await fetch(
+        `${API_BASE}/v1/documents/${encodeURIComponent(documentName)}`,
+        { headers: { "Content-Type": "application/json", ...authHeaders() } }
+      );
+      if (!docRes.ok) return null;
+      const docData = await docRes.json();
+      const docId = docData.documentId;
+
+      // 2. 버전 목록 조회 (최신 버전 1개만)
+      const versionRes = await fetch(
+        `${API_BASE}/v1/documents/${docId}/versions?page=0&size=1`,
+        { headers: { ...authHeaders() } }
+      );
+      if (!versionRes.ok) return null;
+      const versionData = await versionRes.json();
+      
+      if (versionData.content && versionData.content.length > 0) {
+        const latestVersion = versionData.content[0].versionNumber;
+        
+        // 캐시에 저장
+        setVersionCache(prev => ({
+          ...prev,
+          [documentName]: { docId, versionNumber: latestVersion }
+        }));
+        
+        return { docId, latestVersion };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch document info:', error);
+      return null;
+    }
+  };
+
+  // 비교 버튼 클릭 핸들러
+  const handleCompareClick = async (
+    e: React.MouseEvent,
+    contribution: Contribution,
+    univ: string,
+    doc: string
+  ) => {
+    e.preventDefault();
+
+    // 이미 캐시에 있으면 바로 이동
+    const cached = versionCache[contribution.documentName];
+    if (cached) {
+      if (cached.versionNumber > 1) {
+        navigate(`/univ/${univ}/docs/${doc}/versions/${cached.versionNumber}/diff?docId=${cached.docId}`);
+      } else {
+        // r1인 경우 - 사실 이 케이스는 발생하면 안 되지만 안전장치
+        navigate(`/univ/${univ}/docs/${doc}/history`);
+      }
+      return;
+    }
+
+    // 캐시에 없으면 조회 후 이동
+    const info = await fetchDocumentInfo(contribution.documentName);
+    if (info) {
+      if (info.latestVersion > 1) {
+        navigate(`/univ/${univ}/docs/${doc}/versions/${info.latestVersion}/diff?docId=${info.docId}`);
+      } else {
+        // r1인 경우 역사 페이지로
+        navigate(`/univ/${univ}/docs/${doc}/history`);
+      }
+    } else {
+      // 정보 조회 실패 시 역사 페이지로
+      navigate(`/univ/${univ}/docs/${doc}/history`);
     }
   };
 
@@ -282,7 +282,7 @@ export default function AttributePage() {
               </span>
               <button
                 onClick={closeFlash}
-                className="text-white hover:text-gray-200 transition-colors flex-shrink-0 cursor-pointer"
+                className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
                 aria-label="닫기"
               >
                 <X className="h-5 w-5" />
@@ -312,7 +312,7 @@ export default function AttributePage() {
             </span>
             <button
               onClick={closeFlash}
-              className="text-white hover:text-gray-200 transition-colors flex-shrink-0 cursor-pointer"
+              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
               aria-label="닫기"
             >
               <X className="h-5 w-5" />
@@ -334,14 +334,14 @@ export default function AttributePage() {
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={!pagination.hasPre}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               &lt; 이전
             </button>
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={!pagination.hasNext}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               다음 &gt;
             </button>
@@ -359,13 +359,9 @@ export default function AttributePage() {
             const univ = enc(contribution.universityName);
             const doc = enc(contribution.documentName);
 
-            // 비교 링크: versionNumber가 2 이상이고 realDocumentId가 있으면 비교 페이지로, 아니면 역사 페이지로
-            const compareLink =
-              contribution.versionNumber &&
-              contribution.versionNumber > 1 &&
-              contribution.realDocumentId
-                ? `/univ/${univ}/docs/${doc}/versions/${contribution.versionNumber}/diff?docId=${contribution.realDocumentId}`
-                : `/univ/${univ}/docs/${doc}/history`;
+            // 캐시에서 버전 정보 가져오기
+            const cached = versionCache[contribution.documentName];
+            const isVersion1 = cached?.versionNumber === 1;
 
             return (
               <div
@@ -423,21 +419,25 @@ export default function AttributePage() {
                       토론
                     </Link>
                     <span>|</span>
-                    <Link
-                      to={compareLink}
-                      className="hover:underline"
-                      title={
-                        contribution.versionNumber &&
-                        contribution.versionNumber > 1 &&
-                        contribution.realDocumentId
-                          ? `r${contribution.versionNumber} 버전과 이전 버전 비교`
-                          : contribution.versionNumber === 1
-                          ? "첫 번째 버전은 비교할 수 없습니다"
-                          : "역사 페이지에서 버전을 선택하여 비교할 수 있습니다"
-                      }
-                    >
-                      비교
-                    </Link>
+                    
+                    {/* r1인 경우 비활성화, 아니면 클릭 가능 */}
+                    {isVersion1 ? (
+                      <span
+                        className="text-gray-400 cursor-not-allowed"
+                        title="첫 번째 버전은 비교할 수 없습니다"
+                      >
+                        비교
+                      </span>
+                    ) : (
+                      <a
+                        href="#"
+                        onClick={(e) => handleCompareClick(e, contribution, univ, doc)}
+                        className="hover:underline cursor-pointer"
+                        title="이 버전을 직전 버전과 비교"
+                      >
+                        비교
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
@@ -457,14 +457,14 @@ export default function AttributePage() {
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={!pagination.hasPre}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               &lt; 이전
             </button>
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={!pagination.hasNext}
-              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               다음 &gt;
             </button>
