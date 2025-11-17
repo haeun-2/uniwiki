@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
+import { getAccessToken, authHeaders } from "@/utils/auth";
 
 /** 문서 즐겨찾기 */
 interface DocumentFavorite {
@@ -23,6 +24,7 @@ type ViewMode = "documents" | "universities";
 
 const FLASH_AUTO_MS = 1800;
 const REDIRECT_AFTER_MS = FLASH_AUTO_MS + 50;
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 
 export default function FavoritePage() {
   const location = useLocation() as { state?: { tab?: ViewMode } };
@@ -91,7 +93,7 @@ export default function FavoritePage() {
 
   // 공통: 인증 체크 (플래시 → 자동 이동)
   const ensureAuthed = () => {
-    const accessToken = localStorage.getItem("accessToken");
+    const accessToken = getAccessToken();
     if (!accessToken) {
       scheduleRedirectToLogin("로그인이 필요한 페이지입니다.");
       return null;
@@ -119,13 +121,13 @@ export default function FavoritePage() {
     setDocLoading(true);
     try {
       const resp = await fetch(
-        "https://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents",
+        `${API_BASE}/v1/users/me/favorites/documents`,
         {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
+          headers: authHeaders({
             Accept: "application/json",
-          },
+          }),
+          credentials: "include",
         }
       );
 
@@ -154,13 +156,13 @@ export default function FavoritePage() {
     setUnivLoading(true);
     try {
       const resp = await fetch(
-        "https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities",
+        `${API_BASE}/v1/users/me/favorites/universities`,
         {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
+          headers: authHeaders({
             Accept: "application/json",
-          },
+          }),
+          credentials: "include",
         }
       );
 
@@ -204,14 +206,17 @@ export default function FavoritePage() {
 
     try {
       const resp = await fetch(
-        `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/documents/${documentId}`,
+        `${API_BASE}/v1/users/me/favorites/documents/${documentId}`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders({
+            Accept: "*/*",
+          }),
+          credentials: "include",
         }
       );
 
-      if (resp.ok) {
+      if (resp.ok || resp.status === 204) {
         setDocFavs((list) => list.filter((f) => f.documentId !== documentId));
         showFlash("즐겨찾기가 삭제되었습니다.", "success");
       } else if (resp.status === 401) {
@@ -235,10 +240,13 @@ export default function FavoritePage() {
 
     try {
       const resp = await fetch(
-        `https://k13d104.p.ssafy.io/api/v1/users/me/favorites/universities/${universityId}`,
+        `${API_BASE}/v1/users/me/favorites/universities/${universityId}`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders({
+            Accept: "*/*",
+          }),
+          credentials: "include",
         }
       );
 

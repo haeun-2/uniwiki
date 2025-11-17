@@ -2,9 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
+import { getAccessToken, clearAuthStorage, authHeaders } from "@/utils/auth";
 
 const API_BASE = "https://k13d104.p.ssafy.io/api";
-const FLASH_AUTO_MS = 1800;          // 플래시 표시 시간(끝나면 이동)
+const FLASH_AUTO_MS = 1800; // 플래시 표시 시간
 const REDIRECT_AFTER_MS = FLASH_AUTO_MS + 50; // 플래시가 사라진 직후로 살짝 여유
 
 interface DiscussionRow {
@@ -42,14 +43,12 @@ export default function DiscussionHistoryPage() {
     setFlash(msg);
     setFlashType(type);
     if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
-    // 자동 닫기
     flashTimerRef.current = window.setTimeout(() => setFlash(""), autoMs);
   };
 
   const scheduleRedirectToLogin = (msg: string) => {
     showFlash(msg, "error", FLASH_AUTO_MS);
     if (redirectTimerRef.current) window.clearTimeout(redirectTimerRef.current);
-    // 플래시가 사라진 직후 로그인으로 이동
     redirectTimerRef.current = window.setTimeout(() => {
       navigate("/login", { replace: true });
     }, REDIRECT_AFTER_MS);
@@ -69,9 +68,12 @@ export default function DiscussionHistoryPage() {
 
   const getFlashStyle = () => {
     switch (flashType) {
-      case "success": return "bg-green-500/80 border-green-600/40";
-      case "error":   return "bg-red-500/80 border-red-600/40";
-      default:        return "bg-blue-500/80 border-blue-600/40";
+      case "success":
+        return "bg-green-500/80 border-green-600/40";
+      case "error":
+        return "bg-red-500/80 border-red-600/40";
+      default:
+        return "bg-blue-500/80 border-blue-600/40";
     }
   };
 
@@ -111,11 +113,10 @@ export default function DiscussionHistoryPage() {
   // 문서 상세로부터 universityName 필요시 조회
   const fetchUnivNameIfNeeded = async (title: string): Promise<string | null> => {
     try {
-      const token = localStorage.getItem("accessToken") || "";
       const res = await fetch(`${API_BASE}/v1/documents/${enc(title)}`, {
         headers: {
           Accept: "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...authHeaders(),
         },
       });
       if (!res.ok) return null;
@@ -137,18 +138,24 @@ export default function DiscussionHistoryPage() {
     }
 
     if (!univName) {
-      showFlash("해당 문서의 대학교 정보를 찾지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
+      showFlash(
+        "해당 문서의 대학교 정보를 찾지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "error"
+      );
       return;
     }
 
-    navigate(`/univ/${enc(univName)}/docs/${enc(docTitle)}/discussions/${row.discussionId}`);
+    navigate(
+      `/univ/${enc(univName)}/docs/${enc(docTitle)}/discussions/${row.discussionId}`
+    );
   };
 
   // API 호출
   const fetchDiscussions = async (page: number) => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (!token) {
-      // ✅ 토큰 없으면: 플래시 → 자동 이동
+      // 토큰 없음: 스토리지 정리 후 로그인으로
+      clearAuthStorage();
       scheduleRedirectToLogin("로그인이 필요한 페이지입니다.");
       return;
     }
@@ -160,8 +167,8 @@ export default function DiscussionHistoryPage() {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`,
             Accept: "application/json",
+            ...authHeaders(),
           },
         }
       );
@@ -178,8 +185,8 @@ export default function DiscussionHistoryPage() {
           hasNext: data.hasNext,
         });
       } else if (resp.status === 401) {
-        // ✅ 만료: 토큰 제거 후 플래시 → 자동 이동
-        localStorage.removeItem("accessToken");
+        // 만료: 스토리지 싹 정리 후 로그인으로
+        clearAuthStorage();
         scheduleRedirectToLogin("로그인이 만료되었습니다. 다시 로그인해주세요.");
       } else {
         showFlash("목록을 불러오지 못했습니다.", "error");
@@ -206,9 +213,17 @@ export default function DiscussionHistoryPage() {
         {/* Flash */}
         {flash && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
-            <div className={`${getFlashStyle()} min-w-[320px] max-w-md rounded-xl border px-6 py-4 shadow-lg backdrop-blur-[2px] flex items-center justify-between gap-4`}>
-              <span className="text-white font-medium text-base flex-1">{flash}</span>
-              <button onClick={closeFlash} className="text-white hover:text-gray-200 transition-colors flex-shrink-0" aria-label="닫기">
+            <div
+              className={`${getFlashStyle()} min-w-[320px] max-w-md rounded-xl border px-6 py-4 shadow-lg backdrop-blur-[2px] flex items-center justify-between gap-4`}
+            >
+              <span className="text-white font-medium text-base flex-1">
+                {flash}
+              </span>
+              <button
+                onClick={closeFlash}
+                className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+                aria-label="닫기"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -228,9 +243,17 @@ export default function DiscussionHistoryPage() {
       {/* Flash */}
       {flash && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] animate-slideDown">
-          <div className={`${getFlashStyle()} min-w-[320px] max-w-md rounded-xl border px-6 py-4 shadow-lg backdrop-blur-[2px] flex items-center justify-between gap-4`}>
-            <span className="text-white font-medium text-base flex-1">{flash}</span>
-            <button onClick={closeFlash} className="text-white hover:text-gray-200 transition-colors flex-shrink-0" aria-label="닫기">
+          <div
+            className={`${getFlashStyle()} min-w-[320px] max-w-md rounded-xl border px-6 py-4 shadow-lg backdrop-blur-[2px] flex items-center justify-between gap-4`}
+          >
+            <span className="text-white font-medium text-base flex-1">
+              {flash}
+            </span>
+            <button
+              onClick={closeFlash}
+              className="text-white hover:text-gray-200 transition-colors flex-shrink-0"
+              aria-label="닫기"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -239,7 +262,9 @@ export default function DiscussionHistoryPage() {
       <style>{`@keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}.animate-slideDown{animation:slideDown .3s ease-out}`}</style>
 
       <div>
-        <h1 className="mb-8 text-3xl font-semibold text-gray-900">내가 기여한 토론</h1>
+        <h1 className="mb-8 text-3xl font-semibold text-gray-900">
+          내가 기여한 토론
+        </h1>
 
         {pagination.totalPages > 1 && (
           <div className="mb-6 flex items-center gap-2">
@@ -277,18 +302,26 @@ export default function DiscussionHistoryPage() {
                 >
                   • {row.discussionName}
                 </button>
-                <span className="text-sm text-gray-500">{row.documentTitle}</span>
+                <span className="text-sm text-gray-500">
+                  {row.documentTitle}
+                </span>
                 {row.universityName && (
-                  <span className="text-xs text-gray-400">/ {row.universityName}</span>
+                  <span className="text-xs text-gray-400">
+                    / {row.universityName}
+                  </span>
                 )}
               </div>
-              <div className="text-sm text-gray-600">{formatDate(row.updateAt)}</div>
+              <div className="text-sm text-gray-600">
+                {formatDate(row.updateAt)}
+              </div>
             </div>
           ))}
         </div>
 
         {rows.length === 0 && (
-          <div className="py-12 text-center text-gray-500">참여한 토론이 없습니다.</div>
+          <div className="py-12 text-center text-gray-500">
+            참여한 토론이 없습니다.
+          </div>
         )}
 
         {pagination.totalPages > 1 && (

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
+import { authHeaders, clearAuthStorage, getAccessToken } from "@/utils/auth";
 
 interface Contribution {
   documentId: number;
@@ -39,7 +40,9 @@ export default function AttributePage() {
 
   // ── Flash
   const [flash, setFlash] = useState("");
-  const [flashType, setFlashType] = useState<"success" | "error" | "info">("info");
+  const [flashType, setFlashType] = useState<"success" | "error" | "info">(
+    "info"
+  );
   const flashTimerRef = useRef<number | null>(null);
   const redirectTimerRef = useRef<number | null>(null);
 
@@ -85,7 +88,9 @@ export default function AttributePage() {
     }
   };
 
-  const [contributions, setContributions] = useState<ContributionWithVersion[]>([]);
+  const [contributions, setContributions] = useState<ContributionWithVersion[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [pagination, setPagination] = useState({
@@ -99,49 +104,75 @@ export default function AttributePage() {
 
   const enc = (s: string) => encodeURIComponent(s || "");
 
-  // 인증 체크
+  // 인증 체크: 토큰 없으면 로그인으로
   const ensureAuthed = () => {
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
+    const token = getAccessToken();
+    if (!token) {
       scheduleRedirectToLogin("로그인이 필요한 페이지입니다.");
       return null;
     }
-    return accessToken;
-  };
-
-  const authHeaders = () => {
-    const token = ensureAuthed();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return token;
   };
 
   // 문서 정보 조회 (실제 documentId와 최신 versionNumber 획득)
-  const fetchDocumentInfo = async (documentName: string): Promise<{ docId: number; latestVersion: number } | null> => {
+  const fetchDocumentInfo = async (
+    documentName: string
+  ): Promise<{ docId: number; latestVersion: number } | null> => {
     try {
       // 1. 문서 기본 정보 조회
       const docRes = await fetch(
         `${API_BASE}/v1/documents/${encodeURIComponent(documentName)}`,
-        { headers: { "Content-Type": "application/json", ...authHeaders() } }
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders(),
+          },
+        }
       );
+
+      if (docRes.status === 401) {
+        clearAuthStorage();
+        scheduleRedirectToLogin(
+          "로그인이 만료되었습니다. 다시 로그인해주세요."
+        );
+        return null;
+      }
+
       if (!docRes.ok) return null;
+
       const docData = await docRes.json();
       const docId = docData.documentId;
 
       // 2. 버전 목록 조회 (최신 버전 1개만)
       const versionRes = await fetch(
         `${API_BASE}/v1/documents/${docId}/versions?page=0&size=1`,
-        { headers: { ...authHeaders() } }
+        {
+          headers: {
+            ...authHeaders(),
+          },
+        }
       );
+
+      if (versionRes.status === 401) {
+        clearAuthStorage();
+        scheduleRedirectToLogin(
+          "로그인이 만료되었습니다. 다시 로그인해주세요."
+        );
+        return null;
+      }
+
       if (!versionRes.ok) return null;
+
       const versionData = await versionRes.json();
-      
+
       if (versionData.content && versionData.content.length > 0) {
         const latestVersion = versionData.content[0].versionNumber;
         return { docId, latestVersion };
       }
-      
+
       return null;
     } catch (error) {
-      console.error('Failed to fetch document info:', error);
+      console.error("Failed to fetch document info:", error);
       return null;
     }
   };
@@ -158,7 +189,7 @@ export default function AttributePage() {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            ...authHeaders(),
             Accept: "application/json",
           },
         }
@@ -166,18 +197,19 @@ export default function AttributePage() {
 
       if (response.ok) {
         const data: PaginationResponse = await response.json();
-        
+
         // 각 contribution에 대해 버전 정보 추가
-        const contributionsWithVersions: ContributionWithVersion[] = await Promise.all(
-          (data.content || []).map(async (contribution) => {
-            const info = await fetchDocumentInfo(contribution.documentName);
-            return {
-              ...contribution,
-              versionNumber: info?.latestVersion,
-              realDocumentId: info?.docId,
-            };
-          })
-        );
+        const contributionsWithVersions: ContributionWithVersion[] =
+          await Promise.all(
+            (data.content || []).map(async (contribution) => {
+              const info = await fetchDocumentInfo(contribution.documentName);
+              return {
+                ...contribution,
+                versionNumber: info?.latestVersion,
+                realDocumentId: info?.docId,
+              };
+            })
+          );
 
         setContributions(contributionsWithVersions);
         setPagination({
@@ -189,8 +221,11 @@ export default function AttributePage() {
           hasNext: data.hasNext,
         });
       } else if (response.status === 401) {
-        localStorage.removeItem("accessToken");
-        scheduleRedirectToLogin("로그인이 만료되었습니다. 다시 로그인해주세요.");
+        // ✅ 토큰 만료/무효: 스토리지 싹 제거 후 로그인으로
+        clearAuthStorage();
+        scheduleRedirectToLogin(
+          "로그인이 만료되었습니다. 다시 로그인해주세요."
+        );
       } else {
         console.error("기여 문서 목록을 불러오는데 실패했습니다.");
         showFlash("목록을 불러오지 못했습니다.", "error");
@@ -325,9 +360,12 @@ export default function AttributePage() {
             const doc = enc(contribution.documentName);
 
             // 비교 링크: versionNumber가 2 이상이고 realDocumentId가 있으면 비교 페이지로, 아니면 역사 페이지로
-            const compareLink = contribution.versionNumber && contribution.versionNumber > 1 && contribution.realDocumentId
-              ? `/univ/${univ}/docs/${doc}/versions/${contribution.versionNumber}/diff?docId=${contribution.realDocumentId}`
-              : `/univ/${univ}/docs/${doc}/history`;
+            const compareLink =
+              contribution.versionNumber &&
+              contribution.versionNumber > 1 &&
+              contribution.realDocumentId
+                ? `/univ/${univ}/docs/${doc}/versions/${contribution.versionNumber}/diff?docId=${contribution.realDocumentId}`
+                : `/univ/${univ}/docs/${doc}/history`;
 
             return (
               <div
@@ -389,7 +427,9 @@ export default function AttributePage() {
                       to={compareLink}
                       className="hover:underline"
                       title={
-                        contribution.versionNumber && contribution.versionNumber > 1 && contribution.realDocumentId
+                        contribution.versionNumber &&
+                        contribution.versionNumber > 1 &&
+                        contribution.realDocumentId
                           ? `r${contribution.versionNumber} 버전과 이전 버전 비교`
                           : contribution.versionNumber === 1
                           ? "첫 번째 버전은 비교할 수 없습니다"

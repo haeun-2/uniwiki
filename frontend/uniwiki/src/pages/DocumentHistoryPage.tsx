@@ -3,6 +3,8 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronUp, ChevronRight } from "lucide-react";
 
+import { getAccessToken, authHeaders } from "@/utils/auth";
+
 type Revision = {
   id: number;
   delta: number;
@@ -39,15 +41,6 @@ type DocumentDto = {
 };
 
 const API_BASE = "https://k13d104.p.ssafy.io/api";
-
-// ===== 토큰 =====
-function getAccessToken() {
-  try { return localStorage.getItem("accessToken") || ""; } catch { return ""; }
-}
-function authHeaders() {
-  const t = getAccessToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
 
 // 로그인 시 localStorage에 저장된 "사용자 소속 대학 ID" 읽기
 // universityId / myUniversityId / univId 순으로 찾아봄
@@ -322,7 +315,7 @@ export default function DocumentHistoryPage() {
         type="button"
         onClick={() => setPage((p) => Math.min(maxPage, p + 1))}
         disabled={page === maxPage}
-        className="px-5 py-2 text-sm font-semibold text-[#7F7F7F] hover:bg-white/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        className="px-5 py-2 text-sm font-semibold text-[#7F7F7F] hover:bg:white/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         다음 &gt;
       </button>
@@ -539,7 +532,7 @@ export default function DocumentHistoryPage() {
                         </div>
                       </div>
 
-                      {/* 여기 분홍 경고는 ask 모드에서만, 그리고 소속 허용된 경우에만 들어옴 */}
+                      {/* 경고 문구(되돌리기 확인 모드) */}
                       {!isLatest && asking && (
                         <div className="mt-2 rounded-md bg-[#FFE6EE] px-3 py-2 text-[13px] text-[#7A1240] border border-[#F5A3C0]">
                           현재 최신 내용이 <b>r{rev.id}</b> 기준으로 덮어씌워집니다. 실행 후 되돌릴 수 없습니다.

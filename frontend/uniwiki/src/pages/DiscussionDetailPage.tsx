@@ -1,9 +1,12 @@
+// src/pages/DiscussionDetailPage.tsx
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useLocation } from "react-router-dom";
+import { Link, useParams, useLocation, useNavigate } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
 const API_BASE = "https://k13d104.p.ssafy.io/api";
 const FLASH_AUTO_MS = 3200;
+const REDIRECT_AFTER_MS = FLASH_AUTO_MS + 200;
 
 // 로컬 디버깅용(콘솔 로그만): localStorage.setItem('debugSSE','1')
 const DEBUG_SSE = (() => {
@@ -13,6 +16,42 @@ const DEBUG_SSE = (() => {
     return false;
   }
 })();
+
+/* ===== 토큰/스토리지 공통 유틸 (이 파일 내부 전용) ===== */
+const AUTH_KEYS = [
+  "accessToken",
+  "refreshToken",
+  "nickName",
+  "nickname",
+  "userNickname",
+  "username",
+  "name",
+  "role",
+  "universityId",
+  "userId",
+  "userID",
+  "memberId",
+  "id",
+] as const;
+
+const AUTH_OBJ_KEYS = ["user", "profile", "me"] as const;
+
+function clearAuthStorage() {
+  try {
+    AUTH_KEYS.forEach((k) => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
+    AUTH_OBJ_KEYS.forEach((k) => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
+    // 헤더 등 로그인 상태 갱신용 커스텀 이벤트
+    window.dispatchEvent(new Event("uniwiki:auth-changed"));
+  } catch {
+    // ignore
+  }
+}
 
 /* ===== 공통 유틸: 차단 판별 ===== */
 function looksBanned(status: number, text: string) {
@@ -30,7 +69,11 @@ function looksBanned(status: number, text: string) {
 // ===== 토큰/유저 =====
 function getAccessToken() {
   try {
-    return localStorage.getItem("accessToken") || "";
+    return (
+      localStorage.getItem("accessToken") ||
+      sessionStorage.getItem("accessToken") ||
+      ""
+    );
   } catch {
     return "";
   }
@@ -104,6 +147,7 @@ type TalkDetail = {
 export default function DiscussionDetailPage() {
   const { univName = "대학교", documentTitle = "문서 제목", id = "" } = useParams();
   const { search, hash } = useLocation();
+  const navigate = useNavigate();
 
   // UI 상태
   const [loading, setLoading] = useState(true);
@@ -112,6 +156,8 @@ export default function DiscussionDetailPage() {
   // 통일된 플래시(자동 닫힘 + '닫기' 버튼)
   const [flash, setFlash] = useState("");
   const flashTimerRef = useRef<number | null>(null);
+  const redirectTimerRef = useRef<number | null>(null);
+
   const showFlash = (msg: string, ms = FLASH_AUTO_MS) => {
     setFlash(msg);
     if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
@@ -123,9 +169,24 @@ export default function DiscussionDetailPage() {
     if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
     setFlash("");
   };
+
+  const scheduleRedirectToLogin = () => {
+    if (redirectTimerRef.current) window.clearTimeout(redirectTimerRef.current);
+    redirectTimerRef.current = window.setTimeout(() => {
+      navigate("/login", { replace: true });
+    }, REDIRECT_AFTER_MS);
+  };
+
+  const handleAuthExpired = () => {
+    clearAuthStorage();
+    showFlash("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+    scheduleRedirectToLogin();
+  };
+
   useEffect(
     () => () => {
       if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      if (redirectTimerRef.current) window.clearTimeout(redirectTimerRef.current);
     },
     []
   );
@@ -319,9 +380,14 @@ export default function DiscussionDetailPage() {
         credentials: "include",
       });
       const txt = await res.clone().text().catch(() => "");
+
+      if (res.status === 401) {
+        handleAuthExpired();
+        return;
+      }
+
       if (looksBanned(res.status, txt)) {
         showFlash("차단된 사용자입니다.");
-        setLoading(false);
         return;
       }
       if (!res.ok) throw new Error(`상세 조회 실패 (${res.status})`);
@@ -361,6 +427,7 @@ export default function DiscussionDetailPage() {
   };
   useEffect(() => {
     if (id) void loadDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, documentTitle, univName]);
 
   // ===== SSE: 실시간 스트림 (열림 상태에서만) =====
@@ -487,6 +554,7 @@ export default function DiscussionDetailPage() {
     if (status === "open") openStream();
     else closeStream();
     return () => closeStream();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, status]);
 
   // ----- 개설자 == 현재 사용자 ? 종료 버튼 -----
@@ -507,6 +575,12 @@ export default function DiscussionDetailPage() {
         credentials: "include",
       });
       const txt = await res.clone().text().catch(() => "");
+
+      if (res.status === 401) {
+        handleAuthExpired();
+        return;
+      }
+
       if (looksBanned(res.status, txt)) {
         showFlash("차단된 사용자입니다.");
         return;
@@ -552,7 +626,7 @@ export default function DiscussionDetailPage() {
       const txt = await res.clone().text().catch(() => "");
 
       if (res.status === 401) {
-        showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        handleAuthExpired();
         return;
       }
       if (looksBanned(res.status, txt)) {
@@ -645,7 +719,7 @@ export default function DiscussionDetailPage() {
       const txt = await res.clone().text().catch(() => "");
 
       if (res.status === 401) {
-        showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        handleAuthExpired();
         return;
       }
       if (looksBanned(res.status, txt)) {
@@ -727,7 +801,7 @@ export default function DiscussionDetailPage() {
       const txt = await res.clone().text().catch(() => "");
 
       if (res.status === 401) {
-        showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        handleAuthExpired();
         return;
       }
       if (looksBanned(res.status, txt)) {
@@ -909,8 +983,7 @@ export default function DiscussionDetailPage() {
 
                       const bodyStyle = isBlink
                         ? {
-                            animation:
-                              "flashOnce 0.7s ease-in-out 1",
+                            animation: "flashOnce 0.7s ease-in-out 1",
                             backgroundColor: isSystem
                               ? "#FFE8A3"
                               : "#FFEDD5",
@@ -963,10 +1036,7 @@ export default function DiscussionDetailPage() {
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => {
-                              if (
-                                e.key === "Enter" ||
-                                e.key === " "
-                              ) {
+                              if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
                                 openReport(m);
                               }
@@ -1080,9 +1150,7 @@ export default function DiscussionDetailPage() {
                 className="mb-1 h-12 w-full rounded-lg border border-[#B3B3B3] bg-white px-3 outline-none focus:ring-2 focus:ring-[#2C80A0]"
                 placeholder="신고 사유를 입력해주세요."
                 value={reportReason}
-                onChange={(e) =>
-                  setReportReason(e.target.value)
-                }
+                onChange={(e) => setReportReason(e.target.value)}
               />
               {!reportReason.trim() && (
                 <div className="text-sm text-[#E45757]">
@@ -1144,9 +1212,7 @@ export default function DiscussionDetailPage() {
                 className="mb-1 h-12 w-full rounded-lg border border-[#B3B3B3] bg-white px-3 outline-none focus:ring-2 focus:ring-[#2C80A0]"
                 placeholder="신고 사유를 입력해주세요."
                 value={userReportReason}
-                onChange={(e) =>
-                  setUserReportReason(e.target.value)
-                }
+                onChange={(e) => setUserReportReason(e.target.value)}
               />
               {!userReportReason.trim() && (
                 <div className="text-sm text-[#E45757]">

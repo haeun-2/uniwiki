@@ -6,69 +6,10 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 
+import { getAccessToken, authHeaders, fetchWithAuth } from '@/utils/auth';
+
 const API_BASE = 'https://k13d104.p.ssafy.io/api';
 const PRESIGN_API = `${API_BASE}/v1/s3/presigned-urls`;
-const REFRESH_URL = `${API_BASE}/v1/auth/refresh`;
-
-/** ===================== Auth utils ===================== */
-function decodeJwtPayload(token: string): any | null {
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  try {
-    const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-function getAccessToken(): string {
-  try {
-    const t = localStorage.getItem('accessToken');
-    if (!t) return '';
-    const payload = decodeJwtPayload(t);
-    if (payload && typeof payload.exp === 'number') {
-      const now = Math.floor(Date.now() / 1000);
-      if (now >= payload.exp) {
-        localStorage.removeItem('accessToken');
-        return '';
-      }
-    }
-    return t;
-  } catch {
-    return '';
-  }
-}
-function setAccessToken(t: string) { try { localStorage.setItem('accessToken', t); } catch {} }
-function authHeaders(extra: HeadersInit = {}) {
-  const token = getAccessToken();
-  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
-}
-// 401 → refresh 1회 후 재시도
-async function refreshAccessToken(): Promise<string | null> {
-  try {
-    const r = await fetch(REFRESH_URL, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
-    });
-    if (!r.ok) return null;
-    const j = await r.json().catch(() => ({}));
-    const t = j?.accessToken || j?.token;
-    if (!t) return null;
-    setAccessToken(t);
-    return t;
-  } catch {
-    return null;
-  }
-}
-async function fetchWithAuth(input: RequestInfo, init: RequestInit = {}) {
-  const first = await fetch(input, { ...init, headers: authHeaders(init.headers || {}) });
-  if (first.status !== 401) return first;
-  const newTok = await refreshAccessToken();
-  if (!newTok) return first;
-  return fetch(input, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${newTok}` } });
-}
-/** ===================================================== */
 
 /** ===================== 차단 유틸(공통) ===================== */
 function looksBanned(status: number, bodyText: string): boolean {
@@ -76,7 +17,7 @@ function looksBanned(status: number, bodyText: string): boolean {
   try {
     const j = JSON.parse(bodyText || '{}');
     const code = String(j?.code || j?.error || '').toUpperCase();
-    const msg  = String(j?.message || '');
+    const msg = String(j?.message || '');
     if (code.includes('USER_BANNED')) return true;
     if (/차단/i.test(msg)) return true;
   } catch {}
@@ -87,8 +28,18 @@ function looksBanned(status: number, bodyText: string): boolean {
 /** ===================== 레일 토글 도우미 ===================== */
 // 접힘 상태 저장 키(생성/편집 공유)
 const RAIL_KEY = 'uniwiki.railCollapsed';
-const loadRailCollapsed = () => { try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; } };
-const saveRailCollapsed = (v: boolean) => { try { localStorage.setItem(RAIL_KEY, v ? '1' : '0'); } catch {} };
+const loadRailCollapsed = () => {
+  try {
+    return localStorage.getItem(RAIL_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+const saveRailCollapsed = (v: boolean) => {
+  try {
+    localStorage.setItem(RAIL_KEY, v ? '1' : '0');
+  } catch {}
+};
 
 type Snap = { grid?: string; content?: string; aside?: string };
 let SNAPSHOT: Snap = {};
@@ -100,7 +51,7 @@ function removeKnownGridClasses(el: HTMLElement) {
   el.classList.remove(...GRID_OLD);
   el.classList.remove(GRID_NEW);
   // 혹시 다른 실험값이 있었다면 대비
-  el.classList.forEach(c => {
+  el.classList.forEach((c) => {
     if (c.startsWith('lg:[grid-template-columns')) el.classList.remove(c);
   });
 }
@@ -128,7 +79,7 @@ function collapseLayout() {
   removeKnownGridClasses(grid);
   grid.classList.add('lg:grid-cols-1');
 
-  content.classList.remove('lg:col-span-2','lg:col-span-8','lg:col-span-9','lg:col-span-10');
+  content.classList.remove('lg:col-span-2', 'lg:col-span-8', 'lg:col-span-9', 'lg:col-span-10');
 
   if (aside) aside.classList.add('hidden');
 }
@@ -259,8 +210,13 @@ export default function DocumentEditPage() {
   }, [value, summary, categoryId]);
 
   const canSave =
-    agree && isDirty && !busy && !saving &&
-    docId !== null && baseVersionNumber !== null && categoryId !== null;
+    agree &&
+    isDirty &&
+    !busy &&
+    !saving &&
+    docId !== null &&
+    baseVersionNumber !== null &&
+    categoryId !== null;
 
   // ===== 차단 사용자 접근 차단: 마운트 즉시 검사 → 뷰로 리다이렉트 + 플래시 =====
   const safeViewHref = `/univ/${enc(universityName || '대학교')}/docs/${enc(documentTitle)}`;
@@ -293,7 +249,7 @@ export default function DocumentEditPage() {
         // 네트워크 오류 시에는 이후 API에서 다시 걸러짐
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Ctrl/Cmd + S → 저장
@@ -389,13 +345,14 @@ export default function DocumentEditPage() {
       }
     })();
     return () => controller.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentTitle]);
 
   /* ---------- 레일 토글 적용/복원 ---------- */
   useEffect(() => {
     takeSnapshotOnce();
-    if (railCollapsed) collapseLayout(); else restoreLayout();
+    if (railCollapsed) collapseLayout();
+    else restoreLayout();
     return () => {
       restoreLayout();
       SNAPSHOT = {};
@@ -413,7 +370,10 @@ export default function DocumentEditPage() {
     if (images.length === 0) return;
 
     const big = images.find(overLimit);
-    if (big) { alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`); return; }
+    if (big) {
+      alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`);
+      return;
+    }
 
     try {
       setBusy(true);
@@ -456,7 +416,10 @@ export default function DocumentEditPage() {
       input.onchange = async () => {
         const file = input.files?.[0];
         if (!isImage(file)) return;
-        if (file && overLimit(file)) { alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`); return; }
+        if (file && overLimit(file)) {
+          alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`);
+          return;
+        }
         try {
           setBusy(true);
           const url = await uploadToS3ViaPresign(file!);
@@ -566,7 +529,10 @@ export default function DocumentEditPage() {
           <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
             <ol className="flex items-center gap-1">
               <li>
-                <Link to={`/univ/${enc(universityName || '대학교')}`} className="text-[#2C80A0] hover:underline">
+                <Link
+                  to={`/univ/${enc(universityName || '대학교')}`}
+                  className="text-[#2C80A0] hover:underline"
+                >
                   {universityName || '대학교'}
                 </Link>
               </li>

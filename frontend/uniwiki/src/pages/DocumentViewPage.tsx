@@ -7,6 +7,8 @@ import MDEditor from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
+import { getAccessToken, authHeaders } from '@/utils/auth';
+
 type DocumentDto = {
   universityId: number;
   universityName: string;
@@ -29,37 +31,6 @@ type TocItem = {
 };
 
 const API_BASE = 'https://k13d104.p.ssafy.io/api';
-
-/** ===== Auth utils ===== */
-function decodeJwtPayload(token: string): any | null {
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  try {
-    const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-function getAccessToken() {
-  try {
-    const t = localStorage.getItem('accessToken') || '';
-    if (!t) return '';
-    const p = decodeJwtPayload(t);
-    if (p?.exp && Math.floor(Date.now() / 1000) >= p.exp) {
-      localStorage.removeItem('accessToken');
-      return '';
-    }
-    return t;
-  } catch {
-    return '';
-  }
-}
-function authHeaders(extra: HeadersInit = {}) {
-  const token = getAccessToken();
-  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
-}
-/** ====================== */
 
 /** 로컬에 저장된 내 대학 ID 읽기(키 다양성 허용) */
 function getStoredUniId(): number | null {
@@ -482,8 +453,11 @@ export default function DocumentViewPage() {
                     aria-pressed={favOn}
                     title={favOn ? '즐겨찾기 해제' : '즐겨찾기 추가'}
                     className={`h-9 px-2 text-md leading-tight flex items-center justify-center
-                      ${favOn ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg-white/60'}
-                      ${favBusy ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+                      ${favOn ? 'bg-[#2C80A0] text-white' : 'text-[#7F7F7F] hover:bg:white/60'}
+                      ${favBusy ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`.replace(
+                      'hover:bg:white/60',
+                      'hover:bg-white/60',
+                    )}
                   >
                     ★
                   </button>

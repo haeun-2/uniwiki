@@ -3,16 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 
+import { authHeaders } from "@/utils/auth";
+
 const API_BASE = "https://k13d104.p.ssafy.io/api";
 
 /* ===== 공통 유틸 ===== */
-function getAccessToken() {
-  try { return localStorage.getItem("accessToken") || ""; } catch { return ""; }
-}
-function authHeaders() {
-  const t = getAccessToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
 function getViewerIdFromStorage(): string | null {
   try {
     const directKeys = ["userId", "userID", "memberId", "id"];
@@ -116,7 +111,9 @@ function formatYmdHmKST(iso?: string) {
     hour12: false,
   }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value || "";
-  return `${get("year")}.${get("month")}.${get("day")} ${get("hour")}:${get("minute")}`;
+  return `${get("year")}.${get("month")}.${get("day")} ${get("hour")}:${get(
+    "minute"
+  )}`;
 }
 
 export default function DocumentDiffPage() {
@@ -176,10 +173,15 @@ export default function DocumentDiffPage() {
         const dto: DocumentDto = await r.json();
         if (!cancelled) setMeta(dto);
       } catch (e: any) {
-        if (!cancelled) { setStatus("error"); setErrorMsg(e?.message || "문서 정보를 불러올 수 없습니다."); }
+        if (!cancelled) {
+          setStatus("error");
+          setErrorMsg(e?.message || "문서 정보를 불러올 수 없습니다.");
+        }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [documentTitle]);
 
   // diff 조회
@@ -234,12 +236,22 @@ export default function DocumentDiffPage() {
           }
         });
 
-        if (!cancelled) { setRows(tmp); setStatus("ok"); }
+        if (!cancelled) {
+          setRows(tmp);
+          setStatus("ok");
+        }
       } catch (e: any) {
-        if (!cancelled) { setStatus("error"); setErrorMsg(e?.message || "diff를 불러오는 중 오류가 발생했습니다."); }
+        if (!cancelled) {
+          setStatus("error");
+          setErrorMsg(
+            e?.message || "diff를 불러오는 중 오류가 발생했습니다."
+          );
+        }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [meta?.documentId, versionId]);
 
   /* === 신고 모달 로직 === */
@@ -271,12 +283,21 @@ export default function DocumentDiffPage() {
     try {
       const res = await fetch(`${API_BASE}/v1/reports/users`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "*/*", ...authHeaders() },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "*/*",
+          ...authHeaders(),
+        },
         credentials: "include",
         body: JSON.stringify({ targetId: currEditorId, reason }),
       });
 
       const txt = await res.clone().text().catch(() => "");
+
+      if (res.status === 401) {
+        showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
+        return;
+      }
 
       if (looksBanned(res.status, txt)) {
         setUserReportOpen(false);
@@ -322,7 +343,8 @@ export default function DocumentDiffPage() {
   const categoryName = meta?.categoryName || "카테고리";
   const univId = meta?.universityId;
   const enc = (s: string) => encodeURIComponent(s || "");
-  const countLines = (s?: string) => (s == null ? 0 : Math.max(1, s.split("\n").length));
+  const countLines = (s?: string) =>
+    s == null ? 0 : Math.max(1, s.split("\n").length);
 
   const univHref = `/univ/${enc(univName)}`;
   const catePathBase = `/univ/${enc(univName)}/category/${enc(categoryName)}`;
@@ -365,7 +387,11 @@ export default function DocumentDiffPage() {
           <li>
             <Link
               to={cateHref}
-              state={typeof univId === "number" && Number.isFinite(univId) ? { universityId: univId } : undefined}
+              state={
+                typeof univId === "number" && Number.isFinite(univId)
+                  ? { universityId: univId }
+                  : undefined
+              }
               className="text-[#2C80A0] hover:underline"
             >
               {categoryName}
@@ -431,34 +457,56 @@ export default function DocumentDiffPage() {
           </div>
           <div className="px-4 py-3 text-sm text-gray-800">
             비교 대상 버전 : r{Number.isFinite(prevVersion) ? prevVersion : "—"}
-            {prevCreatedAt && <span className="ml-2 text-gray-500">({formatYmdHmKST(prevCreatedAt)})</span>}
+            {prevCreatedAt && (
+              <span className="ml-2 text-gray-500">
+                ({formatYmdHmKST(prevCreatedAt)})
+              </span>
+            )}
           </div>
           <div className="px-4 py-3 text-sm text-gray-800 border-l border-[#B3B3B3]">
             비교 선택 버전 : r{versionId}
-            {currCreatedAt && <span className="ml-2 text-gray-500">({formatYmdHmKST(currCreatedAt)})</span>}
+            {currCreatedAt && (
+              <span className="ml-2 text-gray-500">
+                ({formatYmdHmKST(currCreatedAt)})
+              </span>
+            )}
           </div>
         </div>
 
         {/* 행들 */}
         <div>
           {rows.length === 0 && (
-            <div className="px-4 py-6 text-sm text-gray-500">변경 사항이 없습니다.</div>
+            <div className="px-4 py-6 text-sm text-gray-500">
+              변경 사항이 없습니다.
+            </div>
           )}
           {rows.map((r, idx) => {
-            const L = r.left, R = r.right;
-            const lineForIndex = (L?.lineNumber ?? R?.lineNumber ?? undefined);
-            const countLines = (s?: string) => (s == null ? 0 : Math.max(1, s.split("\n").length));
-            const delta = (R ? countLines(R.content) : 0) - (L ? countLines(L.content) : 0);
+            const L = r.left,
+              R = r.right;
+            const lineForIndex =
+              L?.lineNumber ?? R?.lineNumber ?? undefined;
+            const delta =
+              (R ? countLines(R.content) : 0) -
+              (L ? countLines(L.content) : 0);
             return (
-              <div key={idx} className="grid grid-cols-[84px_1fr_1fr] border-b border-[#B3B3B3] last:border-b-0">
+              <div
+                key={idx}
+                className="grid grid-cols-[84px_1fr_1fr] border-b border-[#B3B3B3] last:border-b-0"
+              >
                 {/* 라인번호 */}
                 <div className="px-3 py-3 border-r border-[#B3B3B3] flex items-start justify-center">
                   <div className="text-center leading-5">
                     <div className="text-base font-normal text-gray-900">
-                      {typeof lineForIndex === "number" ? lineForIndex : "—"}
+                      {typeof lineForIndex === "number"
+                        ? lineForIndex
+                        : "—"}
                     </div>
                     {delta !== 0 && (
-                      <div className={`text-sm ${delta > 0 ? "text-sky-600" : "text-rose-600"}`}>
+                      <div
+                        className={`text-sm ${
+                          delta > 0 ? "text-sky-600" : "text-rose-600"
+                        }`}
+                      >
                         {delta > 0 ? `+${delta}` : `${delta}`}
                       </div>
                     )}
@@ -469,22 +517,36 @@ export default function DocumentDiffPage() {
                 <div className="px-4 py-3">
                   {L ? (
                     <div className="text-[13px] leading-6 text-gray-900 whitespace-pre-wrap break-words">
-                      <span className="rounded-sm px-1" style={{ backgroundColor: "#FCEEEB" }}>
+                      <span
+                        className="rounded-sm px-1"
+                        style={{ backgroundColor: "#FCEEEB" }}
+                      >
                         {L.content || "(빈 줄)"}
                       </span>
                     </div>
-                  ) : (<div className="text-[12px] text-gray-300 italic">—</div>)}
+                  ) : (
+                    <div className="text-[12px] text-gray-300 italic">
+                      —
+                    </div>
+                  )}
                 </div>
 
                 {/* RIGHT */}
                 <div className="px-4 py-3 border-l border-[#B3B3B3]">
                   {R ? (
                     <div className="text-[13px] leading-6 text-gray-900 whitespace-pre-wrap break-words">
-                      <span className="rounded-sm px-1" style={{ backgroundColor: "#D8EEFD" }}>
+                      <span
+                        className="rounded-sm px-1"
+                        style={{ backgroundColor: "#D8EEFD" }}
+                      >
                         {R.content || "(빈 줄)"}
                       </span>
                     </div>
-                  ) : (<div className="text-[12px] text-gray-300 italic">—</div>)}
+                  ) : (
+                    <div className="text-[12px] text-gray-300 italic">
+                      —
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -514,7 +576,9 @@ export default function DocumentDiffPage() {
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
               <div className="mb-4 flex items-start justify-between">
-                <h3 className="text-[22px] font-semibold">사용자 신고하기</h3>
+                <h3 className="text-[22px] font-semibold">
+                  사용자 신고하기
+                </h3>
                 <button
                   onClick={closeUserReport}
                   aria-label="닫기"
@@ -525,7 +589,9 @@ export default function DocumentDiffPage() {
               </div>
 
               <div className="mb-3 rounded-lg border border-[#E5E5E5] bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                <div className="font-medium">대상: {currEditor ?? "알 수 없음"}</div>
+                <div className="font-medium">
+                  대상: {currEditor ?? "알 수 없음"}
+                </div>
                 {!currEditorId && (
                   <div className="mt-1 text-[#E45757]">
                     이 사용자의 ID를 알 수 없어 신고 제출이 불가능합니다.
@@ -540,7 +606,9 @@ export default function DocumentDiffPage() {
                 onChange={(e) => setUserReportReason(e.target.value)}
               />
               {!userReportReason.trim() && (
-                <div className="text-sm text-[#E45757]">신고 사유를 입력해주세요.</div>
+                <div className="text-sm text-[#E45757]">
+                  신고 사유를 입력해주세요.
+                </div>
               )}
 
               <div className="mt-5 flex justify-end gap-2">
@@ -552,7 +620,11 @@ export default function DocumentDiffPage() {
                 </button>
                 <button
                   onClick={submitUserReport}
-                  disabled={!userReportReason.trim() || userReportPosting || !currEditorId}
+                  disabled={
+                    !userReportReason.trim() ||
+                    userReportPosting ||
+                    !currEditorId
+                  }
                   className="h-10 min-w-[80px] rounded-xl bg-[#E45757] px-4 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {userReportPosting ? "전송 중…" : "신고"}

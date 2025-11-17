@@ -1,76 +1,19 @@
 // src/pages/DocumentCreatePage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
-import MDEditor, { ICommand, TextAreaTextApi, TextState } from "@uiw/react-md-editor";
+import MDEditor, {
+  ICommand,
+  TextAreaTextApi,
+  TextState,
+} from "@uiw/react-md-editor";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
 
+import { getAccessToken, authHeaders, clearAuthStorage } from "@/utils/auth";
+
 const API_BASE = "https://k13d104.p.ssafy.io/api";
 const PRESIGN_API = `${API_BASE}/v1/s3/presigned-urls`;
-const REFRESH_URL = `${API_BASE}/v1/auth/refresh`;
-
-/* ===================== Auth & Storage utils ===================== */
-function decodeJwtPayload(token: string): any | null {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-function getAccessToken(): string {
-  try {
-    const t = localStorage.getItem("accessToken");
-    if (!t) return "";
-    const payload = decodeJwtPayload(t);
-    if (payload && typeof payload.exp === "number") {
-      const now = Math.floor(Date.now() / 1000);
-      if (now >= payload.exp) {
-        localStorage.removeItem("accessToken");
-        return "";
-      }
-    }
-    return t;
-  } catch {
-    return "";
-  }
-}
-function setAccessToken(t: string) {
-  try {
-    localStorage.setItem("accessToken", t);
-  } catch {}
-}
-function authHeaders(extra: HeadersInit = {}) {
-  const token = getAccessToken();
-  return token ? { ...extra, Authorization: `Bearer ${token}` } : extra;
-}
-async function refreshAccessToken(): Promise<string | null> {
-  try {
-    const r = await fetch(REFRESH_URL, {
-      method: "POST",
-      credentials: "include",
-      headers: { Accept: "application/json" },
-    });
-    if (!r.ok) return null;
-    const j = await r.json().catch(() => ({}));
-    const t = j?.accessToken || j?.token;
-    if (!t) return null;
-    setAccessToken(t);
-    return t;
-  } catch {
-    return null;
-  }
-}
-async function fetchWithAuth(input: RequestInfo, init: RequestInit = {}) {
-  const first = await fetch(input, { ...init, headers: authHeaders(init.headers || {}) });
-  if (first.status !== 401) return first;
-  const newTok = await refreshAccessToken();
-  if (!newTok) return first;
-  return fetch(input, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${newTok}` } });
-}
 
 /** 차단 판별(403 + 메시지 코드/문구) */
 function looksBanned(status: number, text: string) {
@@ -106,7 +49,8 @@ function getUniversityIdFromStorage(): number | null {
           o?.universityId ??
           o?.univId ??
           o?.schoolId ??
-          (o?.user && (o.user.universityId ?? o.user.univId ?? o.user.schoolId));
+          (o?.user &&
+            (o.user.universityId ?? o.user.univId ?? o.user.schoolId));
         const n = Number(cand);
         if (Number.isFinite(n) && n > 0) return n;
       } catch {}
@@ -145,13 +89,21 @@ const CATEGORY_OPTIONS = [
 ] as const;
 
 /* ---------- S3 Presign 발급/업로드 ---------- */
-async function getPresignedUrl(setFlash?: (s: string) => void): Promise<string> {
-  const r = await fetchWithAuth(PRESIGN_API, {
+async function getPresignedUrl(
+  setFlash?: (s: string) => void
+): Promise<string> {
+  const r = await fetch(PRESIGN_API, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: authHeaders({ Accept: "application/json" }),
     credentials: "include",
   });
-  if (r.status === 401) throw Object.assign(new Error("E401"), { code: 401 });
+
+  if (r.status === 401) {
+    // 토큰 만료: 스토리지 정리 후 호출부에서 로그인 이동
+    clearAuthStorage();
+    throw Object.assign(new Error("E401"), { code: 401 });
+  }
+
   if (r.status === 403) {
     const msg = await r.text().catch(() => "");
     if (looksBanned(403, msg)) {
@@ -160,21 +112,42 @@ async function getPresignedUrl(setFlash?: (s: string) => void): Promise<string> 
     }
     throw Object.assign(new Error(`E403:${msg || ""}`), { code: 403 });
   }
-  if (!r.ok) throw new Error((await r.text().catch(() => "")) || "presigned URL 발급 실패");
+
+  if (!r.ok) {
+    throw new Error(
+      (await r.text().catch(() => "")) || "presigned URL 발급 실패"
+    );
+  }
+
   const j = await r.json();
   if (!j?.presignedUrl) throw new Error("presignedUrl 없음");
   return j.presignedUrl as string;
 }
-async function uploadToS3ViaPresign(file: File, setFlash?: (s: string) => void): Promise<string> {
+
+async function uploadToS3ViaPresign(
+  file: File,
+  setFlash?: (s: string) => void
+): Promise<string> {
   const presignedUrl = await getPresignedUrl(setFlash);
   const fileUrl = presignedUrl.split("?")[0];
+
   let put = await fetch(presignedUrl, {
     method: "PUT",
     headers: { "Content-Type": file.type || "application/octet-stream" },
     body: file,
   });
-  if (!put.ok) put = await fetch(presignedUrl, { method: "PUT", body: file });
-  if (!put.ok) throw new Error((await put.text().catch(() => "")) || "S3 업로드 실패");
+  if (!put.ok) {
+    // 일부 S3 설정은 Content-Type 헤더 없이만 허용하므로 폴백
+    put = await fetch(presignedUrl, {
+      method: "PUT",
+      body: file,
+    });
+  }
+  if (!put.ok) {
+    throw new Error(
+      (await put.text().catch(() => "")) || "S3 업로드 실패"
+    );
+  }
   return fileUrl;
 }
 
@@ -183,7 +156,9 @@ type Snap = { grid?: string; content?: string; aside?: string };
 let SNAPSHOT: Snap = {};
 
 function getLayoutEls() {
-  const grid = document.querySelector("main .grid") as HTMLElement | null;
+  const grid = document.querySelector(
+    "main .grid"
+  ) as HTMLElement | null;
   const content = grid?.children?.[0] as HTMLElement | null;
   const aside = grid?.querySelector("aside") as HTMLElement | null;
   return { grid, content, aside };
@@ -216,7 +191,9 @@ function restoreLayout() {
     if (SNAPSHOT.aside) aside.className = SNAPSHOT.aside;
     else {
       aside.classList.remove("hidden");
-      if (!aside.classList.contains("lg:block")) aside.classList.add("lg:block");
+      if (!aside.classList.contains("lg:block")) {
+        aside.classList.add("lg:block");
+      }
     }
   }
 }
@@ -252,7 +229,8 @@ export default function DocumentCreatePage() {
   const [agree, setAgree] = useState<boolean>(false);
 
   // 이 페이지 전용: 레일 접힘 상태
-  const [railCollapsed, setRailCollapsed] = useState<boolean>(loadRailCollapsed());
+  const [railCollapsed, setRailCollapsed] =
+    useState<boolean>(loadRailCollapsed());
 
   // mount/unmount 레이아웃 스냅샷
   useEffect(() => {
@@ -296,25 +274,43 @@ export default function DocumentCreatePage() {
     if (images.length === 0) return;
     const big = images.find(overLimit);
     if (big) {
-      alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`);
+      alert(
+        `이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`
+      );
       return;
     }
     try {
       setBusy(true);
-      const urls = await Promise.all(images.map((f) => uploadToS3ViaPresign(f, setFlash)));
-      const md = urls.map((u, i) => `![image${i + 1}](${u})`).join("\n");
-      setContent((prev) => (appendAtEnd ? `${prev.trimEnd()}\n\n${md}\n` : `${md}\n${prev}`));
+      const urls = await Promise.all(
+        images.map((f) => uploadToS3ViaPresign(f, setFlash))
+      );
+      const md = urls
+        .map((u, i) => `![image${i + 1}](${u})`)
+        .join("\n");
+      setContent((prev) =>
+        appendAtEnd
+          ? `${prev.trimEnd()}\n\n${md}\n`
+          : `${md}\n${prev}`
+      );
     } catch (e: any) {
       const msg = String(e?.message || "");
       if (msg === "E401") {
-        navigate("/login", { replace: true, state: { from: location.pathname } });
+        // presign 401 → 스토리지 이미 정리된 상태, 로그인으로 보냄
+        navigate("/login", {
+          replace: true,
+          state: { from: location.pathname },
+        });
         return;
       }
       if (msg.startsWith("E403_BANNED")) {
+        // 차단 메시지는 getPresignedUrl에서 플래시 처리
         return;
       }
       if (msg.startsWith("E403")) {
-        alert(msg.replace(/^E403:/, "") || "이미지 업로드 권한이 없습니다.");
+        alert(
+          msg.replace(/^E403:/, "") ||
+            "이미지 업로드 권한이 없습니다."
+        );
         return;
       }
       alert(e?.message || "이미지 업로드 실패");
@@ -336,22 +332,32 @@ export default function DocumentCreatePage() {
         const file = input.files?.[0];
         if (!isImage(file)) return;
         if (file && overLimit(file)) {
-          alert(`이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`);
+          alert(
+            `이미지 용량이 큽니다. 최대 ${MAX_IMAGE_MB}MB까지 허용됩니다.`
+          );
           return;
         }
         try {
           setBusy(true);
           const url = await uploadToS3ViaPresign(file!, setFlash);
-          api.replaceSelection(`![${file!.name}](${url} "${file!.name}")`);
+          api.replaceSelection(
+            `![${file!.name}](${url} "${file!.name}")`
+          );
         } catch (e: any) {
           const msg = String(e?.message || "");
           if (msg === "E401") {
-            navigate("/login", { replace: true, state: { from: location.pathname } });
+            navigate("/login", {
+              replace: true,
+              state: { from: location.pathname },
+            });
             return;
           }
           if (msg.startsWith("E403_BANNED")) return;
           if (msg.startsWith("E403")) {
-            alert(msg.replace(/^E403:/, "") || "이미지 업로드 권한이 없습니다.");
+            alert(
+              msg.replace(/^E403:/, "") ||
+                "이미지 업로드 권한이 없습니다."
+            );
             return;
           }
           alert(e?.message || "이미지 업로드 실패");
@@ -379,8 +385,13 @@ export default function DocumentCreatePage() {
 
     const token = getAccessToken();
     if (!token) {
+      // 토큰 없음 → 스토리지 정리 후 로그인
+      clearAuthStorage();
       setFlash("세션이 만료되었습니다. 다시 로그인해 주세요.");
-      navigate("/login", { replace: true, state: { from: location.pathname } });
+      navigate("/login", {
+        replace: true,
+        state: { from: location.pathname },
+      });
       return;
     }
 
@@ -394,19 +405,23 @@ export default function DocumentCreatePage() {
         documentContent: content ?? "",
       };
 
-      const res = await fetchWithAuth(`${API_BASE}/v1/documents`, {
+      const res = await fetch(`${API_BASE}/v1/documents`, {
         method: "POST",
-        headers: {
+        headers: authHeaders({
           "Content-Type": "application/json",
           Accept: "application/json, text/plain, */*",
-        },
+        }),
         credentials: "include",
         body: JSON.stringify(body),
       });
 
       if (res.status === 401) {
+        clearAuthStorage();
         setFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
-        navigate("/login", { replace: true, state: { from: location.pathname } });
+        navigate("/login", {
+          replace: true,
+          state: { from: location.pathname },
+        });
         return;
       }
 
@@ -427,7 +442,9 @@ export default function DocumentCreatePage() {
       }
 
       navigate(`/univ/${enc(univName)}/docs/${enc(title)}`, {
-        state: { flash: { type: "success", msg: "문서가 생성되었습니다." } },
+        state: {
+          flash: { type: "success", msg: "문서가 생성되었습니다." },
+        },
         replace: false,
       });
     } catch (e: any) {
@@ -445,10 +462,16 @@ export default function DocumentCreatePage() {
       <div className="mx-auto w-full max-w-6xl px-4 pt-3">
         <div className="flex items-center justify-between">
           {/* 브레드크럼 */}
-          <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
+          <nav
+            className="mb-2 text-[18px] leading-tight"
+            aria-label="Breadcrumb"
+          >
             <ol className="flex items-center gap-1">
               <li>
-                <Link to={`/univ/${enc(univName)}`} className="text-[#2C80A0] hover:underline">
+                <Link
+                  to={`/univ/${enc(univName)}`}
+                  className="text-[#2C80A0] hover:underline"
+                >
                   {decodeURIComponent(univName)}
                 </Link>
               </li>
@@ -508,7 +531,11 @@ export default function DocumentCreatePage() {
         </div>
 
         {(busy || saving) && (
-          <div className="mt-2 text-sm text-gray-600" role="status" aria-live="polite">
+          <div
+            className="mt-2 text-sm text-gray-600"
+            role="status"
+            aria-live="polite"
+          >
             {busy ? "이미지 업로드 중…" : "저장 중…"}
           </div>
         )}
@@ -530,10 +557,19 @@ export default function DocumentCreatePage() {
                 "마크다운 작성. 이미지 파일을 붙여넣기/드래그앤드롭하거나 IMG 버튼으로 업로드하세요.",
               onPaste: async (e) => {
                 const items = Array.from(e.clipboardData?.items || []);
-                const file = items.find((i) => i.kind === "file")?.getAsFile();
+                const file =
+                  items.find((i) => i.kind === "file")?.getAsFile() ||
+                  null;
                 if (isImage(file)) {
                   e.preventDefault();
-                  await handleFiles({ 0: file!, length: 1, item: () => file! } as any, true);
+                  await handleFiles(
+                    {
+                      0: file!,
+                      length: 1,
+                      item: () => file!,
+                    } as any,
+                    true
+                  );
                 }
               },
               onDrop: async (e) => {
@@ -551,7 +587,10 @@ export default function DocumentCreatePage() {
           <p className="mb-2 text-gray-900 font-medium">카테고리</p>
           <div className="flex flex-wrap gap-x-10 gap-y-2 text-[15px]">
             {CATEGORY_OPTIONS.map((opt) => (
-              <label key={opt.id} className="inline-flex items-center gap-2">
+              <label
+                key={opt.id}
+                className="inline-flex items-center gap-2"
+              >
                 <input
                   type="radio"
                   name="doc-category"
@@ -573,8 +612,10 @@ export default function DocumentCreatePage() {
             className="mt-1"
           />
           <span className="text-[14px] leading-relaxed text-gray-700">
-            문서 편집을 저장하면 당신은 기여한 내용을 CC-BY-NC-SA 2.0 KR로 배포하고 기여한 문서에 대한
-            라이선스 이용(저작자 표시, 비영리, 동일조건변경허락)에 동의하는 것입니다. 이 동의는 철회할 수 없습니다.
+            문서 편집을 저장하면 당신은 기여한 내용을 CC-BY-NC-SA 2.0 KR로
+            배포하고 기여한 문서에 대한 라이선스 이용(저작자 표시, 비영리,
+            동일조건변경허락)에 동의하는 것입니다. 이 동의는 철회할 수
+            없습니다.
           </span>
         </label>
 
