@@ -32,10 +32,40 @@ export function getAccessToken(): string {
   }
 }
 
-// Authorization 헤더 생성
-export function authHeaders(): Record<string, string> {
-  const t = getAccessToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
+/**
+ * Authorization 헤더 생성 + 추가 헤더 병합
+ * - extra가 있으면 여기에 Authorization을 얹어서 반환
+ */
+export function authHeaders(extra?: HeadersInit): HeadersInit {
+  const token = getAccessToken();
+  const base: Record<string, string> = {};
+
+  if (token) {
+    base["Authorization"] = `Bearer ${token}`;
+  }
+
+  if (!extra) {
+    return base;
+  }
+
+  // Headers 객체인 경우
+  if (extra instanceof Headers) {
+    extra.forEach((v, k) => {
+      base[k] = v as string;
+    });
+    return base;
+  }
+
+  // [key, value][] 배열인 경우
+  if (Array.isArray(extra)) {
+    for (const [k, v] of extra) {
+      base[k] = v as string;
+    }
+    return base;
+  }
+
+  // 일반 객체인 경우
+  return { ...base, ...(extra as Record<string, string>) };
 }
 
 // 토큰/유저 정보 읽기 (필요하면 사용)
@@ -82,4 +112,21 @@ export function clearAuthStorage() {
   } catch {
     // ignore
   }
+}
+
+/**
+ * 공용 fetch 도우미
+ * - Authorization 헤더 자동 부착
+ * - init.headers와 병합
+ */
+export async function fetchWithAuth(
+  input: RequestInfo | URL,
+  init: RequestInit = {}
+): Promise<Response> {
+  const mergedHeaders = authHeaders(init.headers as HeadersInit | undefined);
+
+  return fetch(input, {
+    ...init,
+    headers: mergedHeaders,
+  });
 }
