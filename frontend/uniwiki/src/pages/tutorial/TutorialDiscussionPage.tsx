@@ -24,13 +24,22 @@ export default function TutorialDiscussionPage() {
     <main className="mx-auto max-w-6xl">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">토론 페이지 기능 설명</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          문서에 연결된 토론을 관리하는 페이지입니다. 상단 토론 목록 영역과 하단 새 토론 생성 폼으로
-          구성됩니다.
-        </p>
       </header>
 
       <section className="space-y-8">
+        <article className="space-y-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-2">
+            <p className="text-sm text-gray-700">
+              문서에 연결된 토론을 관리하는 페이지입니다. 상단 토론 목록 영역과 하단 새 토론 생성 폼으로
+              구성됩니다.
+            </p>
+            <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+              <li>해당 문서에 어떤 토론이 진행 중인지 표시</li>
+              <li>토론 제목과 내용으로 토론을 시작하는 기능</li>
+            </ul>
+          </div>
+        </article>
+
         {/* 개요 */}
         <Article id="overview" title="개요">
           <Figure src={fullImg} alt="토론 페이지 전체 화면" tall />
@@ -42,10 +51,6 @@ export default function TutorialDiscussionPage() {
               상단의 문서 정보 및 토론 목록 카드, 하단의 새 토론 생성 카드, 우측의 최근 수정된 문서 및
               최근 토론 사이드 카드로 구성됩니다.
             </Li>
-            <Li title="라우팅 예시">
-              <code>/univ/:universityName/docs/:documentTitle/discussions</code> 와 같이 문서 경로 뒤에
-              <code>/discussions</code> 를 붙이는 형태로 매핑됩니다.
-            </Li>
           </Ul>
         </Article>
 
@@ -53,19 +58,16 @@ export default function TutorialDiscussionPage() {
         <Article id="list-header" title="토론 목록 및 상단 헤더">
           <Figure src={discussionTopImg} alt="토론 상단 헤더 및 목록" />
           <Ul className="mt-4">
-            <Li title="브레드크럼과 문서 제목">
-              상단에는 &quot;경북대학교 &gt; 학교&quot;와 같은 경로와 문서 제목이 표시되어, 어떤 문서의
+            <Li title="문서 제목">
+              상단에는 문서 카테고리와 문서 제목이 표시되어, 어떤 문서의
               토론인지 명확하게 보여줍니다.
             </Li>
-            <Li title="토론 탭 표시">
-              제목 아래에 &quot;토론&quot; 라벨을 추가해 현재 탭이 토론임을 강조합니다.
-            </Li>
-            <Li title="문서로 버튼">
+            <Li title="'문서로' 버튼">
               우측 상단 &quot;문서로&quot; 버튼을 클릭하면 해당 문서 열람 페이지로 돌아갑니다.
             </Li>
             <Li title="토론 목록">
               번호가 붙은 리스트 형태로 토론 제목을 나열합니다. 각 항목을 클릭하면 토론 상세 페이지로
-              이동하거나 해당 토론의 댓글 목록을 확인할 수 있습니다.
+              이동합니다.
             </Li>
           </Ul>
         </Article>
@@ -74,20 +76,18 @@ export default function TutorialDiscussionPage() {
         <Article id="new-discussion" title="새 토론 생성 폼">
           <Figure src={discussionBottomImg} alt="새 토론 생성 폼" />
           <Ul className="mt-4">
-            <Li title="주제 입력">
-              상단 입력창에 토론의 제목을 입력합니다. 예: &quot;경북대학교 문서 수정 건의&quot;.
+            <Li title="주제">
+              상단 입력창에 토론의 제목을 입력항여 토론을 발제할 수 있습니다.
             </Li>
-            <Li title="내용 입력">
+            <Li title="댓글">
               아래 큰 텍스트 영역에 토론을 시작할 내용을 작성합니다. 문서에서 어떤 점이 문제인지, 어떤
               변경을 제안하는지 구체적으로 적습니다.
             </Li>
-            <Li title="안내 문구">
-              &quot;내용 수정 및 삭제가 불가능합니다&quot; 와 같은 안내를 통해, 한 번 등록된 토론 본문은
-              수정이 제한된다는 점을 명시합니다.
+            <Li title="수정 제한">
+              한 번 등록된 토론 댓글은 수정이 제한됩니다.
             </Li>
             <Li title="생성 버튼">
               하단 우측의 &quot;생성&quot; 버튼을 클릭하면 새 토론이 생성되며, 상단 토론 목록에 추가됩니다.
-              이때 문서와 사용자 정보, 생성 시각 등이 함께 저장됩니다.
             </Li>
           </Ul>
         </Article>
@@ -140,7 +140,7 @@ function Ul({
 function Li({ title, children }: React.PropsWithChildren<{ title: string }>) {
   return (
     <li className="text-sm leading-6">
-      <span className="font-medium text-gray-900">{title}. </span>
+      <span className="font-medium text-gray-900">{title}: </span>
       <span className="text-gray-700">{children}</span>
     </li>
   );

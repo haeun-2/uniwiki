@@ -206,6 +206,13 @@ function createWikiLinkPlugin(univName: string) {
             type: 'link',
             url: href,
             title: null,
+            data: {
+              hProperties: {
+                style: "color: #2C80A0; text-decoration: none;",
+                target: '_blank',
+                rel: 'noopener noreferrer',
+              },
+            },
             children: [{ type: 'text', value: title }],
           });
 
@@ -330,7 +337,7 @@ export default function DocumentEditPage() {
       ...defaultSchema,
       attributes: {
         ...(defaultSchema as any).attributes,
-        a: [...(((defaultSchema as any).attributes?.a) || []), 'target', 'rel'],
+        a: [...(((defaultSchema as any).attributes?.a) || []), 'target', 'rel', 'style'],
         img: ['src', 'alt', 'title'],
       },
     }),

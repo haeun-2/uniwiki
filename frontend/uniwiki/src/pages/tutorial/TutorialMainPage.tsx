@@ -33,6 +33,19 @@ export default function TutorialMainPage() {
       </header>
 
       <section className="space-y-8">
+        <article className="space-y-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-2">
+            <p className="text-sm text-gray-700">
+              메인 페이지에서 노출되는 주요 블록(인기 많은 학교, 내 학교, 즐겨찾기, 학교별 위키 탐색)을 설명합니다.
+            </p>
+            <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+              <li>인기 많은 학교 소개 블록</li>
+              <li>내 학교 · 즐겨찾기 블록 </li>
+              <li>학교 별 위키 탐색 블록</li>
+            </ul>
+          </div>
+        </article>
+
         {/* 개요 */}
         <Article id="overview" title="개요">
           <Figure src={fullImg} alt="메인 페이지 전체 화면" />
@@ -45,9 +58,6 @@ export default function TutorialMainPage() {
               상단의 인기 많은 학교, 가운데의 내 학교 · 즐겨찾기 블록, 하단의 학교별 위키 탐색 영역으로
               구성됩니다.
             </Li>
-            <Li title="반응형">
-              화면 너비에 따라 카드 수나 열 개수가 줄어드는 방식으로 배치가 조정됩니다.
-            </Li>
           </Ul>
         </Article>
 
@@ -56,16 +66,13 @@ export default function TutorialMainPage() {
           <Figure src={popularImg} alt="인기 많은 학교 영역" />
           <Ul className="mt-4">
             <Li title="위치">
-              메인 페이지 상단에 카드 형태로 나열되어, 가장 먼저 눈에 들어오는 진입 영역입니다.
+              메인 페이지 상단에 카드 형태로 나열됩니다.
             </Li>
             <Li title="기준">
-              조회수, 문서 활동량 등 인기 지표를 기반으로 상위 몇 개 학교를 노출합니다.
+              즐겨찾기를 기반으로 상위 6개 학교를 노출합니다.
             </Li>
             <Li title="동작">
-              각 카드를 클릭하면 해당 학교 메인 페이지로 이동합니다. 예: <code>/univ/:universityName</code>
-            </Li>
-            <Li title="스타일">
-              학교 로고와 학교명이 들어간 라운드 카드이며, 호버 시 약한 그림자/배경 강조가 들어갑니다.
+              각 카드를 클릭하면 해당 학교 메인 페이지로 이동합니다.
             </Li>
           </Ul>
         </Article>
@@ -75,19 +82,15 @@ export default function TutorialMainPage() {
           <Figure src={personalImg} alt="내 학교 및 즐겨찾기 영역" />
           <Ul className="mt-4">
             <Li title="내 학교">
-              사용자 프로필에 저장된 대표 학교가 카드로 노출됩니다. 클릭 시 해당 학교 메인으로 이동합니다.
+              학교 이메일로 회원가입 및 로그인한 사용자에게 해당 학교 카드가 노출됩니다. 클릭 시 해당 학교 메인으로 이동합니다.
             </Li>
             <Li title="즐겨찾기한 학교">
-              사용자가 즐겨찾기한 학교 목록 중 일부를 노출합니다. 즐겨찾기한 학교가 없으면 안내 문구를
-              보여줍니다.
+              사용자가 즐겨찾기한 학교 목록 중 일부를 노출합니다. “더보기” 클릭 시
+              즐겨찾기한 학교 페이지로 이동합니다.
             </Li>
             <Li title="즐겨찾기 문서">
-              우측에는 사용자가 즐겨찾기한 문서 목록과 최근 수정 시각이 노출됩니다. “더보기” 클릭 시
-              즐겨찾기 문서 전용 페이지로 이동합니다.
-            </Li>
-            <Li title="상태 처리">
-              로그인하지 않은 경우나 즐겨찾기가 비어 있는 경우에는 각 구역별로 “아직 즐겨찾기가 없어요”
-              와 같은 안내 문구를 노출하여 빈 상태를 명확히 보여줍니다.
+              우측에는 사용자가 즐겨찾기한 문서 목록이 노출됩니다. “더보기” 클릭 시
+              즐겨찾기한 문서 페이지로 이동합니다.
             </Li>
           </Ul>
         </Article>
@@ -104,11 +107,7 @@ export default function TutorialMainPage() {
               있습니다.
             </Li>
             <Li title="동작">
-              학교명을 클릭하면 해당 학교 메인 페이지로 이동합니다. 예: <code>/univ/:universityName</code>
-            </Li>
-            <Li title="성능">
-              학교 목록은 캐시를 사용해 불필요한 재요청을 줄이며, 필터 변경 시 캐시된 데이터를 우선
-              사용합니다.
+              학교명을 클릭하면 해당 학교 메인 페이지로 이동합니다.
             </Li>
           </Ul>
         </Article>
@@ -161,7 +160,7 @@ function Ul({
 function Li({ title, children }: React.PropsWithChildren<{ title: string }>) {
   return (
     <li className="text-sm leading-6">
-      <span className="font-medium text-gray-900">{title}. </span>
+      <span className="font-medium text-gray-900">{title}: </span>
       <span className="text-gray-700">{children}</span>
     </li>
   );
