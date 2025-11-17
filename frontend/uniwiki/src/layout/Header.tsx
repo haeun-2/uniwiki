@@ -1,6 +1,6 @@
 // src/layout/Header.tsx
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Search, UserRound, LogOut, Sparkles, X } from "lucide-react";
 import { clearAuthStorage, getAccessToken } from "@/utils/auth";
@@ -11,6 +11,7 @@ interface HeaderProps {
 }
 
 const FLASH_AUTO_MS = 3200;
+const LOGOUT_FLASH_MS = 2000;
 
 export default function Header({
   showSearch = true,
@@ -31,29 +32,73 @@ export default function Header({
   const [flashType, setFlashType] = useState<"success" | "error" | "info">(
     "info"
   );
-  const flashTimerRef = useRef<number | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showFlash = (
-    msg: string,
-    type: "success" | "error" | "info" = "info",
-    ms = FLASH_AUTO_MS
-  ) => {
-    setFlash(msg);
-    setFlashType(type);
-    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
-    if (!/오류|실패|에러/.test(msg)) {
-      flashTimerRef.current = window.setTimeout(() => setFlash(""), ms);
-    }
-  };
+  const showFlash = useCallback(
+    (
+      msg: string,
+      type: "success" | "error" | "info" = "info",
+      ms = FLASH_AUTO_MS
+    ) => {
+      setFlash(msg);
+      setFlashType(type);
+
+      if (flashTimerRef.current !== null) {
+        clearTimeout(flashTimerRef.current);
+        flashTimerRef.current = null;
+      }
+
+      flashTimerRef.current = setTimeout(() => {
+        setFlash("");
+      }, ms);
+    },
+    []
+  );
 
   const closeFlash = () => {
-    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    if (flashTimerRef.current !== null) {
+      clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = null;
+    }
     setFlash("");
   };
 
+  // ✅ 새로고침 후 플래시 메시지 복원
+  useEffect(() => {
+    const savedMessage = sessionStorage.getItem("flashMessage");
+    const savedType = sessionStorage.getItem("flashType") as
+      | "success"
+      | "error"
+      | "info"
+      | null;
+    const savedTimestamp = sessionStorage.getItem("flashTimestamp");
+
+    if (savedMessage && savedType && savedTimestamp) {
+      const elapsed = Date.now() - parseInt(savedTimestamp);
+
+      if (elapsed < 5000) {
+        // ✅ 먼저 삭제해서 중복 실행 방지
+        sessionStorage.removeItem("flashMessage");
+        sessionStorage.removeItem("flashType");
+        sessionStorage.removeItem("flashTimestamp");
+
+        // ✅ setTimeout으로 한 틱 지연시켜서 StrictMode 이중 마운트 회피
+        setTimeout(() => {
+          showFlash(savedMessage, savedType, LOGOUT_FLASH_MS);
+        }, 0);
+      } else {
+        sessionStorage.removeItem("flashMessage");
+        sessionStorage.removeItem("flashType");
+        sessionStorage.removeItem("flashTimestamp");
+      }
+    }
+  }, [showFlash]);
+
   useEffect(
     () => () => {
-      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      if (flashTimerRef.current !== null) {
+        clearTimeout(flashTimerRef.current);
+      }
     },
     []
   );
@@ -124,12 +169,13 @@ export default function Header({
     setIsLoggedIn(false);
     setOpen(false);
 
-    showFlash("로그아웃되었습니다.", "success");
+    // ✅ 새로고침 후에도 플래시 표시하도록 sessionStorage에 저장
+    sessionStorage.setItem("flashMessage", "로그아웃되었습니다.");
+    sessionStorage.setItem("flashType", "success");
+    sessionStorage.setItem("flashTimestamp", Date.now().toString());
 
-    // 필요하면 새로고침 유지 (현재 동작과 동일)
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
+    // ✅ 즉시 새로고침
+    window.location.reload();
   };
 
   return (
