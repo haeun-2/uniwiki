@@ -97,6 +97,13 @@ function createWikiLinkPlugin(univName: string) {
             type: 'link',
             url: href,
             title: null,
+            data: {
+              hProperties: {
+                className: 'uniwiki-link',
+                target: '_blank',
+                rel: 'noopener noreferrer',
+              },
+            },
             children: [{ type: 'text', value: title }],
           });
 
@@ -589,6 +596,18 @@ export default function DocumentViewPage() {
                     source={content}
                     remarkPlugins={[remarkGfm, wikiLinkPlugin]}
                     rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
+                    components={{
+                      a: ({ href, children }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="uniwiki-link"
+                        >
+                          {children}
+                        </a>
+                      ),
+                    }}
                     style={{
                       backgroundColor: '#F9FAFB',
                       ['--color-canvas-default' as any]: '#F9FAFB',

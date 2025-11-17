@@ -1,16 +1,25 @@
 @import "tailwindcss";
 @config '../tailwind.config.js';
+
 @font-face {
   font-family: 'Pretendard';
   src: url('./assets/fonts/PretendardVariable.woff2') format('woff2-variations');
   font-weight: 45 920;
   font-display: swap;
 }
+
 html {
   scrollbar-gutter: stable;
 }
+
 body {
   font-family: 'Pretendard', sans-serif;
 }
+
+.wmde-markdown a.uniwiki-link {
+  color: #2c80a0;
+  text-decoration: none;
+}
+
 /* 대화 화면일 때 Footer 숨김 (Footer 루트에 id="site-footer" 가정) */
 .chat-active #site-footer { display: none; }

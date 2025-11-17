@@ -22,27 +22,33 @@ export default function TutorialDocumentPage() {
     <main className="mx-auto max-w-6xl">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">문서 열람 페이지 기능 설명</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          특정 문서를 열람할 때 사용하는 페이지입니다. 상단의 문서 정보 영역, 즐겨찾기/편집/토론/역사
-          메뉴, 본문 영역의 구조로 이루어져 있습니다.
-        </p>
       </header>
 
       <section className="space-y-8">
+        <article className="space-y-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-2">
+            <p className="text-sm text-gray-700">
+              특정 문서를 열람할 때 사용하는 페이지입니다. 상단의 문서 정보 영역, 즐겨찾기/편집/토론/역사
+              메뉴, 본문 영역의 구조로 이루어져 있습니다.
+            </p>
+            <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+              <li>문서 제목, 학교/카테고리 정보, 수정일 표시</li>
+              <li>문서 즐겨찾기 버튼, 편집, 토론, 역사(버전)으로 이동하는 버튼</li>
+              <li>Markdowm 기반 본문 표시 방식</li>
+            </ul>
+          </div>
+        </article>
+
         {/* 개요 */}
         <Article id="overview" title="개요">
           <Figure src={fullImg} alt="문서 열람 페이지 전체 화면" tall />
           <Ul className="mt-4">
             <Li title="역할">
-              학교, 학과, 강의, 시설 등 모든 위키 문서를 읽는 기본 화면입니다. 대부분의 사용자가 가장
-              자주 보게 되는 페이지입니다.
+              학교, 학과, 강의, 시설 등 모든 위키 문서를 읽는 기본 화면입니다.
             </Li>
             <Li title="구성">
-              상단의 문서 제목·경로·최근 수정 시간, 우측의 최근 수정된 문서/최근 토론 사이드 카드, 중앙의
+              상단의 카테고리 · 문서 제목 · 최근 수정 시간, 우측의 최근 수정된 문서/최근 토론 사이드 카드, 중앙의
               문서 본문으로 구성됩니다.
-            </Li>
-            <Li title="라우팅 예시">
-              <code>/univ/:universityName/docs/:documentTitle</code> 형식의 경로에 매핑됩니다.
             </Li>
           </Ul>
         </Article>
@@ -52,19 +58,18 @@ export default function TutorialDocumentPage() {
           <Figure src={menuImg} alt="문서 상단 메뉴" small />
           <Ul className="mt-4">
             <Li title="즐겨찾기">
-              별 아이콘을 클릭하면 해당 문서를 즐겨찾기에 추가하거나 제거합니다. 메인 페이지와 내 정보
-              화면의 즐겨찾기 목록과 연동됩니다.
+              별 아이콘을 클릭하면 해당 문서를 즐겨찾기에 추가하거나 제거합니다.
             </Li>
             <Li title="편집">
-              클릭 시 문서 편집 페이지로 이동합니다. 예: <code>/univ/:universityName/docs/:documentTitle/edit</code>
+              클릭 시 문서 편집 페이지로 이동합니다.
             </Li>
             <Li title="토론">
-              문서에 연결된 토론 목록/토론 상세 페이지로 이동합니다. 문서 내용 변경에 대한 의견을
+              문서에 연결된 토론 목록 페이지로 이동합니다. 문서 내용 변경에 대한 의견을
               주고받는 공간입니다.
             </Li>
             <Li title="역사">
               문서의 수정 이력을 시간 순으로 확인할 수 있는 페이지로 이동합니다. 이전 버전과의 비교(diff)
-              및 복원 기능과 연동됩니다.
+              및 복원이 가능합니다.
             </Li>
           </Ul>
         </Article>
@@ -118,7 +123,7 @@ function Ul({
 function Li({ title, children }: React.PropsWithChildren<{ title: string }>) {
   return (
     <li className="text-sm leading-6">
-      <span className="font-medium text-gray-900">{title}. </span>
+      <span className="font-medium text-gray-900">{title}: </span>
       <span className="text-gray-700">{children}</span>
     </li>
   );
