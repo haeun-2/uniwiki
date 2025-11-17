@@ -7,6 +7,8 @@ import MDEditor from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
+import { authHeaders } from '@/utils/auth';
+
 type BaseDoc = {
   universityId: number;
   universityName: string;
@@ -40,19 +42,6 @@ type TocItem = {
 };
 
 const API_BASE = 'https://k13d104.p.ssafy.io/api';
-
-// ===== Auth =====
-function getAccessToken() {
-  try {
-    return localStorage.getItem('accessToken') || '';
-  } catch {
-    return '';
-  }
-}
-function authHeaders(extra: HeadersInit = {}) {
-  const t = getAccessToken();
-  return t ? { ...extra, Authorization: `Bearer ${t}` } : extra;
-}
 const enc = (s: string) => encodeURIComponent(s || '');
 
 // ===== 포맷(타임존 연산 없음) =====

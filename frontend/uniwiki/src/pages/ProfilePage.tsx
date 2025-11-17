@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
+import { getAccessToken, authHeaders } from "@/utils/auth";
 
 const FLASH_AUTO_MS = 3200;
+const API_BASE = "https://k13d104.p.ssafy.io/api";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -42,7 +44,9 @@ export default function ProfilePage() {
   // ─────────────────────────────────────────────────────────────
   // 로그인 페이지와 동일한 플래시 팝업 상태/유틸
   const [flash, setFlash] = useState("");
-  const [flashType, setFlashType] = useState<"success" | "error" | "info">("info");
+  const [flashType, setFlashType] = useState<"success" | "error" | "info">(
+    "info"
+  );
   const flashTimerRef = useRef<number | null>(null);
 
   const showFlash = (
@@ -82,13 +86,10 @@ export default function ProfilePage() {
   };
   // ─────────────────────────────────────────────────────────────
 
-  const getToken = () =>
-    localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
-
   // ✅ 사용자 정보 조회
   useEffect(() => {
     const fetchUserInfo = async () => {
-      const accessToken = getToken();
+      const accessToken = getAccessToken();
 
       if (!accessToken) {
         showFlash("로그인이 필요합니다.", "error");
@@ -98,12 +99,12 @@ export default function ProfilePage() {
 
       try {
         setIsLoading(true);
-        const response = await fetch("https://k13d104.p.ssafy.io/api/v1/users/me", {
+        const response = await fetch(`${API_BASE}/v1/users/me`, {
           method: "GET",
-          headers: {
+          headers: authHeaders({
             Accept: "*/*",
-            Authorization: `Bearer ${accessToken}`,
-          },
+          }),
+          credentials: "include",
         });
 
         if (response.ok) {
@@ -111,7 +112,11 @@ export default function ProfilePage() {
           setNickname(data.nickname);
           setEmail(data.email);
           setRole(
-            data.role === "USER" ? "사용자" : data.role === "ADMIN" ? "관리자" : data.role
+            data.role === "USER"
+              ? "사용자"
+              : data.role === "ADMIN"
+              ? "관리자"
+              : data.role
           );
         } else if (response.status === 401) {
           localStorage.removeItem("accessToken");
@@ -135,17 +140,17 @@ export default function ProfilePage() {
   // ✅ 알림 동의 조회 (GET /api/v1/users/me/push)
   useEffect(() => {
     const fetchPush = async () => {
-      const accessToken = getToken();
+      const accessToken = getAccessToken();
       if (!accessToken) return;
 
       try {
         setIsPushLoading(true);
-        const res = await fetch("https://k13d104.p.ssafy.io/api/v1/users/me/push", {
+        const res = await fetch(`${API_BASE}/v1/users/me/push`, {
           method: "GET",
-          headers: {
+          headers: authHeaders({
             Accept: "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
+          }),
+          credentials: "include",
         });
 
         if (res.ok) {
@@ -172,7 +177,7 @@ export default function ProfilePage() {
 
   // 저장(프로필 전반) — 여기서 알림 동의 PATCH까지 수행
   const handleSave = async () => {
-    const accessToken = getToken();
+    const accessToken = getAccessToken();
     if (!accessToken) {
       showFlash("로그인이 필요합니다.", "error");
       navigate("/login");
@@ -181,12 +186,12 @@ export default function ProfilePage() {
 
     try {
       setIsPushSaving(true);
-      const res = await fetch("https://k13d104.p.ssafy.io/api/v1/users/me/push", {
+      const res = await fetch(`${API_BASE}/v1/users/me/push`, {
         method: "PATCH",
-        headers: {
+        headers: authHeaders({
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        }),
+        credentials: "include",
         body: JSON.stringify({ pushAgree }),
       });
 
@@ -250,7 +255,7 @@ export default function ProfilePage() {
       return;
     }
 
-    const accessToken = getToken();
+    const accessToken = getAccessToken();
     if (!accessToken) {
       showFlash("로그인이 필요합니다.", "error");
       navigate("/login");
@@ -258,17 +263,14 @@ export default function ProfilePage() {
     }
 
     try {
-      const res = await fetch(
-        "https://k13d104.p.ssafy.io/api/v1/users/me/nickname/change",
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ nickname: next }),
-        }
-      );
+      const res = await fetch(`${API_BASE}/v1/users/me/nickname/change`, {
+        method: "PATCH",
+        headers: authHeaders({
+          "Content-Type": "application/json",
+        }),
+        credentials: "include",
+        body: JSON.stringify({ nickname: next }),
+      });
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -320,7 +322,7 @@ export default function ProfilePage() {
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://k13d104.p.ssafy.io/api/v1/auth/nickname/check?nickname=${encodeURIComponent(
+          `${API_BASE}/v1/auth/nickname/check?nickname=${encodeURIComponent(
             next
           )}`,
           { headers: { Accept: "application/json" }, signal: ctrl.signal }
@@ -371,7 +373,7 @@ export default function ProfilePage() {
       return;
     }
 
-    const accessToken = getToken();
+    const accessToken = getAccessToken();
     if (!accessToken) {
       showFlash("로그인이 필요합니다.", "error");
       navigate("/login");
@@ -381,21 +383,18 @@ export default function ProfilePage() {
     setIsPasswordLoading(true);
 
     try {
-      const response = await fetch(
-        "https://k13d104.p.ssafy.io/api/v1/users/password/reset",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            currentPassword: currentPassword,
-            newPassword: newPassword,
-            confirmPassword: confirmPassword,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE}/v1/users/password/reset`, {
+        method: "POST",
+        headers: authHeaders({
+          "Content-Type": "application/json",
+        }),
+        credentials: "include",
+        body: JSON.stringify({
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+          confirmPassword: confirmPassword,
+        }),
+      });
 
       if (response.ok) {
         showFlash("비밀번호가 변경되었습니다.", "success");
@@ -406,7 +405,7 @@ export default function ProfilePage() {
       } else if (response.status === 401) {
         showFlash("현재 비밀번호가 일치하지 않습니다.", "error");
       } else if (response.status === 400) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         showFlash(
           errorData.message ||
             "비밀번호 형식이 올바르지 않습니다.\n영문 대/소문자, 숫자, 특수문자(~!@#$%^&*)를 포함한 8~16자리로 입력해주세요.",
@@ -518,7 +517,9 @@ export default function ProfilePage() {
 
           {/* 비밀번호 */}
           <div className="flex items-center justify-between border-b border-gray-200 pb-6">
-            <label className="text-lg font-medium text-gray-900">비밀번호</label>
+            <label className="text-lg font-medium text-gray-900">
+              비밀번호
+            </label>
             <div className="flex items-center gap-4">
               {isEditing ? (
                 <button
@@ -585,12 +586,11 @@ export default function ProfilePage() {
               ) : (
                 // 기본 상태: 수정 버튼 (아웃라인)
                 <button
-  onClick={() => setIsEditing(true)}
-  className="rounded-lg border border-[#5b7c99] bg-white px-8 py-2.5 font-medium text-[#5b7c99] hover:bg-[#f3f6fa] cursor-pointer"
->
-  수정
-</button>
-
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-lg border border-[#5b7c99] bg-white px-8 py-2.5 font-medium text-[#5b7c99] hover:bg-[#f3f6fa] cursor-pointer"
+                >
+                  수정
+                </button>
               )}
             </div>
           </div>
@@ -638,16 +638,20 @@ export default function ProfilePage() {
                   {isNicknameValid && isNickChecking && (
                     <span className="text-gray-500">중복 확인 중…</span>
                   )}
-                  {isNicknameValid && !isNickChecking && nickAvailable === true && (
-                    <span className="text-green-600">
-                      사용 가능한 닉네임입니다.
-                    </span>
-                  )}
-                  {isNicknameValid && !isNickChecking && nickAvailable === false && (
-                    <span className="text-red-600">
-                      이미 사용 중인 닉네임입니다.
-                    </span>
-                  )}
+                  {isNicknameValid &&
+                    !isNickChecking &&
+                    nickAvailable === true && (
+                      <span className="text-green-600">
+                        사용 가능한 닉네임입니다.
+                      </span>
+                    )}
+                  {isNicknameValid &&
+                    !isNickChecking &&
+                    nickAvailable === false && (
+                      <span className="text-red-600">
+                        이미 사용 중인 닉네임입니다.
+                      </span>
+                    )}
                 </p>
               )}
             </div>
@@ -743,7 +747,9 @@ export default function ProfilePage() {
                   type="password"
                   placeholder="••••••••••"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value.slice(0, 16))}
+                  onChange={(e) =>
+                    setConfirmPassword(e.target.value.slice(0, 16))
+                  }
                   maxLength={16}
                   disabled={isPasswordLoading}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"

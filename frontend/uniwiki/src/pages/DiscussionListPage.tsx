@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
+import { getAccessToken, authHeaders, clearAuthStorage } from "@/utils/auth";
 
 type Discussion = {
   id: string;
@@ -25,19 +26,6 @@ type DocumentDto = {
 };
 
 const API_BASE = "https://k13d104.p.ssafy.io/api";
-
-/* ===== JWT ===== */
-function getAccessToken() {
-  try {
-    return localStorage.getItem("accessToken") || "";
-  } catch {
-    return "";
-  }
-}
-function authHeaders() {
-  const t = getAccessToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
 
 /* ===== 차단 판별 유틸 ===== */
 function looksBanned(status: number, text: string) {
@@ -100,13 +88,21 @@ export default function DiscussionListPage() {
 
   // ----- 데이터 로딩 -----
   async function fetchDocMeta(title: string) {
-    const res = await fetch(`${API_BASE}/v1/documents/${encodeURIComponent(title)}`, {
-      headers: { Accept: "application/json", ...authHeaders() },
-      credentials: "include",
-    });
+    const res = await fetch(
+      `${API_BASE}/v1/documents/${encodeURIComponent(title)}`,
+      {
+        headers: { Accept: "application/json", ...authHeaders() },
+        credentials: "include",
+      }
+    );
     const txt = await res.clone().text().catch(() => "");
     if (res.status === 401) {
-      navigate("/login", { replace: true, state: { from: (location as any).pathname } });
+      // 만료된 토큰: 스토리지 정리 후 로그인
+      clearAuthStorage();
+      navigate("/login", {
+        replace: true,
+        state: { from: (location as any).pathname },
+      });
       return null;
     }
     if (looksBanned(res.status, txt)) {
@@ -127,7 +123,12 @@ export default function DiscussionListPage() {
     );
     const txt = await res.clone().text().catch(() => "");
     if (res.status === 401) {
-      navigate("/login", { replace: true, state: { from: (location as any).pathname } });
+      // 만료된 토큰: 스토리지 정리 후 로그인
+      clearAuthStorage();
+      navigate("/login", {
+        replace: true,
+        state: { from: (location as any).pathname },
+      });
       return;
     }
     if (looksBanned(res.status, txt)) {
@@ -173,8 +174,13 @@ export default function DiscussionListPage() {
     if (!canSubmit || posting) return;
 
     if (!getAccessToken()) {
+      // 토큰 없음: 혹시 남은 값 정리 후 로그인
+      clearAuthStorage();
       showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
-      navigate("/login", { replace: true, state: { from: (location as any).pathname } });
+      navigate("/login", {
+        replace: true,
+        state: { from: (location as any).pathname },
+      });
       return;
     }
     if (!docMeta) {
@@ -195,7 +201,9 @@ export default function DiscussionListPage() {
         body: JSON.stringify({
           documentId: docMeta.documentId,
           discussionTitle:
-            subject.trim() || content.trim().split("\n")[0].slice(0, 80) || "제목 없음",
+            subject.trim() ||
+            content.trim().split("\n")[0].slice(0, 80) ||
+            "제목 없음",
           discussionContent: content.trim(),
         }),
       });
@@ -203,8 +211,12 @@ export default function DiscussionListPage() {
       const txt = await res.clone().text().catch(() => "");
 
       if (res.status === 401) {
+        clearAuthStorage();
         showFlash("로그인이 필요합니다. 로그인 후 다시 시도해 주세요.");
-        navigate("/login", { replace: true, state: { from: (location as any).pathname } });
+        navigate("/login", {
+          replace: true,
+          state: { from: (location as any).pathname },
+        });
         return;
       }
       if (looksBanned(res.status, txt)) {
@@ -241,7 +253,10 @@ export default function DiscussionListPage() {
 
   const univHref = `/univ/${enc(univName)}`;
   const catePathBase = `/univ/${enc(univName)}/category/${enc(cateName)}`;
-  const cateHref = typeof univId === "number" ? `${catePathBase}?universityId=${univId}` : catePathBase;
+  const cateHref =
+    typeof univId === "number"
+      ? `${catePathBase}?universityId=${univId}`
+      : catePathBase;
   const docHref = `/univ/${enc(univName)}/docs/${enc(documentTitle)}`;
 
   return (
@@ -258,16 +273,25 @@ export default function DiscussionListPage() {
                 className="mb-4 flex items-center justify-between rounded-lg bg-[#2C80A0] px-4 py-3 text-white"
               >
                 <span className="text-[16px]">{flash}</span>
-                <button onClick={closeFlash} className="hover:opacity-80 cursor-pointer">
+                <button
+                  onClick={closeFlash}
+                  className="hover:opacity-80 cursor-pointer"
+                >
                   닫기
                 </button>
               </div>
             )}
 
-            <nav className="mb-2 text-[18px] leading-tight" aria-label="Breadcrumb">
+            <nav
+              className="mb-2 text-[18px] leading-tight"
+              aria-label="Breadcrumb"
+            >
               <ol className="flex items-center gap-1">
                 <li>
-                  <Link to={univHref} className="text-[#2C80A0] hover:underline">
+                  <Link
+                    to={univHref}
+                    className="text-[#2C80A0] hover:underline"
+                  >
                     {univName}
                   </Link>
                 </li>
@@ -275,7 +299,11 @@ export default function DiscussionListPage() {
                 <li>
                   <Link
                     to={cateHref}
-                    state={typeof univId === "number" ? { universityId: univId } : undefined}
+                    state={
+                      typeof univId === "number"
+                        ? { universityId: univId }
+                        : undefined
+                    }
                     className="text-[#2C80A0] hover:underline"
                   >
                     {cateName}
@@ -289,7 +317,9 @@ export default function DiscussionListPage() {
             </h1>
 
             <div className="mb-5 flex items-center gap-4">
-              <p className="text-[18px] leading-tight text-gray-800 font-medium">토론</p>
+              <p className="text-[18px] leading-tight text-gray-800 font-medium">
+                토론
+              </p>
               <div className="ml-auto" />
               <div
                 role="tablist"
@@ -309,9 +339,13 @@ export default function DiscussionListPage() {
 
             <div>
               {loading ? (
-                <p className="py-1 text-[20px] leading-snug text-[#7F7F7F]">불러오는 중…</p>
+                <p className="py-1 text-[20px] leading-snug text-[#7F7F7F]">
+                  불러오는 중…
+                </p>
               ) : errorMsg ? (
-                <p className="py-1 text-[20px] leading-snug text-red-600">{errorMsg}</p>
+                <p className="py-1 text-[20px] leading-snug text-red-600">
+                  {errorMsg}
+                </p>
               ) : isEmpty ? (
                 <p className="py-1 text-[20px] leading-snug text-[#7F7F7F]">
                   진행중인 토론이 없습니다.
@@ -336,12 +370,16 @@ export default function DiscussionListPage() {
           {/* 상자 #2 : 새 토론 생성 */}
           <section className="rounded-2xl border border-[#B3B3B3] bg-gray-50 p-6">
             <header className="mb-4">
-              <h2 className="text-[28px] leading-tight font-semibold text-gray-900">새 토론 생성</h2>
+              <h2 className="text-[28px] leading-tight font-semibold text-gray-900">
+                새 토론 생성
+              </h2>
             </header>
 
             <div className="space-y-5 px-2 sm:px-3 md:px-4">
               <div>
-                <label className="mb-1 block text-[18px] leading-tight font-medium">주제</label>
+                <label className="mb-1 block text-[18px] leading-tight font-medium">
+                  주제
+                </label>
                 <input
                   type="text"
                   value={subject}
@@ -352,7 +390,9 @@ export default function DiscussionListPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-[18px] leading-tight font-medium">내용</label>
+                <label className="mb-1 block text-[18px] leading-tight font-medium">
+                  내용
+                </label>
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
@@ -360,7 +400,9 @@ export default function DiscussionListPage() {
                   rows={6}
                   className="w-full resize-y rounded-lg border border-[#B3B3B3] bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-[#2C80A0]"
                 />
-                <p className="mt-2 text-sm text-gray-600">내용 수정 및 삭제가 불가능합니다.</p>
+                <p className="mt-2 text-sm text-gray-600">
+                  내용 수정 및 삭제가 불가능합니다.
+                </p>
               </div>
 
               <div className="flex items-center justify-between">

@@ -1,27 +1,16 @@
-// src/layout/Header.tsx (혹은 현재 Header 위치)
+// src/layout/Header.tsx
 
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Search, UserRound, LogOut, Sparkles, X } from "lucide-react";
+import { clearAuthStorage, getAccessToken } from "@/utils/auth";
 
 interface HeaderProps {
   showSearch?: boolean;
   showUserButton?: boolean;
 }
 
-const AUTH_KEYS = [
-  "accessToken",
-  "refreshToken",
-  "nickName",
-  "role",
-  "universityId",
-  "userId",
-] as const;
-
 const FLASH_AUTO_MS = 3200;
-
-const getAccessToken = () =>
-  localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
 
 export default function Header({
   showSearch = true,
@@ -83,9 +72,10 @@ export default function Header({
 
   // accessToken 존재 여부로 로그인 상태 판단
   useEffect(() => {
-    setIsLoggedIn(!!getAccessToken());
-
     const refreshAuth = () => setIsLoggedIn(!!getAccessToken());
+
+    // 최초 1회
+    refreshAuth();
 
     window.addEventListener("uniwiki:auth-changed", refreshAuth);
     window.addEventListener("storage", refreshAuth);
@@ -128,16 +118,15 @@ export default function Header({
   }, []);
 
   const handleLogout = () => {
-    AUTH_KEYS.forEach((k) => {
-      localStorage.removeItem(k);
-      sessionStorage.removeItem(k);
-    });
+    // ✅ 공통 유틸로 토큰/유저 정보 싹 제거
+    clearAuthStorage();
 
     setIsLoggedIn(false);
     setOpen(false);
 
     showFlash("로그아웃되었습니다.", "success");
 
+    // 필요하면 새로고침 유지 (현재 동작과 동일)
     setTimeout(() => {
       window.location.reload();
     }, 1500);
@@ -196,9 +185,7 @@ export default function Header({
             />
           </Link>
 
-          {/* 가운데 검색바 + AI 모드 버튼
-              → 일반 페이지에서만 보이고,
-              → /ai-search 에서는 숨김 */}
+          {/* 가운데 검색바 + AI 모드 버튼 */}
           {showSearch && !isAiPage && (
             <div className="mx-3 flex-1 flex items-center gap-2">
               <label className="relative block flex-1">
@@ -240,7 +227,7 @@ export default function Header({
             </div>
           )}
 
-          {/* 오른쪽 사용자 버튼은 항상 (showUserButton이 true일 때) 그대로 */}
+          {/* 오른쪽 사용자 버튼 */}
           {showUserButton && (
             <div className="relative ml-auto">
               <button
