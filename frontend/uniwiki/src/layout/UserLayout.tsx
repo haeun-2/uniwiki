@@ -8,6 +8,7 @@ export default function UserLayout() {
   const location = useLocation();
 
   const menuItems = [
+    { path: "/user/profile", label: "내 정보" }, 
     { path: "/user/contributions", label: "기여 문서 목록" },
     { path: "/user/discussions", label: "참여 토론 목록" },
     { path: "/user/favorite", label: "즐겨찾기" },
@@ -27,20 +28,23 @@ export default function UserLayout() {
           <aside className="space-y-6 min-w-0">
             <nav className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
               <ul className="space-y-2 text-sm text-gray-700">
-                {menuItems.map((item) => {
+                {menuItems.map((item, index) => {
                   const active = location.pathname === item.path;
                   return (
-                    <li key={item.path}>
-                      <Link
-                        to={item.path}
-                        className={`block truncate hover:underline ${
-                          active ? "font-medium text-uniwikicolor" : "text-gray-700"
-                        }`}
-                        title={item.label}
-                      >
-                        • {item.label}
-                      </Link>
-                    </li>
+                    <React.Fragment key={item.path}>
+                      <li className="ms-2">
+                        <Link
+                          to={item.path}
+                          className={`block truncate hover:underline ${
+                            active ? "font-medium text-uniwikicolor" : "text-gray-700"
+                          }`}
+                          title={item.label}
+                        >
+                          {item.label}
+                        </Link>
+                      </li>
+                      {index === 0 && <hr className="my-3 border-gray-200" />}
+                    </React.Fragment>
                   );
                 })}
               </ul>
