@@ -95,7 +95,6 @@ const router = createBrowserRouter([
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <SignupPage /> },
       { path: 'signup/complete', element: <SignupCompletePage /> },
-      { path: 'profile', element: <ProfilePage /> },
       { path: 'ai-search', element: <AiSearchPage /> },
       { path: 'search', element: <SearchResultPage /> },
       
@@ -146,6 +145,7 @@ const router = createBrowserRouter([
       { path: 'contributions', element: <AttributePage /> },
       { path: 'favorite', element: <FavoritePage /> },
       { path: 'discussions', element: <DiscussionHistoryPage /> },
+      { path: 'profile', element: <ProfilePage />}
     ],
   },
 

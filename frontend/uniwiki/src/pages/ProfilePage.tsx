@@ -483,12 +483,12 @@ export default function ProfilePage() {
         .animate-slideDown { animation: slideDown 0.3s ease-out; }
       `}</style>
 
-      <div className="mx-auto max-w-4xl px-4 py-12">
-        <h1 className="mb-12 text-center text-3xl font-semibold text-gray-900">
+      <div>
+        <h1 className="mb-20 text-3xl font-semibold text-gray-900">
           내 정보
         </h1>
 
-        <div className="space-y-8">
+        <div className="space-y-8 me-6">
           {/* 닉네임 */}
           <div className="flex items-center justify-between border-b border-gray-200 pb-6">
             <label className="text-lg font-medium text-gray-900">닉네임</label>
