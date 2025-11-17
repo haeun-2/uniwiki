@@ -6,6 +6,7 @@ import { ChevronUp } from 'lucide-react';
 import MDEditor from '@uiw/react-md-editor';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import { visit } from 'unist-util-visit'
 
 import { getAccessToken, authHeaders } from '@/utils/auth';
 
@@ -67,6 +68,54 @@ function slugify(raw: string) {
   return base || 'section';
 }
 
+// [[문서 제목]] → /univ/:univName/docs/:docTitle 로 바꾸는 remark 플러그인
+function createWikiLinkPlugin(univName: string) {
+  const univSeg = encodeURIComponent(univName || '대학교');
+
+  return function wikiLinkPlugin() {
+    return (tree: any) => {
+      visit(tree, 'text', (node: any, index: number | null, parent: any) => {
+        if (index == null || !parent) return;
+
+        const text: string = node.value;
+        const re = /\[\[([^[\]]+)\]\]/g;
+
+        let match: RegExpExecArray | null;
+        let lastIndex = 0;
+        const children: any[] = [];
+
+        while ((match = re.exec(text)) !== null) {
+          const before = text.slice(lastIndex, match.index);
+          if (before) {
+            children.push({ type: 'text', value: before });
+          }
+
+          const title = match[1].trim();
+          const href = `/univ/${univSeg}/docs/${encodeURIComponent(title)}`;
+
+          children.push({
+            type: 'link',
+            url: href,
+            title: null,
+            children: [{ type: 'text', value: title }],
+          });
+
+          lastIndex = match.index + match[0].length;
+        }
+
+        const after = text.slice(lastIndex);
+        if (children.length === 0) return; // [[ ]] 패턴이 없으면 그대로 둠
+        if (after) {
+          children.push({ type: 'text', value: after });
+        }
+
+        // text 노드를 link/text 노드들로 교체
+        parent.children.splice(index, 1, ...children);
+      });
+    };
+  };
+}
+
 export default function DocumentViewPage() {
   const navigate = useNavigate();
   const location = useLocation() as any;
@@ -103,6 +152,14 @@ export default function DocumentViewPage() {
 
   // 플래시 배너
   const [flashMsg, setFlashMsg] = useState<string | null>(() => location.state?.flash?.msg || null);
+  
+  const univNameSafe = meta?.universityName || '대학교';
+
+  const wikiLinkPlugin = useMemo(
+    () => createWikiLinkPlugin(univNameSafe),
+    [univNameSafe],
+  );
+
   const showFlash = (msg: string, ms = 3000) => {
     setFlashMsg(msg);
     window.clearTimeout((showFlash as any)._t);
@@ -319,7 +376,6 @@ export default function DocumentViewPage() {
   );
 
   // 링크 정규화 (+ 대학 ID 동반 전달)
-  const univNameSafe = meta?.universityName || '대학교';
   const cateNameSafe = meta?.categoryName || '카테고리';
   const univHref = `/univ/${enc(univNameSafe)}`;
   const catePathBase = `/univ/${enc(univNameSafe)}/category/${enc(cateNameSafe)}`;
@@ -531,7 +587,7 @@ export default function DocumentViewPage() {
                 ) : (
                   <MDEditor.Markdown
                     source={content}
-                    remarkPlugins={[remarkGfm]}
+                    remarkPlugins={[remarkGfm, wikiLinkPlugin]}
                     rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
                     style={{
                       backgroundColor: '#F9FAFB',

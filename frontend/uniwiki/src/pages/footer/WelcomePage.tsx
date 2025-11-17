@@ -10,8 +10,8 @@ export default function WelcomePage() {
       <section className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <h1 className="text-3xl font-bold text-gray-900">유니위키 소개</h1>
         <p className="mt-3 text-gray-700">
-          유니위키는 대학 구성원이 직접 만들고 함께 검증하는 대학 정보 위키입니다.
-          학교·학과·강의·시설·행사 등 대학 생활 전반의 정보를 한곳에서 찾아보고,
+          유니위키는 대학 구성원이 직접 만들어 나가는 대학 정보 위키입니다.
+          대학 생활 전반의 정보를 한곳에서 찾아보고,
           필요하면 바로 고칠 수 있습니다.
         </p>
         {!accessToken && (
@@ -80,10 +80,10 @@ export default function WelcomePage() {
             ]}
           />
           <Feature
-            title="문서 추천·신고"
+            title="문서, 대학 별 인기 순위 제공"
             points={[
-              "품질 높은 문서 가시성 강화",
-              "부적절한 내용 신고·관리",
+              "즐겨찾기, 조회수 기반의 인기 순위 집계",
+              "사용자의 흥미 유발 및 참여 독려"
             ]}
           />
           <Feature
@@ -96,7 +96,7 @@ export default function WelcomePage() {
           <Feature
             title="검색"
             points={[
-              "제목+본문 통합 검색, 자동완성",
+              "제목+본문 통합 검색",
               "학교별 필터로 빠른 탐색",
             ]}
           />

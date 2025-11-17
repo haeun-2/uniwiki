@@ -5,6 +5,7 @@ import MDEditor, { ICommand, TextAreaTextApi, TextState } from '@uiw/react-md-ed
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { visit } from 'unist-util-visit'
 
 import { getAccessToken, authHeaders, fetchWithAuth } from '@/utils/auth';
 
@@ -173,6 +174,58 @@ async function getSavedTitleFromResponse(res: Response, fallbackTitle: string) {
   return fallbackTitle;
 }
 
+// [[문서 제목]] → /univ/:univName/docs/:docTitle 링크로 바꾸는 플러그인
+function createWikiLinkPlugin(univName: string) {
+  const univSeg = encodeURIComponent(univName || '대학교');
+
+  // remark 플러그인 형태
+  return function wikiLinkPlugin() {
+    return (tree: any) => {
+      visit(tree, 'text', (node: any, index: number | null, parent: any) => {
+        if (index == null || !parent) return;
+
+        const text: string = node.value;
+        const re = /\[\[([^[\]]+)\]\]/g;
+
+        let match: RegExpExecArray | null;
+        let lastIndex = 0;
+        const children: any[] = [];
+
+        // 텍스트 안에 [[...]] 여러 개 있을 수도 있으니 전부 처리
+        while ((match = re.exec(text)) !== null) {
+          const before = text.slice(lastIndex, match.index);
+          if (before) {
+            children.push({ type: 'text', value: before });
+          }
+
+          const title = match[1].trim();
+          const href =
+            `/univ/${univSeg}/docs/${encodeURIComponent(title)}`;
+
+          children.push({
+            type: 'link',
+            url: href,
+            title: null,
+            children: [{ type: 'text', value: title }],
+          });
+
+          lastIndex = match.index + match[0].length;
+        }
+
+        const after = text.slice(lastIndex);
+        if (children.length === 0) return; // [[ ]] 패턴이 없다면 그대로 둠
+
+        if (after) {
+          children.push({ type: 'text', value: after });
+        }
+
+        // 원래 text 노드를 link/text 노드들로 교체
+        parent.children.splice(index, 1, ...children);
+      });
+    };
+  };
+}
+
 export default function DocumentEditPage() {
   const navigate = useNavigate();
   const location = useLocation() as any;
@@ -198,6 +251,11 @@ export default function DocumentEditPage() {
 
   // 레일 접힘 상태 (이 페이지 전용)
   const [railCollapsed, setRailCollapsed] = useState<boolean>(loadRailCollapsed());
+
+  const wikiLinkPlugin = useMemo(
+    () => createWikiLinkPlugin(universityName),
+    [universityName]
+  );
 
   const initialRef = useRef<{ value: string; summary: string; categoryId: number | null }>({
     value: '',
@@ -597,7 +655,7 @@ export default function DocumentEditPage() {
                 onChange={(v) => setValue(v || '')}
                 preview="live"
                 previewOptions={{
-                  remarkPlugins: [remarkGfm],
+                  remarkPlugins: [remarkGfm, wikiLinkPlugin],
                   rehypePlugins: [[rehypeSanitize, sanitizeSchema]],
                 }}
                 extraCommands={[uploadImageCommand]}
