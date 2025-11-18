@@ -49,9 +49,10 @@ export default function Footer() {
             </li>
           </ul>
         </div>
-        <div>
-          <div className="mb-2 font-semibold">고지</div>
-            <p className="text-xs mb-3">
+
+        <div className="text-end flex flex-col justify-between h-full">
+          <div>
+            <p className="text-xs mb-1">
               유니위키의 모든 저작물은
               <Link
                 to="https://creativecommons.org/licenses/by-nc-sa/2.0/kr/"
@@ -62,8 +63,22 @@ export default function Footer() {
               </Link>
               를 따릅니다.
             </p>
+            <a
+              href="https://creativecommons.org/licenses/by-nc-sa/2.0/kr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ms-auto inline-block"
+            >
+              <img
+                src="http://licensebuttons.net/l/by-nc-sa/2.0/kr/80x15.png"
+                alt="CC BY-NC-SA 2.0 KR"
+              />
+            </a>
+          </div>
+          <div>
             <p className="text-xs mb-1">모든 문서의 저작권은 문서의 기여자에게 있으며,</p>
             <p className="text-xs mb-1">각 기여자는 기여하신 부분의 저작권만을 가집니다.</p>
+          </div>
         </div>
       </div>
     </footer>
