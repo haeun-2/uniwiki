@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
+import { authHeaders, clearAuthStorage, getAccessToken } from "@/utils/auth";
 
 interface Contribution {
   documentId: number;
+  documentVersionNumber: number; // ✅ 백엔드가 추가해준 필드!
   documentName: string;
   universityName: string;
   editMemo: string;
@@ -91,27 +93,19 @@ export default function AttributePage() {
     hasNext: false,
   });
 
-  // 버전 정보 캐시 (documentName → { docId, versionNumber })
-  const [versionCache, setVersionCache] = useState<Record<string, { docId: number; versionNumber: number }>>({});
-
   const enc = (s: string) => encodeURIComponent(s || "");
 
-  // 인증 체크
+  // 인증 체크: 토큰 없으면 로그인으로
   const ensureAuthed = () => {
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
+    const token = getAccessToken();
+    if (!token) {
       scheduleRedirectToLogin("로그인이 필요한 페이지입니다.");
       return null;
     }
-    return accessToken;
+    return token;
   };
 
-  const authHeaders = () => {
-    const token = ensureAuthed();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  // 목록 조회 (버전 정보는 조회하지 않음 - 빠른 로딩!)
+  // 목록 조회 - 이제 추가 API 호출 불필요! ⚡
   const fetchContributions = async (page: number) => {
     const accessToken = ensureAuthed();
     if (!accessToken) return;
@@ -123,7 +117,7 @@ export default function AttributePage() {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            ...authHeaders(),
             Accept: "application/json",
           },
         }
@@ -131,6 +125,8 @@ export default function AttributePage() {
 
       if (response.ok) {
         const data: PaginationResponse = await response.json();
+        
+        // ✅ 바로 사용 가능! 추가 API 호출 불필요!
         setContributions(data.content || []);
         setPagination({
           page: data.page,
@@ -141,7 +137,7 @@ export default function AttributePage() {
           hasNext: data.hasNext,
         });
       } else if (response.status === 401) {
-        localStorage.removeItem("accessToken");
+        clearAuthStorage();
         scheduleRedirectToLogin("로그인이 만료되었습니다. 다시 로그인해주세요.");
       } else {
         console.error("기여 문서 목록을 불러오는데 실패했습니다.");
@@ -152,89 +148,6 @@ export default function AttributePage() {
       showFlash("서버와의 연결에 실패했습니다.", "error");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // 문서 정보 조회 (비교 버튼 클릭 시에만 호출)
-  const fetchDocumentInfo = async (documentName: string): Promise<{ docId: number; latestVersion: number } | null> => {
-    // 캐시에 있으면 반환
-    if (versionCache[documentName]) {
-      return {
-        docId: versionCache[documentName].docId,
-        latestVersion: versionCache[documentName].versionNumber,
-      };
-    }
-
-    try {
-      // 1. 문서 기본 정보 조회
-      const docRes = await fetch(
-        `${API_BASE}/v1/documents/${encodeURIComponent(documentName)}`,
-        { headers: { "Content-Type": "application/json", ...authHeaders() } }
-      );
-      if (!docRes.ok) return null;
-      const docData = await docRes.json();
-      const docId = docData.documentId;
-
-      // 2. 버전 목록 조회 (최신 버전 1개만)
-      const versionRes = await fetch(
-        `${API_BASE}/v1/documents/${docId}/versions?page=0&size=1`,
-        { headers: { ...authHeaders() } }
-      );
-      if (!versionRes.ok) return null;
-      const versionData = await versionRes.json();
-      
-      if (versionData.content && versionData.content.length > 0) {
-        const latestVersion = versionData.content[0].versionNumber;
-        
-        // 캐시에 저장
-        setVersionCache(prev => ({
-          ...prev,
-          [documentName]: { docId, versionNumber: latestVersion }
-        }));
-        
-        return { docId, latestVersion };
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Failed to fetch document info:', error);
-      return null;
-    }
-  };
-
-  // 비교 버튼 클릭 핸들러
-  const handleCompareClick = async (
-    e: React.MouseEvent,
-    contribution: Contribution,
-    univ: string,
-    doc: string
-  ) => {
-    e.preventDefault();
-
-    // 이미 캐시에 있으면 바로 이동
-    const cached = versionCache[contribution.documentName];
-    if (cached) {
-      if (cached.versionNumber > 1) {
-        navigate(`/univ/${univ}/docs/${doc}/versions/${cached.versionNumber}/diff?docId=${cached.docId}`);
-      } else {
-        // r1인 경우 - 사실 이 케이스는 발생하면 안 되지만 안전장치
-        navigate(`/univ/${univ}/docs/${doc}/history`);
-      }
-      return;
-    }
-
-    // 캐시에 없으면 조회 후 이동
-    const info = await fetchDocumentInfo(contribution.documentName);
-    if (info) {
-      if (info.latestVersion > 1) {
-        navigate(`/univ/${univ}/docs/${doc}/versions/${info.latestVersion}/diff?docId=${info.docId}`);
-      } else {
-        // r1인 경우 역사 페이지로
-        navigate(`/univ/${univ}/docs/${doc}/history`);
-      }
-    } else {
-      // 정보 조회 실패 시 역사 페이지로
-      navigate(`/univ/${univ}/docs/${doc}/history`);
     }
   };
 
@@ -359,9 +272,15 @@ export default function AttributePage() {
             const univ = enc(contribution.universityName);
             const doc = enc(contribution.documentName);
 
-            // 캐시에서 버전 정보 가져오기
-            const cached = versionCache[contribution.documentName];
-            const isVersion1 = cached?.versionNumber === 1;
+            //  documentVersionNumber 사용 - r1 체크 및 null/undefined 체크
+            const versionNum = contribution.documentVersionNumber;
+            const isVersion1 = versionNum === 1;
+            const hasVersionInfo = typeof versionNum === 'number' && versionNum > 0;
+
+            // 비교 링크: r2 이상이면 비교 페이지로, 그 외는 역사 페이지로
+            const compareLink = hasVersionInfo && versionNum > 1
+              ? `/univ/${univ}/docs/${doc}/versions/${versionNum}/diff?docId=${contribution.documentId}`
+              : `/univ/${univ}/docs/${doc}/history`;
 
             return (
               <div
@@ -420,23 +339,26 @@ export default function AttributePage() {
                     </Link>
                     <span>|</span>
                     
-                    {/* r1인 경우 비활성화, 아니면 클릭 가능 */}
-                    {isVersion1 ? (
+                    {/*  r1이면 비활성화, 버전 정보가 없어도 비활성화 */}
+                    {!hasVersionInfo || isVersion1 ? (
                       <span
-                        className="text-gray-400 cursor-not-allowed"
-                        title="첫 번째 버전은 비교할 수 없습니다"
+                        className="text-gray-400"
+                        title={
+                          isVersion1
+                            ? "첫 번째 버전은 비교할 수 없습니다"
+                            : "역사 페이지에서 버전을 선택하여 비교할 수 있습니다"
+                        }
                       >
                         비교
                       </span>
                     ) : (
-                      <a
-                        href="#"
-                        onClick={(e) => handleCompareClick(e, contribution, univ, doc)}
-                        className="hover:underline cursor-pointer"
-                        title="이 버전을 직전 버전과 비교"
+                      <Link
+                        to={compareLink}
+                        className="hover:underline"
+                        title={`r${versionNum} 버전과 이전 버전 비교`}
                       >
                         비교
-                      </a>
+                      </Link>
                     )}
                   </div>
                 </div>
