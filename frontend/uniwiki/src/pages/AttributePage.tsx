@@ -291,7 +291,7 @@ export default function AttributePage() {
                 <div className="mb-1">
                   <Link
                     to={`/univ/${univ}/docs/${doc}`}
-                    className="text-base font-normal text-gray-900 hover:underline"
+                    className="text-base font-normal text-uniwikicolor hover:underline"
                   >
                     {contribution.documentName}
                   </Link>

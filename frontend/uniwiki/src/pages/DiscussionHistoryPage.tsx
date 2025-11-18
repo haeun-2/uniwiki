@@ -263,7 +263,7 @@ export default function DiscussionHistoryPage() {
 
       <div>
         <h1 className="mb-8 text-3xl font-semibold text-gray-900">
-          내가 기여한 토론
+          내가 참여한 토론 목록
         </h1>
 
         {pagination.totalPages > 1 && (
@@ -275,9 +275,6 @@ export default function DiscussionHistoryPage() {
             >
               &lt; 이전
             </button>
-            <span className="text-sm text-gray-600">
-              {pagination.page + 1} / {pagination.totalPages}
-            </span>
             <button
               onClick={handleNext}
               disabled={!pagination.hasNext}
@@ -288,31 +285,23 @@ export default function DiscussionHistoryPage() {
           </div>
         )}
 
-        <div className="space-y-0">
+        <div className="space-y-4">
           {rows.map((row) => (
             <div
               key={row.discussionId}
-              className="flex items-center justify-between border-b border-gray-200 py-4"
+              className="border-b border-gray-200 pb-4"
             >
-              <div className="flex items-center gap-4 flex-1">
+              <div className="mb-1">
                 <button
                   onClick={() => goToDiscussion(row)}
-                  className="text-left text-sm font-semibold text-uniwikicolor hover:underline"
+                  className="text-base font-normal text-uniwikicolor hover:underline"
                   title={row.discussionName}
                 >
-                  • {row.discussionName}
+                  {row.discussionName}
                 </button>
-                <span className="text-sm text-gray-500">
-                  {row.documentTitle}
-                </span>
-                {row.universityName && (
-                  <span className="text-xs text-gray-400">
-                    / {row.universityName}
-                  </span>
-                )}
               </div>
               <div className="text-sm text-gray-600">
-                {formatDate(row.updateAt)}
+                {row.documentTitle} | {formatDate(row.updateAt)}
               </div>
             </div>
           ))}
