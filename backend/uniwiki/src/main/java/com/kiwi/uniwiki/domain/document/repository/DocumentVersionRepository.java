@@ -56,6 +56,7 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
         JOIN FETCH d.category c
         WHERE d.updatedAt > :lastIndexedAt
         AND d.latestVersionNumber = dv.versionNumber
+        AND d.isDeleted is false
     """)
     List<DocumentVersion> findLatestVersionsUpdatedAfter(@Param("lastIndexedAt") LocalDateTime lastIndexedAt);
 
