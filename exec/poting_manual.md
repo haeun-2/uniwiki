@@ -98,6 +98,7 @@ UniWiki 백엔드는 다음 서비스를 전제한다.
    - 사용자/비밀번호: `ELASTIC_USERNAME`, `ELASTIC_PASSWORD`
    - 인덱스 설정/매핑은 `src/main/resources/elasticsearch/*.json` 기반
    - Spring AI의 `vectorstore.elasticsearch.initialize-schema=true` 설정으로 초기 스키마 자동 생성
+   - 동의어 파일 `src/main/resources/elasticsearch/synonyms.txt` 도커 컨테이너에 추가
 
 4. **AWS S3**
    - 버킷: `${S3_BUCKET_NAME}`
@@ -319,4 +320,415 @@ docker run -d --name uniwiki-frontend \
 > `/api` → 백엔드(8080), `/` → 프론트(80)로 라우팅해야 한다.  
 > 프론트 코드의 `API_BASE`도 해당 도메인에 맞게 맞춰야 한다.
 
+### 6-3) 
+
 ---
+
+## 7) 배포
+### 7-1) nginx.conf 파일
+```bash
+server {
+    server_name k13d104.p.ssafy.io;
+
+    # 로그
+    access_log /var/log/nginx/uniwiki_access.log;
+    error_log /var/log/nginx/uniwiki_error.log;
+
+    # 업로드 크기 제한
+    client_max_body_size 100M;
+
+    # React 프론트엔드
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Spring Boot 백엔드 API
+    location /api {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+    }
+
+    # Swagger UI
+    location /swagger-ui {
+        proxy_pass http://localhost:8080/swagger-ui;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Swagger API Docs
+    location /v3/api-docs {
+        proxy_pass http://localhost:8080/v3/api-docs;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location ~ ^/api/v1/discussions/\d+/stream$ {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_set_header Connection '';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 3600s;
+        chunked_transfer_encoding off;
+    }
+    # Swagger 정적 파일
+    location ~* ^/(swagger-ui.*\.(css|js|png|jpg|jpeg|gif|ico|svg))$ {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    # Actuator
+    location /actuator {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    listen [::]:443 ssl ipv6only=on; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/k13d104.p.ssafy.io/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/k13d104.p.ssafy.io/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+}
+server {
+    if ($host = k13d104.p.ssafy.io) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    listen [::]:80;
+    server_name k13d104.p.ssafy.io;
+    return 404; # managed by Certbot
+
+
+}
+```
+### 7-2) Jenkins 파이프라인
+```bash
+pipeline {
+    agent any
+    
+    environment {
+        BACKEND_IMAGE = 'uniwiki-backend'
+        FRONTEND_IMAGE = 'uniwiki-frontend'
+        
+        // Jenkins Credentials (스크린샷에서 확인한 ID 사용)
+        JWT_SECRET = credentials('JWT_SECRET')
+        DB_URL = credentials('DB_URL')
+        DB_USERNAME = credentials('DB_USERNAME')
+        DB_PASSWORD = credentials('DB_PASSWORD')
+        REDIS_PASSWORD = credentials('REDIS_PASSWORD')
+        GOOGLE_USERNAME = credentials('GOOGLE_USERNAME')
+        GOOGLE_PASSWORD = credentials('GOOGLE_PASSWORD')
+        S3_BUCKET_NAME = credentials('S3_BUCKET_NAME')
+        S3_ACCESS_KEY = credentials('S3_ACCESS_KEY')
+        S3_SECRET_KEY = credentials('S3_SECRET_KEY')
+        ELASTIC_URL = credentials('ELASTIC_URL')
+        ELASTIC_USERNAME = credentials('ELASTIC_USERNAME')
+        ELASTIC_PASSWORD = credentials('ELASTIC_PASSWORD')
+        AI_API_KEY = credentials('AI_API_KEY')
+        AI_API_URL = credentials('AI_API_URL')
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 코드 체크아웃'
+                git branch: 'develop',
+                    credentialsId: 'gitlab-token1',
+                    url: 'https://lab.ssafy.com/s13-final/S13P31D104.git'
+                
+                sh '''
+                    echo "✅ 체크아웃 완료"
+                    ls -la
+                '''
+            }
+        }
+        
+        stage('Environment Check') {
+            steps {
+                sh '''
+                    echo "🔍 환경 확인"
+                    docker --version
+                    docker-compose --version
+                    echo ""
+                    echo "환경변수 확인:"
+                    echo "JWT_SECRET: ✅ 로드됨"
+                    echo "DB_URL: ${DB_URL}"
+                    echo "DB_USERNAME: ${DB_USERNAME}"
+                '''
+            }
+        }
+        
+        stage('Stop Old Containers') {
+            steps {
+                sh '''
+                    echo "🛑 기존 컨테이너 중지 및 제거"
+                    
+                    # 컨테이너 강제 중지 및 제거
+                    docker stop backend frontend 2>/dev/null || true
+                    docker rm -f backend frontend 2>/dev/null || true
+                    
+                    # 완전히 제거되었는지 확인
+                    sleep 2
+                    
+                    # 남아있는 컨테이너 확인 및 재시도
+                    if docker ps -a | grep -E "backend|frontend"; then
+                        echo "⚠️ 컨테이너가 남아있어 다시 제거 시도"
+                        docker rm -f backend frontend 2>/dev/null || true
+                        sleep 2
+                    fi
+                    
+                    echo "✅ 컨테이너 정리 완료"
+                    docker ps -a | grep -E "backend|frontend" || echo "모든 컨테이너 제거됨"
+                '''
+            }
+        }
+        
+        stage('Build and Deploy Backend') {
+            steps {
+                script {
+                    try {
+                        sh '''
+                            echo "🔨 백엔드 빌드 시작"
+                            
+                            # 기존 백엔드 컨테이너 한 번 더 확인 및 제거
+                            docker rm -f backend 2>/dev/null || true
+                            
+                            cd backend/uniwiki
+                            docker build -t ${BACKEND_IMAGE}:latest . --no-cache
+                            
+                            echo "🚀 백엔드 배포"
+                            docker run -d \
+                              --name backend \
+                              --network uniwiki-net \
+                              -e SPRING_PROFILES_ACTIVE=prod \
+                              -e SERVER_PORT=8080 \
+                              -e JWT_SECRET="${JWT_SECRET}" \
+                              -e JWT_EXPIRATION=86400000 \
+                              -e SPRING_DATASOURCE_URL="${DB_URL}" \
+                              -e SPRING_DATASOURCE_USERNAME="${DB_USERNAME}" \
+                              -e SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD}" \
+                              -e REDIS_PASSWORD="${REDIS_PASSWORD}" \
+                              -e GOOGLE_USERNAME="${GOOGLE_USERNAME}" \
+                              -e GOOGLE_PASSWORD="${GOOGLE_PASSWORD}" \
+                              -e S3_BUCKET_NAME="${S3_BUCKET_NAME}" \
+                              -e S3_ACCESS_KEY="${S3_ACCESS_KEY}" \
+                              -e S3_SECRET_KEY="${S3_SECRET_KEY}" \
+                              -e ELASTIC_URL="${ELASTIC_URL}" \
+                              -e ELASTIC_USERNAME="${ELASTIC_USERNAME}" \
+                              -e ELASTIC_PASSWORD="${ELASTIC_PASSWORD}" \
+                              -e AI_API_KEY="${AI_API_KEY}" \
+                              -e AI_API_URL="${AI_API_URL}" \
+                              -p 8080:8080 \
+                              --restart unless-stopped \
+                              ${BACKEND_IMAGE}:latest
+                            
+                            # 컨테이너 실행 확인
+                            sleep 3
+                            if docker ps | grep -q backend; then
+                                echo "✅ 백엔드 배포 성공"
+                            else
+                                echo "❌ 백엔드 컨테이너 실행 실패"
+                                docker logs backend 2>&1 || true
+                                exit 1
+                            fi
+                        '''
+                    } catch (Exception e) {
+                        echo "❌ 백엔드 빌드/배포 실패: ${e.message}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
+        
+        stage('Build and Deploy Frontend') {
+            steps {
+                script {
+                    try {
+                        sh '''
+                            echo "🔨 프론트엔드 빌드 시작"
+                            
+                            # 기존 프론트엔드 컨테이너 한 번 더 확인 및 제거
+                            docker rm -f frontend 2>/dev/null || true
+                            
+                            cd frontend/uniwiki
+                            docker build -t ${FRONTEND_IMAGE}:latest . --no-cache
+                            
+                            echo "🚀 프론트엔드 배포"
+                            docker run -d \
+                              --name frontend \
+                              -p 3001:80 \
+                              --restart unless-stopped \
+                              ${FRONTEND_IMAGE}:latest
+                            
+                            # 컨테이너 실행 확인
+                            sleep 3
+                            if docker ps | grep -q frontend; then
+                                echo "✅ 프론트엔드 배포 성공"
+                            else
+                                echo "❌ 프론트엔드 컨테이너 실행 실패"
+                                docker logs frontend 2>&1 || true
+                                exit 1
+                            fi
+                        '''
+                    } catch (Exception e) {
+                        echo "❌ 프론트엔드 빌드/배포 실패: ${e.message}"
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    echo "✅ 배포 확인"
+                    echo ""
+                    echo "=== 실행 중인 컨테이너 ==="
+                    docker ps --filter "name=backend" --filter "name=frontend"
+                    echo ""
+                    
+                    # 백엔드 확인
+                    if docker ps | grep -q backend; then
+                        echo "✅ 백엔드 컨테이너 실행 중"
+                        echo "백엔드 로그 (최근 20줄):"
+                        docker logs backend --tail 20
+                    else
+                        echo "❌ 백엔드 컨테이너 없음"
+                    fi
+                    
+                    echo ""
+                    
+                    # 프론트엔드 확인
+                    if docker ps | grep -q frontend; then
+                        echo "✅ 프론트엔드 컨테이너 실행 중"
+                        echo "프론트엔드 로그 (최근 20줄):"
+                        docker logs frontend --tail 20
+                    else
+                        echo "❌ 프론트엔드 컨테이너 없음"
+                    fi
+                '''
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                sh '''
+                    echo "💊 헬스 체크"
+                    
+                    # 백엔드 헬스체크
+                    if docker ps | grep -q backend; then
+                        echo "백엔드 헬스체크 대기 중..."
+                        sleep 20
+                        for i in {1..5}; do
+                            if curl -f http://localhost:8080/actuator/health > /dev/null 2>&1; then
+                                echo "✅ 백엔드 정상 작동"
+                                curl http://localhost:8080/actuator/health
+                                break
+                            else
+                                echo "대기 중... ($i/5)"
+                                sleep 5
+                            fi
+                        done
+                    fi
+                    
+                    # 프론트엔드 헬스체크
+                    if docker ps | grep -q frontend; then
+                        if curl -f http://localhost:3001 > /dev/null 2>&1; then
+                            echo "✅ 프론트엔드 정상 작동"
+                        else
+                            echo "⚠️ 프론트엔드 응답 없음 (시작 중일 수 있음)"
+                        fi
+                    fi
+                '''
+            }
+        }
+        
+        stage('Reload Nginx') {
+            steps {
+                sh '''
+                    echo "🔄 EC2 Nginx 리로드"
+                    sudo systemctl reload nginx || echo "⚠️ Nginx 리로드 실패"
+                '''
+            }
+        }
+    }
+    
+    post {
+        success {
+            script {
+                def backendRunning = sh(script: 'docker ps | grep -q backend', returnStatus: true) == 0
+                def frontendRunning = sh(script: 'docker ps | grep -q frontend', returnStatus: true) == 0
+                
+                if (backendRunning && frontendRunning) {
+                    echo '''
+                    ✅✅✅ 전체 배포 성공! 🎉
+                    
+                    백엔드: ✅ 실행 중
+                    프론트엔드: ✅ 실행 중
+                    
+                    접속 정보:
+                    - 프론트엔드: https://k11a104.p.ssafy.io
+                    - 백엔드 API: https://k11a104.p.ssafy.io/api
+                    '''
+                } else if (backendRunning) {
+                    echo '''
+                    ⚠️ 부분 배포 성공
+                    
+                    백엔드: ✅ 실행 중
+                    프론트엔드: ❌ 실패
+                    '''
+                } else if (frontendRunning) {
+                    echo '''
+                    ⚠️ 부분 배포 성공
+                    
+                    백엔드: ❌ 실패
+                    프론트엔드: ✅ 실행 중
+                    '''
+                }
+            }
+        }
+        unstable {
+            echo '''
+            ⚠️ 배포 일부 성공
+            
+            실패한 서비스 로그를 확인하세요.
+            '''
+        }
+        failure {
+            echo '❌ 배포 완전 실패 😢'
+        }
+    }
+}
+```
